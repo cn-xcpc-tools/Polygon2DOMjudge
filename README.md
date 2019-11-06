@@ -129,11 +129,19 @@ int main(int argc, char* argv[]) {
     - `validation: custom`
 ```
 .
-├── domjudge-problem.ini
+├── data
+│   ├── sample
+│   └── secret
 ├── output_validators
 │   └── validate
 │       ├── checker.cpp
 │       └── testlib.h
+├── submissions
+│   ├── accepted
+│   ├── time_limit_exceeded
+│   └── wrong_answer
+├── domjudge-problem.ini
+├── problem.pdf
 └── problem.yaml
 ```
 
@@ -151,10 +159,18 @@ int main(int argc, char* argv[]) {
     - `validation: custom interactive`
 ```
 .
-├── domjudge-problem.ini
+├── data
+│   ├── sample
+│   └── secret
 ├── output_validators
 │   └── validate
 │       ├── interactor.cpp
 │       └── testlib.h
+├── submissions
+│   ├── accepted
+│   ├── time_limit_exceeded
+│   └── wrong_answer
+├── domjudge-problem.ini
+├── problem.pdf
 └── problem.yaml
 ```
