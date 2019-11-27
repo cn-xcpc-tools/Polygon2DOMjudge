@@ -114,6 +114,7 @@ else:
         desc.close()
         INTERACTOR_DIR = OUTPUT_DIR + '/output_validators/interactor'
         ensure_dir(INTERACTOR_DIR)
+        copyfile("./testlib.h", INTERACTOR_DIR + '/testlib.h')
         interactor_source = interactor.find('source')
         copyfile(PACKAGE_DIR + '/' + interactor_source.attrib['path'], INTERACTOR_DIR + '/interactor.cpp')
     elif checker is not None:
