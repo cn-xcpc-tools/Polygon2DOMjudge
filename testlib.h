@@ -62,7 +62,7 @@
  *   writes output to program via stdout (use cout, printf, etc).
  * 
  *   NOTE: This file is modified to run in domjudge.
- *   Interactor can't write result to tout becaue domjudge doesn't support it.
+ *   Interactor can use tout for the teammessage, not for jury's log.
  */
 
 const char* latestFeatures[] = {
@@ -3997,11 +3997,10 @@ void registerGen(int argc, char* argv[])
 }
 #endif
 
-std::string make_new_file_in_a_dir(std::string dir) // assume in linux
+std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemessage.txt") // assume in linux
 {
-    if (dir[dir.length() - 1] != '/')
-        dir += '/';
-    return dir + "judgemessage.txt";
+    if (dir.back() != '/') dir.push_back('/');
+    return dir + file;
 }
 
 void registerInteraction(int argc, char* argv[])
@@ -4030,6 +4029,9 @@ void registerInteraction(int argc, char* argv[])
     if (argc == 4)
     {
         resultName = make_new_file_in_a_dir(argv[3]);
+        tout.open(make_new_file_in_a_dir(argv[3], "teammessage.txt"), std::ios_base::out);
+        if (tout.fail() || !tout.is_open())
+            quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
         appesMode = false;
     }
 

@@ -148,6 +148,8 @@ int main(int argc, char* argv[]) {
 ### Interactor
 **Note: We don't support using checker after interactor (i.e. you can not use `tout` to write something verified by checker later), so you must return the final result by interactor.**
 
+**Now you can use `tout` to write some messages to team.**
+
 #### Manual
 - upload your `interactor.cpp` and `testlib.h` to DOMJudge as a run script.
 - change the problem's run script to it.
