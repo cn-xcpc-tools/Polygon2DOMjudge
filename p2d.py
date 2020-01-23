@@ -33,6 +33,7 @@ TAG_REMAP = {
     'REJECTED': 'run_time_error',
     'FAILED': 'run_time_error'
 }
+
 END_OF_SUBPROCESS = '=' * 50
 
 
@@ -105,7 +106,7 @@ def main(args):
         checker_dir = '{}/checker'.format(output_validators_dir)
         interactor_dir = '{}/interactor'.format(output_validators_dir)
         if args.default:
-            with open(yaml_file, 'w+', encoding='utf-8') as f:
+            with open(yaml_file, 'w', encoding='utf-8') as f:
                 f.write('validation: default\n')
                 validator_flags = []
                 if args.case_sensitive:
@@ -122,30 +123,25 @@ def main(args):
                     validator_flags.append('float_tolerance')
                     validator_flags.append(args.float_tolerance)
                 if validator_flags:
-                    f.write('validator_flags: ' +
-                            ' '.join(validator_flags) + '\n')
+                    f.write('validator_flags: {}\n'.format(' '.join(validator_flags)))
         else:
             ensure_dir(output_validators_dir)
             if interactor is not None:
                 print('Use custom interactor.')
-                with open(yaml_file, 'w+', encoding='utf-8') as f:
+                with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write('validation: custom interactive\n')
                 ensure_dir(interactor_dir)
                 copyfile('./testlib.h', '{}/testlib.h'.format(interactor_dir))
-                interactor_file = '{}/{}'.format(package_dir,
-                                                 interactor.find('source').attrib['path'])
-                copyfile(interactor_file,
-                         '{}/interactor.cpp'.format(interactor_dir))
+                interactor_file = '{}/{}'.format(package_dir, interactor.find('source').attrib['path'])
+                copyfile(interactor_file, '{}/interactor.cpp'.format(interactor_dir))
             elif checker is not None:
                 print('Use custom checker.')
-                with open(yaml_file, 'w+', encoding='utf-8') as f:
+                with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write('validation: custom\n')
                 ensure_dir(interactor_dir)
                 copyfile('./testlib.h', '{}/testlib.h'.format(interactor_dir))
-                checker_file = '{}/{}'.format(package_dir,
-                                              checker.find('source').attrib['path'])
-                copyfile(checker_file,
-                         '{}/checker.cpp'.format(checker_dir))
+                checker_file = '{}/{}'.format(package_dir, checker.find('source').attrib['path'])
+                copyfile(checker_file, '{}/checker.cpp'.format(checker_dir))
         print(END_OF_SUBPROCESS)
 
     def add_test():
@@ -182,7 +178,7 @@ def main(args):
         def get_solution(desc):
             result = {}
             desc_file = '{}/solutions/{}'.format(package_dir, desc)
-            with open(desc_file, 'r') as f:
+            with open(desc_file, 'r', encoding='utf-8') as f:
                 for _ in f.readlines():
                     key, value = _.strip().split(': ', maxsplit=2)
                     if key == 'File name':
@@ -213,7 +209,7 @@ def main(args):
     color = '#000000'
     samples = ['01']
     package_dir = args.package.strip('/')
-    output_file = args.package
+    output_file = args.package.strip('/')
     if args.code: probid = args.code
     if args.color: color = args.color
     if args.sample: samples = [args.sample]
@@ -222,8 +218,7 @@ def main(args):
         first = int(samples[0])
         num_samples = int(args.num_samples)
         assert (num_samples < 100)
-        samples = ['{0:02d}'.format(
-            i) for i in range(first, first + num_samples)]
+        samples = ['{0:02d}'.format(i) for i in range(first, first + num_samples)]
     if args.output: output_file = args.output
 
     ensure_no_dir(output_dir)
