@@ -1,84 +1,69 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 import argparse
+import json
+import logging
 import hashlib
 import math
 import os
 import sys
 import xml.etree.ElementTree
 from shutil import copyfile, rmtree, make_archive
+from time import strftime, localtime, time
 
-INI_CONTENT = '''probid = {}
-name = {}
-timelimit = {}
-color = {}
-'''
-
-STD_CHECKERS_MD5 = {}
-with open('./checkers/md5sum', 'r', encoding='utf-8') as f:
-    for _ in f.readlines():
-        md5, name = _.strip().split(maxsplit=2)
-        STD_CHECKERS_MD5[md5] = name
-
-TAG_REMAP = {
-    'MAIN': 'accepted',
-    'ACCEPTED': 'accepted',
-    'WRONG_ANSWER': 'wrong_answer',
-    'PRESENTATION_ERROR': 'wrong_answer',
-    'TIME_LIMIT_EXCEEDED': 'time_limit_exceed',
-    'TIME_LIMIT_EXCEEDED_OR_ACCEPTED': 'time_limit_exceed',
-    # DOMjudge return RE when MLE.
-    'TIME_LIMIT_EXCEEDED_OR_MEMORY_LIMIT_EXCEEDED': 'run_time_error',
-    'MEMORY_LIMIT_EXCEEDED': 'rum_time_error',
-    # We think REJUECTED or FAILED means RE.
-    'REJECTED': 'run_time_error',
-    'FAILED': 'run_time_error'
-}
-
+config = {}
 END_OF_SUBPROCESS = '=' * 50
 
 
-def main(args):
-    def ensure_dir(s):
-        if not os.path.exists(s):
-            os.makedirs(s)
+def ensure_dir(s):
+    if not os.path.exists(s):
+        os.makedirs(s)
 
-    def ensure_no_dir(s):
-        if os.path.exists(s):
-            rmtree(s)
+
+def ensure_no_dir(s):
+    if os.path.exists(s):
+        rmtree(s)
+
+
+def main(args):
 
     def start(package_dir, output_dir, output_file):
-        print('This is p2d.py by cubercsl.')
-        print('Process Polygon Package to Domjudge Package.')
-        print('Package directory: {}'.format(package_dir))
-        print('Temp directory: {}'.format(output_dir))
-        print('Output file: {}.zip'.format(output_file))
+        logger.info('This is p2d.py by cubercsl.')
+        logger.info('Process Polygon Package to Domjudge Package.')
+        logger.info('Package directory: {}'.format(package_dir))
+        logger.info('Temp directory: {}'.format(output_dir))
+        logger.info('Output file: {}.zip'.format(output_file))
         input("Press enter to continue...")
-        print(END_OF_SUBPROCESS)
+        logger.info(END_OF_SUBPROCESS)
 
     def parse_problem():
-        print('Parse \'problem.xml\':')
+        logger.info('Parse \'problem.xml\':')
         xml_file = '{}/problem.xml'.format(package_dir)
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
         timelimit = float(math.ceil(float(root.find('judging').find('testset').find('time-limit').text) / 1000.0))
         checker = root.find('assets').find('checker')
         interactor = root.find('assets').find('interactor')
-        print('Problem Name: {}'.format(name))
-        print('Time Limit: {}'.format(timelimit))
-        print(END_OF_SUBPROCESS)
+        logger.info('Problem Name: {}'.format(name))
+        logger.info('Time Limit: {}'.format(timelimit))
+        logger.info(END_OF_SUBPROCESS)
         return name, timelimit, checker, interactor
 
     def write_ini(probid, name, timelimit, color):
-        print('Add \'domjudge-problem.ini\':')
+        logger.info('Add \'domjudge-problem.ini\':')
         ini_file = '{}/domjudge-problem.ini'.format(output_dir)
-        ini_content = INI_CONTENT.format(probid, name.replace("'", "`"), timelimit, color)
-        print(ini_content, end='')
+        ini_content = [
+            'probid = {}'.format(probid),
+            'name = {}'.format(name.replace("'", "`")),
+            'timelimit = {}'.format(timelimit),
+            'color = {}'.format(color)
+        ]
+        [*map(logger.info, ini_content)]
         with open(ini_file, 'w', encoding='utf-8') as f:
-            f.write(ini_content)
-        print(END_OF_SUBPROCESS)
+            f.writelines(map(lambda s: s + '\n', ini_content))
+        logger.info(END_OF_SUBPROCESS)
 
     def add_output_validator():
-        print('Add output validator:')
+        logger.info('Add output validator:')
 
         def get_checker_md5(checker):
             if checker is None:
@@ -90,21 +75,16 @@ def main(args):
             return file_md5.hexdigest().lower()
 
         checker_md5 = get_checker_md5(checker)
-        print('Checker md5: {}'.format(checker_md5))
-
-        if checker_md5 in STD_CHECKERS_MD5.keys():
-            args.default = True
-            checker_name = STD_CHECKERS_MD5[checker_md5]
-            print('Use std checker: std::{}'.format(checker_name))
-            if checker_name == 'rcmp4.cpp':
-                args.float_tolerance = '1e-4'
-            elif checker_name == 'rcmp6.cpp':
-                args.float_tolerance = '1e-6'
-            elif checker_name == 'rcmp9.cpp':
-                args.float_tolerance = '1e-9'
-            elif checker_name == 'fcmp.cpp':
-                args.case_sensitive = True
-                args.space_change_sensitive = True
+        logger.info('Checker md5: {}'.format(checker_md5))
+        validator_flags = []
+        try:
+            if checker_md5 in config['checker'].keys():
+                args.default = True
+                checker_name = config['checker'][checker_md5]
+                logger.info('Use std checker: std::{}'.format(checker_name))
+                validator_flags = config['flag'].get(checker_name)
+        except KeyError:
+            pass
 
         yaml_file = '{}/problem.yaml'.format(output_dir)
         output_validators_dir = '{}/output_validators'.format(output_dir)
@@ -113,7 +93,6 @@ def main(args):
         if args.default:
             with open(yaml_file, 'w', encoding='utf-8') as f:
                 f.write('validation: default\n')
-                validator_flags = []
                 if args.case_sensitive:
                     validator_flags.append('case_sensitive')
                 if args.space_change_sensitive:
@@ -128,32 +107,32 @@ def main(args):
                     validator_flags.append('float_tolerance')
                     validator_flags.append(args.float_tolerance)
                 if validator_flags:
-                    print('Validator flags: {}'.format(' '.join(validator_flags)))
+                    logger.info('Validator flags: {}'.format(' '.join(validator_flags)))
                     f.write('validator_flags: {}\n'.format(' '.join(validator_flags)))
         else:
             ensure_dir(output_validators_dir)
             if interactor is not None:
-                print('Use custom interactor.')
+                logger.info('Use custom interactor.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write('validation: custom interactive\n')
                 ensure_dir(interactor_dir)
-                copyfile('./testlib.h', '{}/testlib.h'.format(interactor_dir))
+                copyfile(testlib, '{}/testlib.h'.format(interactor_dir))
                 interactor_file = '{}/{}'.format(package_dir, interactor.find('source').attrib['path'])
                 copyfile(interactor_file, '{}/interactor.cpp'.format(interactor_dir))
             elif checker is not None:
-                print('Use custom checker.')
+                logger.info('Use custom checker.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write('validation: custom\n')
                 ensure_dir(checker_dir)
-                copyfile('./testlib.h', '{}/testlib.h'.format(checker_dir))
+                copyfile(testlib, '{}/testlib.h'.format(checker_dir))
                 checker_file = '{}/{}'.format(package_dir, checker.find('source').attrib['path'])
                 copyfile(checker_file, '{}/checker.cpp'.format(checker_dir))
             else:
                 raise Exception('No checker found.')
-        print(END_OF_SUBPROCESS)
+        logger.info(END_OF_SUBPROCESS)
 
     def add_test():
-        print('Add tests:')
+        logger.info('Add tests:')
         ensure_dir('{}/data'.format(output_dir))
         ensure_dir('{}/data/sample'.format(output_dir))
         ensure_dir('{}/data/secret'.format(output_dir))
@@ -164,17 +143,17 @@ def main(args):
             if test in samples:
                 input_dst = '{}/data/sample/{}.in'.format(output_dir, test)
                 output_dst = '{}/data/sample/{}.ans'.format(output_dir, test)
-                print('- sample: {}.(in/ans)'.format(test))
+                logger.info('* sample: {}.(in/ans)'.format(test))
             else:
                 input_dst = '{}/data/secret/{}.in'.format(output_dir, test)
                 output_dst = '{}/data/secret/{}.ans'.format(output_dir, test)
-                print('- secret: {}.(in/ans)'.format(test))
+                logger.info('* secret: {}.(in/ans)'.format(test))
             copyfile(input_src, input_dst)
             copyfile(output_src, output_dst)
-        print(END_OF_SUBPROCESS)
+        logger.info(END_OF_SUBPROCESS)
 
     def add_jury_solution():
-        print('Add jury solutions:')
+        logger.info('Add jury solutions:')
         ensure_dir('{}/submissions'.format(output_dir))
         ensure_dir('{}/submissions/accepted'.format(output_dir))
         ensure_dir('{}/submissions/wrong_answer'.format(output_dir))
@@ -190,9 +169,13 @@ def main(args):
                     if key == 'File name':
                         result[key] = value
                     elif key == 'Tag':
-                        if value not in TAG_REMAP.keys():
-                            raise Exception('Unknown tag: {}'.format(value))
-                        result[key] = TAG_REMAP[value]
+                        try:
+                            if value not in config['tag'].keys():
+                                raise Exception('Unknown tag: {}'.format(value))
+                            result[key] = config['tag'][value]
+                        except KeyError:
+                            logger.warning('Treat unknown tag \'{}\' as \'accepted\'.'.format(value))
+                            result[key] = 'accepted'
             if not ('File name' in result.keys() or 'Tag' in result.keys()):
                 raise Exception('The description file {} has error.'.format(desc))
             return result['File name'], result['Tag']
@@ -202,10 +185,11 @@ def main(args):
             src = '{}/solutions/{}'.format(package_dir, solution)
             dst = '{}/submissions/{}/{}'.format(output_dir, result, solution)
             copyfile(src, dst)
-            print('- {} (Expected Result: {})'.format(solution, result))
-        print(END_OF_SUBPROCESS)
+            logger.info('- {} (Expected Result: {})'.format(solution, result))
+        logger.info(END_OF_SUBPROCESS)
 
-    output_dir = (os.getenv('OUTPUT_DIR') or './tmp').strip('/')
+    testlib = (os.getenv('TESTLIB_PATH') or '..').strip('/') + '/testlib.h'
+    output_dir = (os.getenv('TMP_DIR') or 'tmp').strip('/')
     extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT') or '.a'
     extention_for_desc = os.getenv('EXTENTION_FOR_DESC') or '.desc'
     probid = 'PROB1'
@@ -241,10 +225,29 @@ def main(args):
         add_jury_solution()
         make_archive(output_file, 'zip', output_dir)
         ensure_no_dir(output_dir)
-        print('Make package {}.zip success.'.format(output_file.split('/')[-1]))
+        logger.info('Make package {}.zip success.'.format(output_file.split('/')[-1]))
     except Exception as e:
-        print(e, file=sys.stderr)
+        logger.error(e)
 
+
+ensure_dir('log')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('log/{}.log'.format(strftime('%Y-%m-%d %H:%M:%S', localtime(time()))))
+console = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(console)
+logger.addHandler(handler)
+
+try:
+    with open(os.getenv('CONFIG_PATH') or 'config.json', 'r', encoding='utf-8') as f:
+        config = json.load(f)
+except FileNotFoundError:
+    logger.warning('\'config.json\' not found!')
+except json.JSONDecodeError as e:
+    logger.error(e)
+    exit()
 
 parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
 parser.add_argument('package', type=str, help='path of the polygon package')
@@ -252,12 +255,13 @@ parser.add_argument('--code', type=str, help='problem code for domjudge')
 parser.add_argument('--sample', type=str, help='Specify the filename for sample test. Defaults to \'01\'')
 parser.add_argument('--num-samples', type=str, help='Specify the number of sample test cases. Defaults to \'1\'')
 parser.add_argument('--color', type=str, help='problem color for domjudge (in RRGGBB format)')
-parser.add_argument('-o', '--output', type=str, help='Output Package directory')
-parser.add_argument('--default', action='store_true', help='Use default validation')
+parser.add_argument('-o', '--output', type=str, help='path of the output package')
+parser.add_argument('--default', action='store_true', help='use default validation')
 parser.add_argument('--case_sensitive', action='store_true', help='case_sensitive flag')
 parser.add_argument('--space_change_sensitive', action='store_true', help='space_change_sensitive flag')
 parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
 parser.add_argument('--float_absolute_tolerance', type=str, help='float_absolute_tolerance flag')
 parser.add_argument('--float_tolerance', type=str, help='float_tolerance flag')
 args = parser.parse_args()
+
 main(args)
