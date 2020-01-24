@@ -46,12 +46,17 @@ def main(args):
         if os.path.exists(s):
             rmtree(s)
 
-    def start():
+    def start(package_dir, output_dir, output_file):
         print('This is p2d.py by cubercsl.')
         print('Process Polygon Package to Domjudge Package.')
+        print('Package directory: {}'.format(package_dir))
+        print('Temp directory: {}'.format(output_dir))
+        print('Output file: {}.zip'.format(output_file))
+        input("Press enter to continue...")
         print(END_OF_SUBPROCESS)
 
     def parse_problem():
+        print('Parse \'problem.xml\':')
         xml_file = '{}/problem.xml'.format(package_dir)
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
@@ -66,7 +71,7 @@ def main(args):
     def write_ini(probid, name, timelimit, color):
         print('Add \'domjudge-problem.ini\':')
         ini_file = '{}/domjudge-problem.ini'.format(output_dir)
-        ini_content = INI_CONTENT.format(probid, name, timelimit, color)
+        ini_content = INI_CONTENT.format(probid, name.replace("'", "`"), timelimit, color)
         print(ini_content, end='')
         with open(ini_file, 'w', encoding='utf-8') as f:
             f.write(ini_content)
@@ -90,7 +95,7 @@ def main(args):
         if checker_md5 in STD_CHECKERS_MD5.keys():
             args.default = True
             checker_name = STD_CHECKERS_MD5[checker_md5]
-            print('Use std checker: std::{}.'.format(checker_name))
+            print('Use std checker: std::{}'.format(checker_name))
             if checker_name == 'rcmp4.cpp':
                 args.float_tolerance = '1e-4'
             elif checker_name == 'rcmp6.cpp':
@@ -123,6 +128,7 @@ def main(args):
                     validator_flags.append('float_tolerance')
                     validator_flags.append(args.float_tolerance)
                 if validator_flags:
+                    print('Validator flags: {}'.format(' '.join(validator_flags)))
                     f.write('validator_flags: {}\n'.format(' '.join(validator_flags)))
         else:
             ensure_dir(output_validators_dir)
@@ -138,10 +144,12 @@ def main(args):
                 print('Use custom checker.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write('validation: custom\n')
-                ensure_dir(interactor_dir)
-                copyfile('./testlib.h', '{}/testlib.h'.format(interactor_dir))
+                ensure_dir(checker_dir)
+                copyfile('./testlib.h', '{}/testlib.h'.format(checker_dir))
                 checker_file = '{}/{}'.format(package_dir, checker.find('source').attrib['path'])
                 copyfile(checker_file, '{}/checker.cpp'.format(checker_dir))
+            else:
+                raise Exception('No checker found.')
         print(END_OF_SUBPROCESS)
 
     def add_test():
@@ -150,19 +158,17 @@ def main(args):
         ensure_dir('{}/data/sample'.format(output_dir))
         ensure_dir('{}/data/secret'.format(output_dir))
 
-        for test in filter(lambda x: not x.endswith(extention_for_output),
-                           os.listdir('{}/tests'.format(package_dir))):
+        for test in filter(lambda x: not x.endswith(extention_for_output), os.listdir('{}/tests'.format(package_dir))):
             input_src = '{}/tests/{}'.format(package_dir, test)
-            output_src = '{}/tests/{}{}'.format(package_dir,
-                                                test, extention_for_output)
+            output_src = '{}/tests/{}{}'.format(package_dir, test, extention_for_output)
             if test in samples:
                 input_dst = '{}/data/sample/{}.in'.format(output_dir, test)
                 output_dst = '{}/data/sample/{}.ans'.format(output_dir, test)
-                print('- sample: {}.'.format(test))
+                print('- sample: {}.(in/ans)'.format(test))
             else:
                 input_dst = '{}/data/secret/{}.in'.format(output_dir, test)
                 output_dst = '{}/data/secret/{}.ans'.format(output_dir, test)
-                print('- secret: {}.'.format(test))
+                print('- secret: {}.(in/ans)'.format(test))
             copyfile(input_src, input_dst)
             copyfile(output_src, output_dst)
         print(END_OF_SUBPROCESS)
@@ -185,21 +191,18 @@ def main(args):
                         result[key] = value
                     elif key == 'Tag':
                         if value not in TAG_REMAP.keys():
-                            raise Exception('Unknown tag: ' + value)
+                            raise Exception('Unknown tag: {}'.format(value))
                         result[key] = TAG_REMAP[value]
             if not ('File name' in result.keys() or 'Tag' in result.keys()):
-                raise Exception('The description file %s has error.' % desc)
+                raise Exception('The description file {} has error.'.format(desc))
             return result['File name'], result['Tag']
 
-        for desc in filter(lambda x: x.endswith(extention_for_desc),
-                           os.listdir('{}/solutions'.format(package_dir))):
+        for desc in filter(lambda x: x.endswith(extention_for_desc), os.listdir('{}/solutions'.format(package_dir))):
             solution, result = get_solution(desc)
             src = '{}/solutions/{}'.format(package_dir, solution)
-            dst = '{}/submissions/{}/{}'.format(
-                output_dir, result, solution)
+            dst = '{}/submissions/{}/{}'.format(output_dir, result, solution)
             copyfile(src, dst)
-            print('- {} (Expected Result: {})'.format(
-                solution, result))
+            print('- {} (Expected Result: {})'.format(solution, result))
         print(END_OF_SUBPROCESS)
 
     output_dir = (os.getenv('OUTPUT_DIR') or './tmp').strip('/')
@@ -219,13 +222,18 @@ def main(args):
         num_samples = int(args.num_samples)
         assert (num_samples < 100)
         samples = ['{0:02d}'.format(i) for i in range(first, first + num_samples)]
-    if args.output: output_file = args.output
+    if args.output:
+        output_file = args.output
+        if output_file.endswith('/'): output_file = output_file + package_dir.split('/')[-1]
+        if output_file.endswith('.zip'): output_file = output_file[:-4]
+        if output_file.startswith('./'): output_file = output_file[2:]
+
+    start(package_dir, output_dir, output_file)
 
     ensure_no_dir(output_dir)
     ensure_dir(output_dir)
 
     try:
-        start()
         name, timelimit, checker, interactor = parse_problem()
         write_ini(probid, name, timelimit, color)
         add_output_validator()
@@ -233,7 +241,7 @@ def main(args):
         add_jury_solution()
         make_archive(output_file, 'zip', output_dir)
         ensure_no_dir(output_dir)
-        print('Make package {}.zip success.'.format(output_file))
+        print('Make package {}.zip success.'.format(output_file.split('/')[-1]))
     except Exception as e:
         print(e, file=sys.stderr)
 
