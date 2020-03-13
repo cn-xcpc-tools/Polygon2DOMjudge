@@ -2140,7 +2140,6 @@ public:
                 __testlib_fail(
                         "Validator::writeTestOverviewLog: can't close test overview log file (" + fileName + ")");
         }
-        exit(OK_EXIT_CODE);
     }
 
     void addFeature(const std::string &feature) {
