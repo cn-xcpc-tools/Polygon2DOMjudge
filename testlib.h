@@ -3962,8 +3962,8 @@ void registerInteraction(int argc, char *argv[]) {
     if (tout.fail() || !tout.is_open())
         quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
 
-    ouf.init(stdin, _output);
 */  
+    ouf.init(stdin, _output);
     if (argc >= 3)
         ans.init(argv[2], _answer);
     else
