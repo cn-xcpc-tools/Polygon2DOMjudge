@@ -2,5 +2,5 @@
 export PYTHONPATH="$(dirname "$(dirname "$(readlink -f "$0")")"):$PYTHONPATH"
 export CONFIG_PATH="$(dirname "$(dirname "$(readlink -f "$0")")")"
 export TESTLIB_PATH=$CONFIG_PATH
-export LOG_PATH='/var/log/p2d'
+export LOG_PATH='~/.p2d'
 exec python -m p2d "$@"
