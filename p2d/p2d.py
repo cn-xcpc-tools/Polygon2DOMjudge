@@ -40,7 +40,7 @@ def main(args):
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
         timelimit = int(root.find('judging').find('testset').find('time-limit').text) / 1000.0
-        memlimit = int(root.find('judging').find('testset').find('memory-limit').text) // 1024
+        memlimit = int(root.find('judging').find('testset').find('memory-limit').text) // 1048576
         checker = root.find('assets').find('checker')
         interactor = root.find('assets').find('interactor')
         logger.info(f'Problem Name: {name}')
