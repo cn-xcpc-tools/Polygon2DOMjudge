@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import argparse
 import json
 import logging
@@ -54,7 +53,6 @@ def main(args):
         ini_file = f'{output_dir}/domjudge-problem.ini'
         ini_content = [
             f'probid = {probid}',
-            # 'name = {}'.format(name.replace("'", "`")),
             f'timelimit = {timelimit}',
             f'color = {color}'
         ]
@@ -66,7 +64,8 @@ def main(args):
     def write_yaml(name, memlimit):
         logger.info('Add \'priblem.yaml\':')
         yaml_file = f'{output_dir}/priblem.yaml'
-        yaml_content = f'name: {name}\nlimits:\n  memory: {memlimit}\n'
+        name = name.replace('"', r'\"')
+        yaml_content = f'name: "{name}"\nlimits:\n  memory: {memlimit}\n'
         logger.info(yaml_content)
         logger.info('Add output validator:')
 
