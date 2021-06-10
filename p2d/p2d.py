@@ -36,7 +36,7 @@ def main(args):
 
     def parse_problem():
         logger.info('Parse \'problem.xml\':')
-        xml_file = '{}/problem.xml'.format(package_dir)
+        xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
         timelimit = int(root.find('judging').find('testset').find('time-limit').text) / 1000.0
@@ -62,8 +62,8 @@ def main(args):
         logger.info(END_OF_SUBPROCESS)
 
     def write_yaml(name, memlimit):
-        logger.info('Add \'priblem.yaml\':')
-        yaml_file = f'{output_dir}/priblem.yaml'
+        logger.info('Add \'problem.yaml\':')
+        yaml_file = f'{output_dir}/problem.yaml'
         name = name.replace('"', r'\"')
         yaml_content = f'name: "{name}"\nlimits:\n  memory: {memlimit}\n'
         logger.info(yaml_content)
