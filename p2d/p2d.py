@@ -122,7 +122,7 @@ def main(args):
                     f.write(yaml_content)
                     f.write('validation: custom interactive\n')
                 ensure_dir(interactor_dir)
-                copyfile(testlib, f'{interactor_dir}/testlib.h', follow_symlinks=False)
+                copyfile(testlib, f'{interactor_dir}/testlib.h')
                 interactor_path = interactor.find('source').attrib['path']
                 interactor_file = f'{package_dir}/{interactor_path}'
                 copyfile(interactor_file, f'{interactor_dir}/interactor.cpp')
@@ -132,7 +132,7 @@ def main(args):
                     f.write(yaml_content)
                     f.write('validation: custom\n')
                 ensure_dir(checker_dir)
-                copyfile(testlib, f'{checker_dir}/testlib.h', follow_symlinks=False)
+                copyfile(testlib, f'{checker_dir}/testlib.h')
                 checker_path = checker.find('source').attrib['path']
                 checker_file = f'{package_dir}/{checker_path}'
                 copyfile(checker_file, f'{checker_dir}/checker.cpp')
@@ -198,7 +198,8 @@ def main(args):
             logger.info(f'- {solution} (Expected Result: {result})')
         logger.info(END_OF_SUBPROCESS)
 
-    testlib = (os.getenv('TESTLIB_PATH', '.')).rstrip('/') + '/testlib.h'
+    default_testlib_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    testlib = os.getenv('TESTLIB_PATH', default_testlib_path).rstrip('/') + '/testlib.h'
     extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT', '.a')
     extention_for_desc = os.getenv('EXTENTION_FOR_DESC', '.desc')
     probid = 'PROB1'
