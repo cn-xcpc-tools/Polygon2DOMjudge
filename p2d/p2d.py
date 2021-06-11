@@ -87,7 +87,7 @@ def main(args):
         logger.info(yaml_content)
         logger.info(END_OF_SUBPROCESS)
         logger.info('Add output validator:')
-        checker_name = checker.attrib['name']
+        checker_name = checker.attrib.get('name', '')
         validator_flags = []
         try:
             if not args.custom and checker_name.startswith('std::'):
