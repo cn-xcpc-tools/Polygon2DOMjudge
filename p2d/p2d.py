@@ -1,12 +1,11 @@
-#!/usr/bin/env python
 import argparse
 import json
 import logging
 import hashlib
-import math
 import os
-import sys
+import tempfile
 import xml.etree.ElementTree
+
 from shutil import copyfile, rmtree, make_archive
 from time import strftime, localtime, time
 
@@ -29,40 +28,45 @@ def main(args):
     def start(package_dir, output_dir, output_file):
         logger.info('This is p2d.py by cubercsl.')
         logger.info('Process Polygon Package to Domjudge Package.')
-        logger.info('Package directory: {}'.format(package_dir))
-        logger.info('Temp directory: {}'.format(output_dir))
-        logger.info('Output file: {}.zip'.format(output_file))
+        logger.info(f'Package directory: {package_dir}')
+        logger.info(f'Temp directory: {output_dir}')
+        logger.info(f'Output file: {output_file}.zip')
         input("Press enter to continue...")
         logger.info(END_OF_SUBPROCESS)
 
     def parse_problem():
         logger.info('Parse \'problem.xml\':')
-        xml_file = '{}/problem.xml'.format(package_dir)
+        xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
-        timelimit = float(math.ceil(float(root.find('judging').find('testset').find('time-limit').text) / 1000.0))
+        timelimit = int(root.find('judging').find('testset').find('time-limit').text) / 1000.0
+        memlimit = int(root.find('judging').find('testset').find('memory-limit').text) // 1048576
         checker = root.find('assets').find('checker')
         interactor = root.find('assets').find('interactor')
-        logger.info('Problem Name: {}'.format(name))
-        logger.info('Time Limit: {}'.format(timelimit))
+        logger.info(f'Problem Name: {name}')
+        logger.info(f'Time Limit: {timelimit}')
         logger.info(END_OF_SUBPROCESS)
-        return name, timelimit, checker, interactor
+        return name, timelimit, memlimit, checker, interactor
 
-    def write_ini(probid, name, timelimit, color):
+    def write_ini(probid, timelimit, color):
         logger.info('Add \'domjudge-problem.ini\':')
-        ini_file = '{}/domjudge-problem.ini'.format(output_dir)
+        ini_file = f'{output_dir}/domjudge-problem.ini'
         ini_content = [
-            'probid = {}'.format(probid),
-            'name = {}'.format(name.replace("'", "`")),
-            'timelimit = {}'.format(timelimit),
-            'color = {}'.format(color)
+            f'probid = {probid}',
+            f'timelimit = {timelimit}',
+            f'color = {color}'
         ]
         [*map(logger.info, ini_content)]
         with open(ini_file, 'w', encoding='utf-8') as f:
             f.writelines(map(lambda s: s + '\n', ini_content))
         logger.info(END_OF_SUBPROCESS)
 
-    def add_output_validator():
+    def write_yaml(name, memlimit):
+        logger.info('Add \'problem.yaml\':')
+        yaml_file = f'{output_dir}/problem.yaml'
+        name = name.replace('"', r'\"')
+        yaml_content = f'name: "{name}"\nlimits:\n  memory: {memlimit}\n'
+        logger.info(yaml_content)
         logger.info('Add output validator:')
 
         def get_checker_md5(checker):
@@ -86,12 +90,13 @@ def main(args):
         except KeyError:
             pass
 
-        yaml_file = '{}/problem.yaml'.format(output_dir)
-        output_validators_dir = '{}/output_validators'.format(output_dir)
-        checker_dir = '{}/checker'.format(output_validators_dir)
-        interactor_dir = '{}/interactor'.format(output_validators_dir)
+        yaml_file = f'{output_dir}/problem.yaml'
+        output_validators_dir = f'{output_dir}/output_validators'
+        checker_dir = f'{output_validators_dir}/checker'
+        interactor_dir = f'{output_validators_dir}/interactor'
         if args.default:
             with open(yaml_file, 'w', encoding='utf-8') as f:
+                f.write(yaml_content)
                 f.write('validation: default\n')
                 if args.case_sensitive:
                     validator_flags.append('case_sensitive')
@@ -114,55 +119,59 @@ def main(args):
             if interactor is not None:
                 logger.info('Use custom interactor.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
+                    f.write(yaml_content)
                     f.write('validation: custom interactive\n')
                 ensure_dir(interactor_dir)
-                copyfile(testlib, '{}/testlib.h'.format(interactor_dir))
-                interactor_file = '{}/{}'.format(package_dir, interactor.find('source').attrib['path'])
-                copyfile(interactor_file, '{}/interactor.cpp'.format(interactor_dir))
+                copyfile(testlib, f'{interactor_dir}/testlib.h')
+                interactor_path = interactor.find('source').attrib['path']
+                interactor_file = f'{package_dir}/{interactor_path}'
+                copyfile(interactor_file, f'{interactor_dir}/interactor.cpp')
             elif checker is not None:
                 logger.info('Use custom checker.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
+                    f.write(yaml_content)
                     f.write('validation: custom\n')
                 ensure_dir(checker_dir)
-                copyfile(testlib, '{}/testlib.h'.format(checker_dir))
-                checker_file = '{}/{}'.format(package_dir, checker.find('source').attrib['path'])
-                copyfile(checker_file, '{}/checker.cpp'.format(checker_dir))
+                copyfile(testlib, f'{checker_dir}/testlib.h')
+                checker_path = checker.find('source').attrib['path']
+                checker_file = f'{package_dir}/{checker_path}'
+                copyfile(checker_file, f'{checker_dir}/checker.cpp')
             else:
                 raise Exception('No checker found.')
         logger.info(END_OF_SUBPROCESS)
 
     def add_test():
         logger.info('Add tests:')
-        ensure_dir('{}/data'.format(output_dir))
-        ensure_dir('{}/data/sample'.format(output_dir))
-        ensure_dir('{}/data/secret'.format(output_dir))
+        ensure_dir(f'{output_dir}/data')
+        ensure_dir(f'{output_dir}/data/sample')
+        ensure_dir(f'{output_dir}/data/secret')
 
-        for test in filter(lambda x: not x.endswith(extention_for_output), os.listdir('{}/tests'.format(package_dir))):
-            input_src = '{}/tests/{}'.format(package_dir, test)
-            output_src = '{}/tests/{}{}'.format(package_dir, test, extention_for_output)
+        for test in filter(lambda x: not x.endswith(extention_for_output), os.listdir(f'{package_dir}/tests')):
+            input_src = f'{package_dir}/tests/{test}'
+            output_src = f'{package_dir}/tests/{test}{extention_for_output}'
             if test in samples:
-                input_dst = '{}/data/sample/{}.in'.format(output_dir, test)
-                output_dst = '{}/data/sample/{}.ans'.format(output_dir, test)
-                logger.info('* sample: {}.(in/ans)'.format(test))
+                input_dst = f'{output_dir}/data/sample/{test}.in'
+                output_dst = f'{output_dir}/data/sample/{test}.ans'
+                logger.info(f'* sample: {test}.(in/ans)')
             else:
-                input_dst = '{}/data/secret/{}.in'.format(output_dir, test)
-                output_dst = '{}/data/secret/{}.ans'.format(output_dir, test)
-                logger.info('* secret: {}.(in/ans)'.format(test))
+                input_dst = f'{output_dir}/data/secret/{test}.in'
+                output_dst = f'{output_dir}/data/secret/{test}.ans'
+                logger.info(f'* secret: {test}.(in/ans)')
             copyfile(input_src, input_dst)
             copyfile(output_src, output_dst)
         logger.info(END_OF_SUBPROCESS)
 
     def add_jury_solution():
         logger.info('Add jury solutions:')
-        ensure_dir('{}/submissions'.format(output_dir))
-        ensure_dir('{}/submissions/accepted'.format(output_dir))
-        ensure_dir('{}/submissions/wrong_answer'.format(output_dir))
-        ensure_dir('{}/submissions/time_limit_exceeded'.format(output_dir))
-        ensure_dir('{}/submissions/run_time_error'.format(output_dir))
+        ensure_dir(f'{output_dir}/submissions')
+        ensure_dir(f'{output_dir}/submissions/accepted')
+        ensure_dir(f'{output_dir}/submissions/wrong_answer')
+        ensure_dir(f'{output_dir}/submissions/time_limit_exceeded')
+        ensure_dir(f'{output_dir}/submissions/run_time_error')
 
         def get_solution(desc):
             result = {}
-            desc_file = '{}/solutions/{}'.format(package_dir, desc)
+            desc_file = f'{package_dir}/solutions/{desc}'
             with open(desc_file, 'r', encoding='utf-8') as f:
                 for _ in f.readlines():
                     key, value = _.strip().split(': ', maxsplit=2)
@@ -171,32 +180,33 @@ def main(args):
                     elif key == 'Tag':
                         try:
                             if value not in config['tag'].keys():
-                                raise Exception('Unknown tag: {}'.format(value))
+                                raise Exception(f'Unknown tag: {value}')
                             result[key] = config['tag'][value]
                         except KeyError:
-                            logger.warning('Treat unknown tag \'{}\' as \'accepted\'.'.format(value))
+                            logger.warning(f'Treat unknown tag \'{value}\' as \'accepted\'.')
                             result[key] = 'accepted'
             if not ('File name' in result.keys() or 'Tag' in result.keys()):
-                raise Exception('The description file {} has error.'.format(desc))
+                raise Exception(f'The description file {desc} has error.')
             return result['File name'], result['Tag']
 
-        for desc in filter(lambda x: x.endswith(extention_for_desc), os.listdir('{}/solutions'.format(package_dir))):
+        for desc in filter(lambda x: x.endswith(extention_for_desc), os.listdir(f'{package_dir}/solutions')):
             solution, result = get_solution(desc)
-            src = '{}/solutions/{}'.format(package_dir, solution)
-            dst = '{}/submissions/{}/{}'.format(output_dir, result, solution)
+            src = f'{package_dir}/solutions/{solution}'
+            dst = f'{output_dir}/submissions/{result}/{solution}'
+            print(src, dst)
             copyfile(src, dst)
-            logger.info('- {} (Expected Result: {})'.format(solution, result))
+            logger.info(f'- {solution} (Expected Result: {result})')
         logger.info(END_OF_SUBPROCESS)
 
-    testlib = (os.getenv('TESTLIB_PATH') or '..').strip('/') + '/testlib.h'
-    output_dir = (os.getenv('TMP_DIR') or 'tmp').strip('/')
-    extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT') or '.a'
-    extention_for_desc = os.getenv('EXTENTION_FOR_DESC') or '.desc'
+    default_testlib_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    testlib = os.getenv('TESTLIB_PATH', default_testlib_path).rstrip('/') + '/testlib.h'
+    extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT', '.a')
+    extention_for_desc = os.getenv('EXTENTION_FOR_DESC', '.desc')
     probid = 'PROB1'
     color = '#000000'
     samples = ['01']
-    package_dir = args.package.strip('/')
-    output_file = args.package.strip('/')
+    package_dir = args.package.rstrip('/')
+    output_file = args.package.rstrip('/')
     if args.code: probid = args.code
     if args.color: color = args.color
     if args.sample: samples = [args.sample]
@@ -212,36 +222,35 @@ def main(args):
         if output_file.endswith('.zip'): output_file = output_file[:-4]
         if output_file.startswith('./'): output_file = output_file[2:]
 
-    start(package_dir, output_dir, output_file)
+    with tempfile.TemporaryDirectory() as output_dir:
+        start(package_dir, output_dir, output_file)
+        try:
+            name, timelimit, memlimit, checker, interactor = parse_problem()
+            write_ini(probid, timelimit, color)
+            write_yaml(name, memlimit)
+            add_test()
+            add_jury_solution()
+            make_archive(output_file, 'zip', output_dir)
+            ensure_no_dir(output_dir)
+            logger.info('Make package {}.zip success.'.format(output_file.split('/')[-1]))
+        except Exception as e:
+            logger.error(e)
 
-    ensure_no_dir(output_dir)
-    ensure_dir(output_dir)
-
-    try:
-        name, timelimit, checker, interactor = parse_problem()
-        write_ini(probid, name, timelimit, color)
-        add_output_validator()
-        add_test()
-        add_jury_solution()
-        make_archive(output_file, 'zip', output_dir)
-        ensure_no_dir(output_dir)
-        logger.info('Make package {}.zip success.'.format(output_file.split('/')[-1]))
-    except Exception as e:
-        logger.error(e)
-
-
-ensure_dir('log')
+log_path = os.getenv('LOG_PATH', '.')
+ensure_dir(log_path)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('log/{}.log'.format(strftime('%Y-%m-%d %H:%M:%S', localtime(time()))))
+handler = logging.FileHandler('{}/{}.log'.format(log_path, strftime('%Y-%m-%d %H:%M:%S', localtime(time()))))
 console = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(console)
 logger.addHandler(handler)
 
+
+config_file = (os.getenv('CONFIG_PATH', '.')).rstrip('/') + '/config.json'
 try:
-    with open(os.getenv('CONFIG_PATH') or 'config.json', 'r', encoding='utf-8') as f:
+    with open(config_file, 'r', encoding='utf-8') as f:
         config = json.load(f)
 except FileNotFoundError:
     logger.warning('\'config.json\' not found!')

@@ -1,0 +1,5 @@
+#!/bin/bash
+export PYTHONPATH="$(dirname "$(dirname "$(readlink -f "$0")")"):$PYTHONPATH"
+export CONFIG_PATH="$(dirname "$(dirname "$(readlink -f "$0")")")"
+export LOG_PATH="$HOME/.p2d"
+exec python3 -m p2d "$@"
