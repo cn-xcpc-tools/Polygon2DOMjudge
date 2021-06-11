@@ -92,7 +92,6 @@ def main(args):
         try:
             if not args.custom and checker_name.startswith('std::'):
                 args.default = True
-                checker_name = config['checker'][checker_md5]
                 logger.info(f'Use std checker: {checker_name}')
                 validator_flags = config['flag'].get(checker_name.lstrip('std::'))
         except KeyError:
