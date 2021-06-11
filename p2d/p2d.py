@@ -4,6 +4,7 @@ import logging
 import hashlib
 import os
 import tempfile
+import traceback
 import xml.etree.ElementTree
 
 from shutil import copyfile, rmtree, make_archive
@@ -12,6 +13,13 @@ from time import strftime, localtime, time
 config = {}
 END_OF_SUBPROCESS = '=' * 50
 
+
+class Test:
+    def __init__(self, method, cmd=None, sample=False):
+        self.method = method
+        self.cmd = cmd
+        self.sample = sample
+    
 
 def ensure_dir(s):
     if not os.path.exists(s):
@@ -39,16 +47,26 @@ def main(args):
         xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
         name = root.find('names').find('name').attrib['value']
-        timelimit = int(root.find('judging').find('testset').find('time-limit').text) / 1000.0
-        memlimit = int(root.find('judging').find('testset').find('memory-limit').text) // 1048576
+        judging =  root.find('judging')
+        testset = judging.find('testset')
+        timelimit = int(testset.find('time-limit').text) / 1000.0
+        memlimit = int(testset.find('memory-limit').text) // 1048576
         checker = root.find('assets').find('checker')
         interactor = root.find('assets').find('interactor')
+        input_path_pattern =testset.find('input-path-pattern').text
+        answer_path_pattern = testset.find('answer-path-pattern').text 
+        tests = []
+        for test in testset.find('tests').findall('test'):
+            method = test.attrib['method']
+            cmd = test.attrib.get('cmd', None)
+            sample = bool(test.attrib.get('sample', False))
+            tests.append(Test(method, cmd, sample))
         logger.info(f'Problem Name: {name}')
         logger.info(f'Time Limit: {timelimit}')
         logger.info(END_OF_SUBPROCESS)
-        return name, timelimit, memlimit, checker, interactor
+        return name, timelimit, memlimit, checker, interactor, input_path_pattern, answer_path_pattern, tests
 
-    def write_ini(probid, timelimit, color):
+    def write_ini():
         logger.info('Add \'domjudge-problem.ini\':')
         ini_file = f'{output_dir}/domjudge-problem.ini'
         ini_content = [
@@ -61,32 +79,22 @@ def main(args):
             f.writelines(map(lambda s: s + '\n', ini_content))
         logger.info(END_OF_SUBPROCESS)
 
-    def write_yaml(name, memlimit):
+    def write_yaml():
         logger.info('Add \'problem.yaml\':')
         yaml_file = f'{output_dir}/problem.yaml'
-        name = name.replace('"', r'\"')
-        yaml_content = f'name: "{name}"\nlimits:\n  memory: {memlimit}\n'
+        _name = name.replace('"', r'\"')
+        yaml_content = f'name: "{_name}"\nlimits:\n  memory: {memlimit}\n'
         logger.info(yaml_content)
+        logger.info(END_OF_SUBPROCESS)
         logger.info('Add output validator:')
-
-        def get_checker_md5(checker):
-            if checker is None:
-                return None
-            checker_source = checker.find('source')
-            checker_file = '{}/{}'.format(package_dir, checker_source.attrib['path'])
-            with open(checker_file, 'r', encoding='utf-8') as f:
-                file_md5 = hashlib.md5(f.read().replace('\r\n', '\n').encode('utf-8'))
-            return file_md5.hexdigest().lower()
-
-        checker_md5 = get_checker_md5(checker)
-        logger.info('Checker md5: {}'.format(checker_md5))
+        checker_name = checker.attrib['name']
         validator_flags = []
         try:
-            if checker_md5 in config['checker'].keys():
+            if not args.custom and checker_name.startswith('std::'):
                 args.default = True
                 checker_name = config['checker'][checker_md5]
-                logger.info('Use std checker: std::{}'.format(checker_name))
-                validator_flags = config['flag'].get(checker_name)
+                logger.info(f'Use std checker: {checker_name}')
+                validator_flags = config['flag'].get(checker_name.lstrip('std::'))
         except KeyError:
             pass
 
@@ -140,28 +148,38 @@ def main(args):
                 raise Exception('No checker found.')
         logger.info(END_OF_SUBPROCESS)
 
-    def add_test():
+    def add_tests():
         logger.info('Add tests:')
         ensure_dir(f'{output_dir}/data')
         ensure_dir(f'{output_dir}/data/sample')
         ensure_dir(f'{output_dir}/data/secret')
 
-        for test in filter(lambda x: not x.endswith(extention_for_output), os.listdir(f'{package_dir}/tests')):
-            input_src = f'{package_dir}/tests/{test}'
-            output_src = f'{package_dir}/tests/{test}{extention_for_output}'
-            if test in samples:
-                input_dst = f'{output_dir}/data/sample/{test}.in'
-                output_dst = f'{output_dir}/data/sample/{test}.ans'
-                logger.info(f'* sample: {test}.(in/ans)')
+        for idx, test in enumerate(tests, 1):
+            
+            input_src = f'{package_dir}/{input_path_pattern % idx}'
+            output_src = f'{package_dir}/{answer_path_pattern % idx}'
+            if test.sample:
+                input_dst = f'{output_dir}/data/sample/{"%02d" % idx}.in'
+                output_dst = f'{output_dir}/data/sample/{"%02d" % idx}.ans'
+                desc_dst = f'{output_dir}/data/sample/{"%02d" % idx}.desc'
+                logger.info(f'* sample: {"%02d" % idx}.(in/ans) {test.method}')
             else:
-                input_dst = f'{output_dir}/data/secret/{test}.in'
-                output_dst = f'{output_dir}/data/secret/{test}.ans'
-                logger.info(f'* secret: {test}.(in/ans)')
+                input_dst = f'{output_dir}/data/secret/{"%02d" % idx}.in'
+                output_dst = f'{output_dir}/data/secret/{"%02d" % idx}.ans'
+                desc_dst = f'{output_dir}/data/secret/{"%02d" % idx}.desc'
+                logger.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
+            
             copyfile(input_src, input_dst)
             copyfile(output_src, output_dst)
+            
+            if test.cmd is not None:
+                logger.info(f'[GEN] {test.cmd}')
+                with open(desc_dst, 'w') as f:
+                    f.writelines(f'[GEN] {test.cmd}')
+
         logger.info(END_OF_SUBPROCESS)
 
-    def add_jury_solution():
+    def add_jury_solutions():
         logger.info('Add jury solutions:')
         ensure_dir(f'{output_dir}/submissions')
         ensure_dir(f'{output_dir}/submissions/accepted')
@@ -173,8 +191,8 @@ def main(args):
             result = {}
             desc_file = f'{package_dir}/solutions/{desc}'
             with open(desc_file, 'r', encoding='utf-8') as f:
-                for _ in f.readlines():
-                    key, value = _.strip().split(': ', maxsplit=2)
+                for line in f.readlines():
+                    key, value = line.strip().split(': ', maxsplit=2)
                     if key == 'File name':
                         result[key] = value
                     elif key == 'Tag':
@@ -200,23 +218,16 @@ def main(args):
 
     default_testlib_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     testlib = os.getenv('TESTLIB_PATH', default_testlib_path).rstrip('/') + '/testlib.h'
-    extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT', '.a')
+    # extention_for_output = os.getenv('EXTENTION_FOR_OUTPUT', '.a')
     extention_for_desc = os.getenv('EXTENTION_FOR_DESC', '.desc')
     probid = 'PROB1'
     color = '#000000'
-    samples = ['01']
     package_dir = args.package.rstrip('/')
-    output_file = args.package.rstrip('/')
+    output_file = os.path.join(os.getcwd(), package_dir.split('/')[-1])
     if args.code: probid = args.code
     if args.color: color = args.color
-    if args.sample: samples = [args.sample]
-    if args.num_samples:
-        assert len(samples) == 1
-        first = int(samples[0])
-        num_samples = int(args.num_samples)
-        assert (num_samples < 100)
-        samples = ['{0:02d}'.format(i) for i in range(first, first + num_samples)]
     if args.output:
+        # fix me 
         output_file = args.output
         if output_file.endswith('/'): output_file = output_file + package_dir.split('/')[-1]
         if output_file.endswith('.zip'): output_file = output_file[:-4]
@@ -225,13 +236,12 @@ def main(args):
     with tempfile.TemporaryDirectory() as output_dir:
         start(package_dir, output_dir, output_file)
         try:
-            name, timelimit, memlimit, checker, interactor = parse_problem()
-            write_ini(probid, timelimit, color)
-            write_yaml(name, memlimit)
-            add_test()
-            add_jury_solution()
+            name, timelimit, memlimit, checker, interactor, input_path_pattern, answer_path_pattern, tests = parse_problem()
+            write_ini()
+            write_yaml()
+            add_tests()
+            add_jury_solutions()
             make_archive(output_file, 'zip', output_dir)
-            ensure_no_dir(output_dir)
             logger.info('Make package {}.zip success.'.format(output_file.split('/')[-1]))
         except Exception as e:
             logger.error(e)
@@ -261,11 +271,10 @@ except json.JSONDecodeError as e:
 parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
 parser.add_argument('package', type=str, help='path of the polygon package')
 parser.add_argument('--code', type=str, help='problem code for domjudge')
-parser.add_argument('--sample', type=str, help='Specify the filename for sample test. Defaults to \'01\'')
-parser.add_argument('--num-samples', type=str, help='Specify the number of sample test cases. Defaults to \'1\'')
 parser.add_argument('--color', type=str, help='problem color for domjudge (in RRGGBB format)')
 parser.add_argument('-o', '--output', type=str, help='path of the output package')
 parser.add_argument('--default', action='store_true', help='use default validation')
+parser.add_argument('--custom', action='store_true', help='use custom validation')
 parser.add_argument('--case_sensitive', action='store_true', help='case_sensitive flag')
 parser.add_argument('--space_change_sensitive', action='store_true', help='space_change_sensitive flag')
 parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
