@@ -2,16 +2,16 @@ import argparse
 import json
 import logging
 import os
+import shutil
 import sys
 import tempfile
+import time
 import traceback
 import xml.etree.ElementTree
 
-from shutil import copyfile, rmtree, make_archive
-from time import strftime, localtime, time
 
 config = {}
-END_OF_SUBPROCESS = '=' * 50
+START_OF_SUBPROCESS = '=' * 50
 DEFAULT_CONFIG_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_TESTLIB_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DEFAULT_PROBID = 'PROB1'
@@ -57,10 +57,14 @@ def ensure_dir(s):
 
 def ensure_no_dir(s):
     if os.path.exists(s):
-        rmtree(s)
+        shutil.rmtree(s)
 
 
-class Problem:
+class ProcessError(Exception):
+    pass
+
+
+class Polygon2Domjudge:
     class Test:
         def __init__(self, method, description=None, cmd=None, sample=False):
             self.method = method
@@ -68,22 +72,22 @@ class Problem:
             self.cmd = cmd
             self.sample = sample
 
-    def debug(self, *args):
+    def debug(self, msg):
         if self.logger is not None:
-            self.logger.debug(*args)
+            self.logger.debug(msg)
 
-    def info(self, *args):
+    def info(self, msg):
         if self.logger is not None:
-            self.logger.info(*args)
+            self.logger.info(msg)
 
-    def warning(self, *args):
+    def warning(self, msg):
         if self.logger is not None:
-            self.logger.warning(*args)
+            self.logger.warning(msg)
 
-    def error(self, *args):
+    def error(self, msg):
         if self.logger is not None:
-            logger.error(*args)
-        exit(1)
+            logger.error(msg)
+        raise ProcessError(msg)
 
     def __init__(self, package_dir, temp_dir, output_file,
                  probid=DEFAULT_PROBID, color=DEFAULT_COLOR, validator_flags=[],
@@ -97,7 +101,7 @@ class Problem:
         self.temp_dir = temp_dir
         self.output_file = output_file
 
-        self.info('Parse \'problem.xml\':')
+        self.debug('Parse \'problem.xml\':')
         xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
         judging = root.find('judging')
@@ -116,10 +120,10 @@ class Problem:
             description = test.attrib.get('description', None)
             cmd = test.attrib.get('cmd', None)
             sample = bool(test.attrib.get('sample', False))
-            self.tests.append(Problem.Test(method, description, cmd, sample))
+            self.tests.append(self.Test(method, description, cmd, sample))
 
     def _write_ini(self):
-        self.info('Add \'domjudge-problem.ini\':')
+        self.debug('Add \'domjudge-problem.ini\':')
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
         ini_content = [
             f'probid = {self.probid}',
@@ -132,7 +136,7 @@ class Problem:
             f.writelines(map(lambda s: s + '\n', ini_content))
 
     def _write_yaml(self):
-        self.info('Add \'problem.yaml\':')
+        self.debug('Add \'problem.yaml\':')
 
         yaml_file = f'{self.temp_dir}/problem.yaml'
         name = self.name.replace('"', r'\"')
@@ -168,25 +172,25 @@ class Problem:
                     f.write(yaml_content)
                     f.write('validation: custom interactive\n')
                 ensure_dir(interactor_dir)
-                copyfile(testlib, f'{interactor_dir}/testlib.h')
+                shutil.copyfile(testlib, f'{interactor_dir}/testlib.h')
                 interactor_path = self.interactor.find('source').attrib['path']
                 interactor_file = f'{self.package_dir}/{interactor_path}'
-                copyfile(interactor_file, f'{interactor_dir}/interactor.cpp')
+                shutil.copyfile(interactor_file, f'{interactor_dir}/interactor.cpp')
             elif self.checker is not None:
                 self.info('Use custom checker.')
                 with open(yaml_file, 'w', encoding='utf-8') as f:
                     f.write(yaml_content)
                     f.write('validation: custom\n')
                 ensure_dir(checker_dir)
-                copyfile(testlib, f'{checker_dir}/testlib.h')
+                shutil.copyfile(testlib, f'{checker_dir}/testlib.h')
                 checker_path = self.checker.find('source').attrib['path']
                 checker_file = f'{self.package_dir}/{checker_path}'
-                copyfile(checker_file, f'{checker_dir}/checker.cpp')
+                shutil.copyfile(checker_file, f'{checker_dir}/checker.cpp')
             else:
-                raise Exception('No checker found.')
+                self.error('No checker found.')
 
     def _add_tests(self):
-        self.info('Add tests:')
+        self.debug('Add tests:')
         ensure_dir(f'{self.temp_dir}/data')
         ensure_dir(f'{self.temp_dir}/data/sample')
         ensure_dir(f'{self.temp_dir}/data/secret')
@@ -206,8 +210,8 @@ class Problem:
                 desc_dst = f'{self.temp_dir}/data/secret/{"%02d" % idx}.desc'
                 self.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
 
-            copyfile(input_src, input_dst)
-            copyfile(output_src, output_dst)
+            shutil.copyfile(input_src, input_dst)
+            shutil.copyfile(output_src, output_dst)
 
             desc = []
             if test.description is not None:
@@ -223,7 +227,7 @@ class Problem:
                     f.write(f'{" ".join(desc)}\n')
 
     def _add_jury_solutions(self):
-        self.info('Add jury solutions:')
+        self.debug('Add jury solutions:')
         ensure_dir(f'{self.temp_dir}/submissions')
         ensure_dir(f'{self.temp_dir}/submissions/accepted')
         ensure_dir(f'{self.temp_dir}/submissions/wrong_answer')
@@ -241,25 +245,24 @@ class Problem:
                     elif key == 'Tag':
                         try:
                             if value not in config['tag'].keys():
-                                raise Exception(f'Unknown tag: {value}')
+                                self.error(f'Unknown tag: {value}')
                             result[key] = config['tag'][value]
                         except KeyError:
                             self.warning(f'Treat unknown tag \'{value}\' as \'accepted\'.')
                             result[key] = 'accepted'
-            if not ('File name' in result.keys() or 'Tag' in result.keys()):
-                raise Exception(f'The description file {desc} has error.')
+            if not ('File name' in result.keys() and 'Tag' in result.keys()):
+                self.error(f'The description file {desc} has error.')
             return result['File name'], result['Tag']
 
         for desc in filter(lambda x: x.endswith(extention_for_desc), os.listdir(f'{self.package_dir}/solutions')):
             solution, result = get_solution(desc)
             src = f'{self.package_dir}/solutions/{solution}'
             dst = f'{self.temp_dir}/submissions/{result}/{solution}'
-            self.debug(src, dst)
-            copyfile(src, dst)
             self.info(f'- {solution} (Expected Result: {result})')
+            shutil.copyfile(src, dst)
 
     def _archive(self):
-        make_archive(self.output_file, 'zip', self.temp_dir)
+        shutil.make_archive(self.output_file, 'zip', self.temp_dir, logger=self.logger)
         self.info(f'Make package {os.path.basename(self.output_file)}.zip success.')
 
     def process(self):
@@ -271,8 +274,12 @@ class Problem:
             self._archive
         ]
         for func in subprocess:
-            func()
-            self.info(END_OF_SUBPROCESS)
+            try:
+                self.info(START_OF_SUBPROCESS)
+                func()
+            except ProcessError as e:
+                return 1
+        return 0
 
 
 def main(args):
@@ -291,17 +298,15 @@ def main(args):
 
     package_dir = os.path.realpath(args.package)
     output_file = os.path.join(os.getcwd(), os.path.basename(package_dir))
-    probid = DEFAULT_PROBID
-    color = DEFAULT_COLOR
 
-    if args.code: probid = args.code
-    if args.color: color = args.color
+    probid = args.code if args.code else DEFAULT_PROBID
+    color = args.color if args.color else DEFAULT_COLOR
+
     if args.output:
-        # fix me
-        output_file = args.output
-        if output_file.endswith('/'): output_file = output_file + package_dir.split('/')[-1]
-        if output_file.endswith('.zip'): output_file = output_file[:-4]
-        if output_file.startswith('./'): output_file = output_file[2:]
+        if os.path.isdir(args.output):
+            output_file = os.path.join(os.path.abspath(args.output), os.path.basename(package_dir))
+        else:
+            output_file = os.path.abspath(args.output.rstrip('.zip'))
 
     validator_flags = []
 
@@ -326,10 +331,12 @@ def main(args):
     with tempfile.TemporaryDirectory() as temp_dir:
         print_info(package_dir, temp_dir, output_file)
         try:
-            Problem(package_dir, temp_dir, output_file, probid, color, validator_flags, logger).process()
+            exit_code = Polygon2Domjudge(package_dir, temp_dir, output_file,
+                                         probid, color, validator_flags, logger).process()
         except Exception as e:
             logger.error(format_exception(e))
-            exit(1)
+            exit_code = 1
+        sys.exit(exit_code)
 
 
 if __name__ == '__main__':
@@ -338,6 +345,8 @@ if __name__ == '__main__':
     parser.add_argument('package', type=str, help='path of the polygon package')
     parser.add_argument('--code', type=str, help='problem code for domjudge')
     parser.add_argument('--color', type=str, help='problem color for domjudge (in RRGGBB format)')
+    parser.add_argument('-l', '--log_level', default='info',
+                        help='set log level (debug, info, warning, error, critical)')
     parser.add_argument('-o', '--output', type=str, help='path of the output package')
     parser.add_argument('--default', action='store_true', help='use default validation')
     parser.add_argument('--custom', action='store_true', help='use custom validation')
@@ -351,8 +360,8 @@ if __name__ == '__main__':
     log_path = os.getenv('LOG_PATH', os.path.join(os.getcwd(), 'log'))
     ensure_dir(log_path)
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(f'{log_path}/{strftime("%Y%m%d-%H%M%S", localtime(time()))}.log')
+    logger.setLevel(eval("logging." + args.log_level.upper()))
+    handler = logging.FileHandler(f'{log_path}/{time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time()))}.log')
     console = logging.StreamHandler()
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
