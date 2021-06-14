@@ -274,12 +274,8 @@ class Polygon2Domjudge:
             self._archive
         ]
         for func in subprocess:
-            try:
-                self.info(START_OF_SUBPROCESS)
-                func()
-            except ProcessError as e:
-                return 1
-        return 0
+            self.info(START_OF_SUBPROCESS)
+            func()
 
 
 def main(args):
@@ -331,12 +327,11 @@ def main(args):
     with tempfile.TemporaryDirectory() as temp_dir:
         print_info(package_dir, temp_dir, output_file)
         try:
-            exit_code = Polygon2Domjudge(package_dir, temp_dir, output_file,
-                                         probid, color, validator_flags, logger).process()
+            Polygon2Domjudge(package_dir, temp_dir, output_file,
+                             probid, color, validator_flags, logger).process()
         except Exception as e:
             logger.error(format_exception(e))
-            exit_code = 1
-        sys.exit(exit_code)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

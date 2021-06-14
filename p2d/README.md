@@ -27,12 +27,15 @@ Don't change them unless you know what you are doing.
 ```python
 import tempfile
 
-from p2d import Problem
+from p2d import Polygon2Domjudge
 
 package_dir = '/path/to/polygon-package'
 output_file = '/path/to/domjudge-package'
 
 with tempfile.TemporaryDirectory() as temp_dir:
-    Problem(package_dir, temp_dir, output_file).process()
-
+    try:
+        Polygon2Domjudge(package_dir, temp_dir, output_file).process()
+    except Exception as e:
+        # do something
+        pass
 ```
