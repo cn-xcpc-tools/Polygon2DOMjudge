@@ -148,6 +148,8 @@ class Polygon2Domjudge:
         validator_flags = []
         if 'custom' not in self.validator_flags and checker_name.startswith('std::'):
             validator_flags = config['flag'].get(checker_name.lstrip('std::'), [])
+        elif checker_name == '':
+            self.validator_flags = ['custom']
 
         yaml_file = f'{self.temp_dir}/problem.yaml'
         output_validators_dir = f'{self.temp_dir}/output_validators'
