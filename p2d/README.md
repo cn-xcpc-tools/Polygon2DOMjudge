@@ -1,4 +1,7 @@
 # Polygon2Domjudge
+
+[中文](README.cn.md)
+
 ## What is this
 It is a simple python script converting polygon package to domjudge(kattis) package.
 
@@ -14,10 +17,11 @@ In [config.json](config.json), you can change some special checker's validator's
 
 You can use `--default` to force use the default output validator, and add some flags by command line.
 
-You can use `--custom` to force use the custom output validator even if it can be replaced by the default one. 
+You can use `--auto` to use the default output validator if the checker is defined in config and can be replaced by the default one. 
 
 ## Environment Variable
 Don't change them unless you know what you are doing.
+
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
 - `EXTENTION_FOR_DESC`
@@ -30,7 +34,7 @@ import tempfile
 from p2d import Polygon2Domjudge
 
 package_dir = '/path/to/polygon-package'
-output_file = '/path/to/domjudge-package'
+output_file = '/path/to/domjudge-package.zip'
 
 with tempfile.TemporaryDirectory() as temp_dir:
     try:

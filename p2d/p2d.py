@@ -144,22 +144,21 @@ class Polygon2Domjudge:
 
         self.info(yaml_content[:-1])
 
-        checker_name = self.checker.attrib.get('name', '')
+        checker_name = self.checker.attrib.get('name', 'unkown')
         validator_flags = []
-        if 'custom' not in self.validator_flags and checker_name.startswith('std::'):
+        if '__auto' in self.validator_flags and checker_name.startswith('std::'):
             validator_flags = config['flag'].get(checker_name.lstrip('std::'), [])
-        elif checker_name == '':
-            self.validator_flags = ['custom']
+        if '__default' in self.validator_flags:
+            validator_flags = list(filter(lambda x: not x.startswith('__'), self.validator_flags))
 
         yaml_file = f'{self.temp_dir}/problem.yaml'
         output_validators_dir = f'{self.temp_dir}/output_validators'
         checker_dir = f'{output_validators_dir}/checker'
         interactor_dir = f'{output_validators_dir}/interactor'
 
-        if self.interactor is None and 'custom' not in self.validator_flags:
+        if self.interactor is None and '__auto' in self.validator_flags or '__default' in self.validator_flags:
             # can not support both interactor and checker
             self.info(f'Use std checker: {checker_name}')
-            validator_flags += self.validator_flags
             with open(yaml_file, 'w', encoding='utf-8') as f:
                 f.write(yaml_content)
                 f.write('validation: default\n')
@@ -309,6 +308,7 @@ def main(args):
     validator_flags = []
 
     if args.default:
+        validator_flags = ['__default']
         if args.case_sensitive:
             validator_flags.append('case_sensitive')
         if args.space_change_sensitive:
@@ -323,8 +323,8 @@ def main(args):
             validator_flags.append('float_tolerance')
             validator_flags.append(args.float_tolerance)
 
-    if args.custom:
-        validator_flags = ['custom']
+    if args.auto:
+        validator_flags = ['__auto']
 
     with tempfile.TemporaryDirectory() as temp_dir:
         print_info(package_dir, temp_dir, output_file)
@@ -346,7 +346,7 @@ if __name__ == '__main__':
                         help='set log level (debug, info, warning, error, critical)')
     parser.add_argument('-o', '--output', type=str, help='path of the output package')
     parser.add_argument('--default', action='store_true', help='use default validation')
-    parser.add_argument('--custom', action='store_true', help='use custom validation')
+    parser.add_argument('--auto', action='store_true', help='use default validation it can be replaced by the default one')
     parser.add_argument('--case_sensitive', action='store_true', help='case_sensitive flag')
     parser.add_argument('--space_change_sensitive', action='store_true', help='space_change_sensitive flag')
     parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
