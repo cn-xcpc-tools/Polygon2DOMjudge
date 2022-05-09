@@ -8,7 +8,7 @@ It is a simple python script converting polygon package to domjudge(kattis) pack
 ## CLI Example
 ```bash
 # Unzip your polygon-package to /path/to/polygon-package first
-$ ./bin/p2d --code A --num-samples 2 --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+$ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
 ```
 Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `probcode` and `color`.
 
