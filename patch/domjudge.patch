@@ -1,16 +1,7 @@
 diff --git a/testlib.h.orig b/testlib.h
-index 205ea32..a3af4f9 100644
+index 8720bcb..eacc1c3 100644
 --- a/testlib.h.orig
 +++ b/testlib.h
-@@ -25,7 +25,7 @@
-  * Copyright (c) 2005-2022
-  */
- 
--#define VERSION "0.9.38-SNAPSHOT"
-+#define VERSION "0.9.38-DOMJUDGE"
- 
- /* 
-  * Mike Mirzayanov
 @@ -60,6 +60,8 @@
   *   Reads test from inf (mapped to args[1]), writes result to tout (mapped to argv[2],
   *   can be judged by checker later), reads program output from ouf (mapped to stdin),
@@ -125,7 +116,7 @@ index 205ea32..a3af4f9 100644
      if (tout.fail() || !tout.is_open())
          quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
  
-+*/  
++*/
      ouf.init(stdin, _output);
 -
 -    if (argc >= 4)

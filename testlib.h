@@ -25,7 +25,7 @@
  * Copyright (c) 2005-2022
  */
 
-#define VERSION "0.9.38-DOMJUDGE"
+#define VERSION "0.9.39-DOMJUDGE"
 
 /* 
  * Mike Mirzayanov
@@ -4146,7 +4146,7 @@ void registerInteraction(int argc, char *argv[]) {
     if (tout.fail() || !tout.is_open())
         quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
 
-*/  
+*/
     ouf.init(stdin, _output);
     if (argc >= 3)
         ans.init(argv[2], _answer);
