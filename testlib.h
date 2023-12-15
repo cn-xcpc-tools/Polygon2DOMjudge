@@ -1,16 +1,16 @@
-/* 
- * It is strictly recommended to include "testlib.h" before any other include 
+/*
+ * It is strictly recommended to include "testlib.h" before any other include
  * in your code. In this case testlib overrides compiler specific "random()".
  *
- * If you can't compile your code and compiler outputs something about 
- * ambiguous call of "random_shuffle", "rand" or "srand" it means that 
+ * If you can't compile your code and compiler outputs something about
+ * ambiguous call of "random_shuffle", "rand" or "srand" it means that
  * you shouldn't use them. Use "shuffle", and "rnd.next()" instead of them
- * because these calls produce stable result for any C++ compiler. Read 
+ * because these calls produce stable result for any C++ compiler. Read
  * sample generator sources for clarification.
  *
  * Please read the documentation for class "random_t" and use "rnd" instance in
- * generators. Probably, these sample calls will be usefull for you:
- *              rnd.next(); rnd.next(100); rnd.next(1, 2); 
+ * generators. Probably, these sample calls will be useful for you:
+ *              rnd.next(); rnd.next(100); rnd.next(1, 2);
  *              rnd.next(3.14); rnd.next("[a-z]{1,100}").
  *
  * Also read about wnext() to generate off-center random distribution.
@@ -22,18 +22,18 @@
 #define _TESTLIB_H_
 
 /*
- * Copyright (c) 2005-2022
+ * Copyright (c) 2005-2023
  */
 
-#define VERSION "0.9.39-DOMJUDGE"
+#define VERSION "0.9.41-domjudge"
 
-/* 
+/*
  * Mike Mirzayanov
  *
  * This material is provided "as is", with absolutely no warranty expressed
  * or implied. Any use is at your own risk.
  *
- * Permission to use or copy this software for any purpose is hereby granted 
+ * Permission to use or copy this software for any purpose is hereby granted
  * without fee, provided the above notices are retained on all copies.
  * Permission to modify the code and to distribute modified code is granted,
  * provided the above notices are retained, and a notice that the code was
@@ -47,15 +47,15 @@
  *     check.exe <Input_File> <Output_File> <Answer_File> [<Result_File> [-appes]],
  *   If result file is specified it will contain results.
  *
- *   Validator, using testlib running format:                                          
+ *   Validator, using testlib running format:
  *     validator.exe < input.txt,
  *   It will return non-zero exit code and writes message to standard output.
  *
- *   Generator, using testlib running format:                                          
+ *   Generator, using testlib running format:
  *     gen.exe [parameter-1] [parameter-2] [... paramerter-n]
  *   You can write generated test(s) into standard output or into the file(s).
  *
- *   Interactor, using testlib running format:                                          
+ *   Interactor, using testlib running format:
  *     interactor.exe <Input_File> <Output_File> [<Answer_File> [<Result_File> [-appes]]],
  *   Reads test from inf (mapped to args[1]), writes result to tout (mapped to argv[2],
  *   can be judged by checker later), reads program output from ouf (mapped to stdin),
@@ -65,6 +65,12 @@
  */
 
 const char *latestFeatures[] = {
+        "Use setAppesModeEncoding to change xml encoding from windows-1251 to other",
+        "rnd.any/wany use distance/advance instead of -/+: now they support sets/multisets",
+        "Use syntax `int t = inf.readInt(1, 3, \"~t\");` to skip the lower bound check. Tildes can be used on either side or both: ~t, t~, ~t~",
+        "Supported EJUDGE support in registerTestlibCmd",
+        "Supported '--testMarkupFileName fn' and '--testCase tc/--testCaseFileName fn' for validators",
+        "Added opt defaults via opt<T>(key/index, default_val); check unused opts when using has_opt or default opt (turn off this check with suppressEnsureNoUnusedOpt()).",
         "For checker added --group and --testset command line params (like for validator), use checker.group() or checker.testset() to get values",
         "Added quitpi(points_info, message) function to return with _points exit code 7 and given points_info",
         "rnd.partition(size, sum[, min_part=1]) returns random (unsorted) partition which is a representation of the given `sum` as a sum of `size` positive integers (or >=min_part if specified)",
@@ -96,7 +102,7 @@ const char *latestFeatures[] = {
         "Introduced space-separated read functions: readWords/readTokens, multilines read functions: readStrings/readLines",
         "Introduced space-separated read functions: readInts/readIntegers/readLongs/readUnsignedLongs/readDoubles/readReals/readStrictDoubles/readStrictReals",
         "Introduced split/tokenize functions to separate string by given char",
-        "Introduced InStream::readUnsignedLong and InStream::readLong with unsigned long long paramerters",
+        "Introduced InStream::readUnsignedLong and InStream::readLong with unsigned long long parameters",
         "Supported --testOverviewLogFileName for validator: bounds hits + features",
         "Fixed UB (sequence points) in random_t",
         "POINTS_EXIT_CODE returned back to 7 (instead of 0)",
@@ -173,6 +179,7 @@ const char *latestFeatures[] = {
 #include <map>
 #include <set>
 #include <cmath>
+#include <iterator>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -180,12 +187,14 @@ const char *latestFeatures[] = {
 #include <limits>
 #include <stdarg.h>
 #include <fcntl.h>
+#include <functional>
+#include <cstdint>
 
 #ifdef TESTLIB_THROW_EXIT_EXCEPTION_INSTEAD_OF_EXIT
 #   include <exception>
 #endif
 
-#if (_WIN32 || __WIN32__ || _WIN64 || __WIN64__ || __CYGWIN__)
+#if (_WIN32 || __WIN32__ || __WIN32 || _WIN64 || __WIN64__ || __WIN64 || WINNT || __WINNT || __WINNT__ || __CYGWIN__)
 #   if !defined(_MSC_VER) || _MSC_VER > 1400
 #       define NOMINMAX 1
 #       include <windows.h>
@@ -323,14 +332,14 @@ static int __testlib_format_buffer_usage_count = 0;
             __testlib_format_buffer_usage_count--;                                         \
 
 const long long __TESTLIB_LONGLONG_MAX = 9223372036854775807LL;
+const int __TESTLIB_MAX_TEST_CASE = 1073741823;
+
+int __testlib_exitCode;
 
 bool __testlib_hasTestCase;
 int __testlib_testCase = -1;
 
-void setTestCase(int testCase) {
-    __testlib_hasTestCase = true;
-    __testlib_testCase = testCase;
-}
+void setTestCase(int testCase);
 
 void unsetTestCase() {
     __testlib_hasTestCase = false;
@@ -340,25 +349,40 @@ void unsetTestCase() {
 NORETURN static void __testlib_fail(const std::string &message);
 
 template<typename T>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static inline T __testlib_abs(const T &x) {
     return x > 0 ? x : -x;
 }
 
 template<typename T>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static inline T __testlib_min(const T &a, const T &b) {
     return a < b ? a : b;
 }
 
 template<typename T>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static inline T __testlib_max(const T &a, const T &b) {
     return a > b ? a : b;
 }
 
 template<typename T>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static inline T __testlib_crop(T value, T a, T b) {
     return __testlib_min(__testlib_max(value, a), --b);
 }
 
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static inline double __testlib_crop(double value, double a, double b) {
     value = __testlib_min(__testlib_max(value, a), b);
     if (value >= b)
@@ -375,6 +399,9 @@ static bool __testlib_prelimIsNaN(double r) {
 #endif
 }
 
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static std::string removeDoubleTrailingZeroes(std::string value) {
     while (!value.empty() && value[value.length() - 1] == '0' && value.find('.') != std::string::npos)
         value = value.substr(0, value.length() - 1);
@@ -382,6 +409,26 @@ static std::string removeDoubleTrailingZeroes(std::string value) {
         return value + '0';
     else
         return value;
+}
+
+#ifdef __GNUC__
+__attribute__((const))
+#endif
+inline std::string upperCase(std::string s) {
+    for (size_t i = 0; i < s.length(); i++)
+        if ('a' <= s[i] && s[i] <= 'z')
+            s[i] = char(s[i] - 'a' + 'A');
+    return s;
+}
+
+#ifdef __GNUC__
+__attribute__((const))
+#endif
+inline std::string lowerCase(std::string s) {
+    for (size_t i = 0; i < s.length(); i++)
+        if ('A' <= s[i] && s[i] <= 'Z')
+            s[i] = char(s[i] - 'A' + 'a');
+    return s;
 }
 
 #ifdef __GNUC__
@@ -397,6 +444,9 @@ std::string format(const std::string fmt, ...) {
     return result;
 }
 
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static std::string __testlib_part(const std::string &s);
 
 static bool __testlib_isNaN(double r) {
@@ -466,25 +516,157 @@ inline double doubleDelta(double expected, double result) {
         return absolute;
 }
 
+/** It does nothing on non-windows and files differ from stdin/stdout/stderr. */
 static void __testlib_set_binary(std::FILE *file) {
     if (NULL != file) {
-#ifdef O_BINARY
-#   ifdef _MSC_VER
-        _setmode(_fileno(file), O_BINARY);
-#   else
-        setmode(fileno(file), O_BINARY);
+#ifdef ON_WINDOWS
+#   ifdef _O_BINARY
+        if (stdin == file)
+#       ifdef STDIN_FILENO
+                return void(_setmode(STDIN_FILENO, _O_BINARY));
+#       else
+                return void(_setmode(_fileno(stdin), _O_BINARY));
+#       endif
+        if (stdout == file)
+#       ifdef STDOUT_FILENO
+                return void(_setmode(STDOUT_FILENO, _O_BINARY));
+#       else
+                return void(_setmode(_fileno(stdout), _O_BINARY));
+#       endif
+        if (stderr == file)
+#       ifdef STDERR_FILENO
+                return void(_setmode(STDERR_FILENO, _O_BINARY));
+#       else
+                return void(_setmode(_fileno(stderr), _O_BINARY));
+#       endif
+#   elif O_BINARY
+        if (stdin == file)
+#       ifdef STDIN_FILENO
+                return void(setmode(STDIN_FILENO, O_BINARY));
+#       else
+                return void(setmode(fileno(stdin), O_BINARY));
+#       endif
+        if (stdout == file)
+#       ifdef STDOUT_FILENO
+                return void(setmode(STDOUT_FILENO, O_BINARY));
+#       else
+                return void(setmode(fileno(stdout), O_BINARY));
+#       endif
+        if (stderr == file)
+#       ifdef STDERR_FILENO
+                return void(setmode(STDERR_FILENO, O_BINARY));
+#       else
+                return void(setmode(fileno(stderr), O_BINARY));
+#       endif
 #   endif
-#else
-    if (file == stdin) {
-        if (!freopen(NULL, "rb", file))
-            __testlib_fail("Unable to freopen stdin");
-    }
-    if (file == stdout || file == stderr) {
-        if (!freopen(NULL, "wb", file))
-            __testlib_fail("Unable to freopen stdout/stderr");
-    }
 #endif
     }
+}
+
+#if __cplusplus > 199711L || defined(_MSC_VER)
+template<typename T>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
+static std::string vtos(const T &t, std::true_type) {
+    if (t == 0)
+        return "0";
+    else {
+        T n(t);
+        bool negative = n < 0;
+        std::string s;
+        while (n != 0) {
+            T digit = n % 10;
+            if (digit < 0)
+                digit = -digit;
+            s += char('0' + digit);
+            n /= 10;
+        }
+        std::reverse(s.begin(), s.end());
+        return negative ? "-" + s : s;
+    }
+}
+
+template<typename T>
+static std::string vtos(const T &t, std::false_type) {
+    std::string s;
+    static std::stringstream ss;
+    ss.str(std::string());
+    ss.clear();
+    ss << t;
+    ss >> s;
+    return s;
+}
+
+template<typename T>
+static std::string vtos(const T &t) {
+    return vtos(t, std::is_integral<T>());
+}
+
+/* signed case. */
+template<typename T>
+static std::string toHumanReadableString(const T &n, std::false_type) {
+    if (n == 0)
+        return vtos(n);
+    int trailingZeroCount = 0;
+    T n_ = n;
+    while (n_ % 10 == 0)
+        n_ /= 10, trailingZeroCount++;
+    if (trailingZeroCount >= 7) {
+        if (n_ == 1)
+            return "10^" + vtos(trailingZeroCount);
+        else if (n_ == -1)
+            return "-10^" + vtos(trailingZeroCount);
+        else
+            return vtos(n_) + "*10^" + vtos(trailingZeroCount);
+    } else
+        return vtos(n);
+}
+
+/* unsigned case. */
+template<typename T>
+static std::string toHumanReadableString(const T &n, std::true_type) {
+    if (n == 0)
+        return vtos(n);
+    int trailingZeroCount = 0;
+    T n_ = n;
+    while (n_ % 10 == 0)
+        n_ /= 10, trailingZeroCount++;
+    if (trailingZeroCount >= 7) {
+        if (n_ == 1)
+            return "10^" + vtos(trailingZeroCount);
+        else
+            return vtos(n_) + "*10^" + vtos(trailingZeroCount);
+    } else
+        return vtos(n);
+}
+
+template<typename T>
+static std::string toHumanReadableString(const T &n) {
+    return toHumanReadableString(n, std::is_unsigned<T>());
+}
+#else
+template<typename T>
+static std::string vtos(const T& t)
+{
+    std::string s;
+    static std::stringstream ss;
+    ss.str(std::string());
+    ss.clear();
+    ss << t;
+    ss >> s;
+    return s;
+}
+
+template<typename T>
+static std::string toHumanReadableString(const T &n) {
+    return vtos(n);
+}
+#endif
+
+template<typename T>
+static std::string toString(const T &t) {
+    return vtos(t);
 }
 
 #if __cplusplus > 199711L || defined(_MSC_VER)
@@ -495,17 +677,17 @@ void prepareOpts(int argc, char* argv[]);
 /*
  * Very simple regex-like pattern.
  * It used for two purposes: validation and generation.
- * 
+ *
  * For example, pattern("[a-z]{1,5}").next(rnd) will return
- * random string from lowercase latin letters with length 
- * from 1 to 5. It is easier to call rnd.next("[a-z]{1,5}") 
- * for the same effect. 
- * 
+ * random string from lowercase latin letters with length
+ * from 1 to 5. It is easier to call rnd.next("[a-z]{1,5}")
+ * for the same effect.
+ *
  * Another samples:
  * "mike|john" will generate (match) "mike" or "john";
  * "-?[1-9][0-9]{0,3}" will generate (match) non-zero integers from -9999 to 9999;
  * "id-([ac]|b{2})" will generate (match) "id-a", "id-bb", "id-c";
- * "[^0-9]*" will match sequences (empty or non-empty) without digits, you can't 
+ * "[^0-9]*" will match sequences (empty or non-empty) without digits, you can't
  * use it for generations.
  *
  * You can't use pattern for generation if it contains meta-symbol '*'. Also it
@@ -513,14 +695,14 @@ void prepareOpts(int argc, char* argv[]);
  *
  * For matching very simple greedy algorithm is used. For example, pattern
  * "[0-9]?1" will not match "1", because of greedy nature of matching.
- * Alternations (meta-symbols "|") are processed with brute-force algorithm, so 
+ * Alternations (meta-symbols "|") are processed with brute-force algorithm, so
  * do not use many alternations in one expression.
  *
  * If you want to use one expression many times it is better to compile it into
- * a single pattern like "pattern p("[a-z]+")". Later you can use 
+ * a single pattern like "pattern p("[a-z]+")". Later you can use
  * "p.matches(std::string s)" or "p.next(random_t& rd)" to check matching or generate
  * new string by pattern.
- * 
+ *
  * Simpler way to read token and check it for pattern matching is "inf.readToken("[a-z]+")".
  *
  * All spaces are ignored in regex, unless escaped with \. For example, ouf.readLine("NO SOLUTION")
@@ -553,9 +735,9 @@ private:
     int to;
 };
 
-/* 
- * Use random_t instances to generate random values. It is preffered
- * way to use randoms instead of rand() function or self-written 
+/*
+ * Use random_t instances to generate random values. It is preferred
+ * way to use randoms instead of rand() function or self-written
  * randoms.
  *
  * Testlib defines global variable "rnd" of random_t class.
@@ -615,8 +797,8 @@ public:
 
     /* Sets seed by given value. */
     void setSeed(long long _seed) {
-        _seed = (_seed ^ multiplier) & mask;
-        seed = _seed;
+        seed = (unsigned long long) _seed;
+        seed = (seed ^ multiplier) & mask;
     }
 
 #ifndef __BORLANDC__
@@ -756,16 +938,20 @@ public:
         int size = int(c.size());
         if (size <= 0)
             __testlib_fail("random_t::any(const Container& c): c.size() must be positive");
-        return *(c.begin() + next(size));
+        typename Container::const_iterator it = c.begin();
+        std::advance(it, next(size));
+        return *it;
     }
 
     /* Returns random element from iterator range. */
     template<typename Iter>
     typename Iter::value_type any(const Iter &begin, const Iter &end) {
-        int size = int(end - begin);
+        int size = static_cast<int>(std::distance(begin, end));
         if (size <= 0)
             __testlib_fail("random_t::any(const Iter& begin, const Iter& end): range must have positive length");
-        return *(begin + next(size));
+        Iter it = begin;
+        std::advance(it, next(size));
+        return *it;
     }
 
     /* Random string value by given pattern (see pattern documentation). */
@@ -777,7 +963,7 @@ public:
         return next(ptrn);
     }
 
-    /* 
+    /*
      * Weighted next. If type == 0 than it is usual "next()".
      *
      * If type = 1, than it returns "max(next(), next())"
@@ -951,20 +1137,24 @@ public:
     /* Returns weighted random element from container. */
     template<typename Container>
     typename Container::value_type wany(const Container &c, int type) {
-        size_t size = c.size();
+        int size = int(c.size());
         if (size <= 0)
             __testlib_fail("random_t::wany(const Container& c, int type): c.size() must be positive");
-        return *(c.begin() + wnext(size, type));
+        typename Container::const_iterator it = c.begin();
+        std::advance(it, wnext(size, type));
+        return *it;
     }
 
     /* Returns weighted random element from iterator range. */
     template<typename Iter>
     typename Iter::value_type wany(const Iter &begin, const Iter &end, int type) {
-        int size = int(end - begin);
+        int size = static_cast<int>(std::distance(begin, end));
         if (size <= 0)
             __testlib_fail(
                     "random_t::any(const Iter& begin, const Iter& end, int type): range must have positive length");
-        return *(begin + wnext(size, type));
+        Iter it = begin;
+        std::advance(it, wnext(size, type));
+        return *it;
     }
 
     /* Returns random permutation of the given size (values are between `first` and `first`+size-1)*/
@@ -989,7 +1179,7 @@ public:
     std::vector<T> perm(T size) {
         return perm(size, T(0));
     }
-    
+
     /* Returns `size` unordered (unsorted) distinct numbers between `from` and `to`. */
     template<typename T>
     std::vector<T> distinct(int size, T from, T to) {
@@ -1010,7 +1200,7 @@ public:
         double expected = 0.0;
         for (int i = 1; i <= size; i++)
             expected += double(n) / double(n - i + 1);
-        
+
         if (expected < double(n)) {
             std::set<T> vals;
             while (int(vals.size()) < size) {
@@ -1035,12 +1225,12 @@ public:
             __testlib_fail("random_t::distinct expected size >= 0");
         if (size == 0)
             return std::vector<T>();
-        
+
         if (upper <= 0)
             __testlib_fail("random_t::distinct expected upper > 0");
         if (size > upper)
             __testlib_fail("random_t::distinct expected size <= upper");
-            
+
         return distinct(size, T(0), upper - 1);
     }
 
@@ -1072,19 +1262,19 @@ public:
 
         for (std::size_t i = 0; i < result.size(); i++)
             result[i] += min_part;
-        
+
         T result_sum = 0;
         for (std::size_t i = 0; i < result.size(); i++)
             result_sum += result[i];
         if (result_sum != sum_)
             __testlib_fail("random_t::partition: partition sum is expected to be the given sum");
-        
+
         if (*std::min_element(result.begin(), result.end()) < min_part)
             __testlib_fail("random_t::partition: partition min is expected to be no less than the given min_part");
-        
+
         if (int(result.size()) != size || result.size() != (size_t) size)
             __testlib_fail("random_t::partition: partition size is expected to be equal to the given size");
-        
+
         return result;
     }
 
@@ -1441,7 +1631,7 @@ enum TResult {
 };
 
 enum TTestlibMode {
-    _unknown, _checker, _validator, _generator, _interactor
+    _unknown, _checker, _validator, _generator, _interactor, _scorer
 };
 
 #define _pc(exitCode) (TResult(_partially + (exitCode)))
@@ -1473,6 +1663,10 @@ const std::string outcomes[] = {
 
 class InputStreamReader {
 public:
+    virtual void setTestCase(int testCase) = 0;
+
+    virtual std::vector<int> getReadChars() = 0;
+    
     virtual int curChar() = 0;
 
     virtual int nextChar() = 0;
@@ -1506,6 +1700,14 @@ public:
         // No operations.
     }
 
+    void setTestCase(int) {
+        __testlib_fail("setTestCase not implemented in StringInputStreamReader");
+    }
+
+    std::vector<int> getReadChars() {
+        __testlib_fail("getReadChars not implemented in StringInputStreamReader");
+    }
+    
     int curChar() {
         if (pos >= s.length())
             return EOFC;
@@ -1527,7 +1729,7 @@ public:
 
     void unreadChar(int c) {
         if (pos == 0)
-            __testlib_fail("FileFileInputStreamReader::unreadChar(int): pos == 0.");
+            __testlib_fail("StringInputStreamReader::unreadChar(int): pos == 0.");
         pos--;
         if (pos < s.length())
             s[pos] = char(c);
@@ -1556,6 +1758,8 @@ private:
     std::string name;
     int line;
     std::vector<int> undoChars;
+    std::vector<int> readChars;
+    std::vector<int> undoReadChars;
 
     inline int postprocessGetc(int getcResult) {
         if (getcResult != EOF)
@@ -1566,19 +1770,29 @@ private:
 
     int getc(FILE *file) {
         int c;
-        if (undoChars.empty())
-            c = ::getc(file);
-        else {
+        int rc;
+
+        if (undoChars.empty()) {
+            c = rc = ::getc(file);
+        } else {
             c = undoChars.back();
             undoChars.pop_back();
+            rc = undoReadChars.back();
+            undoReadChars.pop_back();
         }
 
         if (c == LF)
             line++;
+
+        readChars.push_back(rc);
         return c;
     }
 
     int ungetc(int c/*, FILE* file*/) {
+        if (!readChars.empty()) {
+            undoReadChars.push_back(readChars.back());
+            readChars.pop_back();
+        }
         if (c == LF)
             line--;
         undoChars.push_back(c);
@@ -1588,6 +1802,16 @@ private:
 public:
     FileInputStreamReader(std::FILE *file, const std::string &name) : file(file), name(name), line(1) {
         // No operations.
+    }
+
+    void setTestCase(int testCase) {
+        if (testCase < 0 || testCase > __TESTLIB_MAX_TEST_CASE)
+            __testlib_fail(format("testCase expected fit in [1,%d], but %d doesn't", __TESTLIB_MAX_TEST_CASE, testCase));
+        readChars.push_back(testCase + 256);
+    }
+
+    std::vector<int> getReadChars() {
+        return readChars;
     }
 
     int curChar() {
@@ -1708,6 +1932,14 @@ public:
         }
     }
 
+    void setTestCase(int) {
+        __testlib_fail("setTestCase not implemented in BufferedFileInputStreamReader");
+    }
+
+    std::vector<int> getReadChars() {
+        __testlib_fail("getReadChars not implemented in BufferedFileInputStreamReader");
+    }
+    
     int curChar() {
         if (!refill())
             return EOFC;
@@ -1794,6 +2026,9 @@ struct InStream {
 
     void init(std::FILE *f, TMode mode);
 
+    void setTestCase(int testCase);
+    std::vector<int> getReadChars();
+
     /* Moves stream pointer to the first non-white-space character or EOF. */
     void skipBlanks();
 
@@ -1827,9 +2062,9 @@ struct InStream {
     /* Moves pointer to the first non-white-space character and calls "eof()". */
     bool seekEof();
 
-    /* 
-     * Checks that current position contains EOLN. 
-     * If not it doesn't move stream pointer. 
+    /*
+     * Checks that current position contains EOLN.
+     * If not it doesn't move stream pointer.
      * In strict mode expects "#13#10" for windows or "#10" for other platforms.
      */
     bool eoln();
@@ -1840,13 +2075,13 @@ struct InStream {
     /* Moves stream pointer to the first character of the next line (if exists). */
     void nextLine();
 
-    /* 
-     * Reads new token. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+    /*
+     * Reads new token. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     std::string readWord();
 
-    /* The same as "readWord()", it is preffered to use "readToken()". */
+    /* The same as "readWord()", it is preferred to use "readToken()". */
     std::string readToken();
 
     /* The same as "readWord()", but ensures that token matches to given pattern. */
@@ -1887,23 +2122,23 @@ struct InStream {
 
     void readTokenTo(std::string &result, const std::string &ptrn, const std::string &variableName = "");
 
-    /* 
-     * Reads new long long value. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+    /*
+     * Reads new long long value. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     long long readLong();
 
     unsigned long long readUnsignedLong();
 
     /*
-     * Reads new int. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+     * Reads new int. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     int readInteger();
 
     /*
-     * Reads new int. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+     * Reads new int. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     int readInt();
 
@@ -1951,15 +2186,15 @@ struct InStream {
     /* Reads space-separated sequence of integers. */
     std::vector<int> readInts(int size, int indexBase = 1);
 
-    /* 
-     * Reads new double. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+    /*
+     * Reads new double. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     double readReal();
 
     /*
-     * Reads new double. Ignores white-spaces into the non-strict mode 
-     * (strict mode is used in validators usually). 
+     * Reads new double. Ignores white-spaces into the non-strict mode
+     * (strict mode is used in validators usually).
      */
     double readDouble();
 
@@ -1979,7 +2214,7 @@ struct InStream {
 
     std::vector<double> readDoubles(int size, int indexBase = 1);
 
-    /* 
+    /*
      * As "readReal()" but ensures that value in the range [minv,maxv] and
      * number of digit after the decimal point is in range [minAfterPointDigitCount,maxAfterPointDigitCount]
      * and number is in the form "[-]digit(s)[.digit(s)]".
@@ -1992,7 +2227,7 @@ struct InStream {
                                         int minAfterPointDigitCount, int maxAfterPointDigitCount,
                                         const std::string &variablesName = "", int indexBase = 1);
 
-    /* 
+    /*
      * As "readDouble()" but ensures that value in the range [minv,maxv] and
      * number of digit after the decimal point is in range [minAfterPointDigitCount,maxAfterPointDigitCount]
      * and number is in the form "[-]digit(s)[.digit(s)]".
@@ -2034,9 +2269,9 @@ struct InStream {
     /* The same as "readLine()/readString()", but ensures that line matches to the given pattern. */
     void readStringTo(std::string &result, const std::string &ptrn, const std::string &variableName = "");
 
-    /* 
-     * Reads line from the current position to EOLN or EOF. Moves stream pointer to 
-     * the first character of the new line (if possible). 
+    /*
+     * Reads line from the current position to EOLN or EOF. Moves stream pointer to
+     * the first character of the new line (if possible).
      */
     std::string readLine();
 
@@ -2072,12 +2307,12 @@ struct InStream {
     /* Reads EOF or fails. Use it in validators. Calls "eof()" method internally. */
     void readEof();
 
-    /* 
+    /*
      * Quit-functions aborts program with <result> and <message>:
      * input/answer streams replace any result to FAIL.
      */
     NORETURN void quit(TResult result, const char *msg);
-    /* 
+    /*
      * Quit-functions aborts program with <result> and <message>:
      * input/answer streams replace any result to FAIL.
      */
@@ -2088,14 +2323,14 @@ struct InStream {
      * input/answer streams replace any result to FAIL.
      */
     void quitif(bool condition, TResult result, const char *msg, ...);
-    /* 
+    /*
      * Quit-functions aborts program with <result> and <message>:
      * input/answer streams replace any result to FAIL.
      */
     NORETURN void quits(TResult result, std::string msg);
 
-    /* 
-     * Checks condition and aborts a program if codition is false.
+    /*
+     * Checks condition and aborts a program if condition is false.
      * Returns _wa for ouf and _fail on any other streams.
      */
 #ifdef __GNUC__
@@ -2125,6 +2360,9 @@ struct InStream {
 
     void xmlSafeWrite(std::FILE *file, const char *msg);
 
+    /* Skips UTF-8 Byte Order Mark. */
+    void skipBom();
+
 private:
     InStream(const InStream &);
 
@@ -2135,6 +2373,7 @@ InStream inf;
 InStream ouf;
 InStream ans;
 bool appesMode;
+std::string appesModeEncoding = "windows-1251";
 std::string resultName;
 std::string checkerName = "untitled checker";
 random_t rnd;
@@ -2149,10 +2388,10 @@ struct ValidatorBoundsHit {
     ValidatorBoundsHit(bool minHit = false, bool maxHit = false) : minHit(minHit), maxHit(maxHit) {
     };
 
-    ValidatorBoundsHit merge(const ValidatorBoundsHit &validatorBoundsHit) {
+    ValidatorBoundsHit merge(const ValidatorBoundsHit &validatorBoundsHit, bool ignoreMinBound, bool ignoreMaxBound) {
         return ValidatorBoundsHit(
-                __testlib_max(minHit, validatorBoundsHit.minHit),
-                __testlib_max(maxHit, validatorBoundsHit.maxHit)
+                __testlib_max(minHit, validatorBoundsHit.minHit) || ignoreMinBound,
+                __testlib_max(maxHit, validatorBoundsHit.maxHit) || ignoreMaxBound
         );
     }
 };
@@ -2161,11 +2400,19 @@ const double ValidatorBoundsHit::EPS = 1E-12;
 
 class Validator {
 private:
+    const static std::string TEST_MARKUP_HEADER;
+    const static std::string TEST_CASE_OPEN_TAG;
+    const static std::string TEST_CASE_CLOSE_TAG;
+
     bool _initialized;
     std::string _testset;
     std::string _group;
 
     std::string _testOverviewLogFileName;
+    std::string _testMarkupFileName;
+    int _testCase = -1;
+    std::string _testCaseFileName;
+
     std::map<std::string, ValidatorBoundsHit> _boundsHitByVariableName;
     std::set<std::string> _features;
     std::set<std::string> _hitFeatures;
@@ -2208,6 +2455,18 @@ public:
         return _testOverviewLogFileName;
     }
 
+    std::string testMarkupFileName() const {
+        return _testMarkupFileName;
+    }
+
+    int testCase() const {
+        return _testCase;
+    }
+
+    std::string testCaseFileName() const {
+        return _testCaseFileName;
+    }
+
     void setTestset(const char *const testset) {
         _testset = testset;
     }
@@ -2220,10 +2479,43 @@ public:
         _testOverviewLogFileName = testOverviewLogFileName;
     }
 
+    void setTestMarkupFileName(const char *const testMarkupFileName) {
+        _testMarkupFileName = testMarkupFileName;
+    }
+
+    void setTestCase(int testCase) {
+        _testCase = testCase;
+    }
+
+    void setTestCaseFileName(const char *const testCaseFileName) {
+        _testCaseFileName = testCaseFileName;
+    }
+
+    std::string prepVariableName(const std::string &variableName) {
+        if (variableName.length() >= 2 && variableName != "~~") {
+            if (variableName[0] == '~' && variableName.back() != '~')
+                return variableName.substr(1);
+            if (variableName[0] != '~' && variableName.back() == '~')
+                return variableName.substr(0, variableName.length() - 1);
+            if (variableName[0] == '~' && variableName.back() == '~')
+                return variableName.substr(1, variableName.length() - 2);
+        }
+        return variableName;
+    }
+
+    bool ignoreMinBound(const std::string &variableName) {
+        return variableName.length() >= 2 && variableName != "~~" && variableName[0] == '~';
+    }
+
+    bool ignoreMaxBound(const std::string &variableName) {
+        return variableName.length() >= 2 && variableName != "~~" && variableName.back() == '~';
+    }
+
     void addBoundsHit(const std::string &variableName, ValidatorBoundsHit boundsHit) {
         if (isVariableNameBoundsAnalyzable(variableName)) {
-            _boundsHitByVariableName[variableName]
-                    = boundsHit.merge(_boundsHitByVariableName[variableName]);
+            std::string preparedVariableName = prepVariableName(variableName);
+            _boundsHitByVariableName[preparedVariableName] = boundsHit.merge(_boundsHitByVariableName[preparedVariableName],
+                ignoreMinBound(variableName), ignoreMaxBound(variableName));
         }
     }
 
@@ -2259,13 +2551,111 @@ public:
         if (!_testOverviewLogFileName.empty()) {
             std::string fileName(_testOverviewLogFileName);
             _testOverviewLogFileName = "";
-            FILE *testOverviewLogFile = fopen(fileName.c_str(), "w");
-            if (NULL == testOverviewLogFile)
-                __testlib_fail("Validator::writeTestOverviewLog: can't test overview log to (" + fileName + ")");
-            fprintf(testOverviewLogFile, "%s%s", getBoundsHitLog().c_str(), getFeaturesLog().c_str());
-            if (fclose(testOverviewLogFile))
-                __testlib_fail(
-                        "Validator::writeTestOverviewLog: can't close test overview log file (" + fileName + ")");
+
+            FILE* f;
+            bool standard_file = false;
+            if (fileName == "stdout")
+                f = stdout, standard_file = true;
+            else if (fileName == "stderr")
+                f = stderr, standard_file = true;
+            else {
+                f = fopen(fileName.c_str(), "wb");
+                if (NULL == f)
+                    __testlib_fail("Validator::writeTestOverviewLog: can't write test overview log to (" + fileName + ")");
+            }
+            fprintf(f, "%s%s", getBoundsHitLog().c_str(), getFeaturesLog().c_str());
+            std::fflush(f);
+            if (!standard_file)
+                if (std::fclose(f))
+                    __testlib_fail("Validator::writeTestOverviewLog: can't close test overview log file (" + fileName + ")");
+        }
+    }
+
+    void writeTestMarkup() {
+        if (!_testMarkupFileName.empty()) {
+            std::vector<int> readChars = inf.getReadChars();
+            if (!readChars.empty()) {
+                std::string markup(TEST_MARKUP_HEADER);
+                for (size_t i = 0; i < readChars.size(); i++) {
+                    int c = readChars[i];
+                    if (i + 1 == readChars.size() && c == -1)
+                        continue;
+                    if (c <= 256) {
+                        char cc = char(c);
+                        if (cc == '\\' || cc == '!')
+                            markup += '\\';
+                        markup += cc;
+                    } else {
+                        markup += TEST_CASE_OPEN_TAG;
+                        markup += toString(c - 256);
+                        markup += TEST_CASE_CLOSE_TAG;
+                    }
+                }
+                FILE* f;
+                bool standard_file = false;
+                if (_testMarkupFileName == "stdout")
+                    f = stdout, standard_file = true;
+                else if (_testMarkupFileName == "stderr")
+                    f = stderr, standard_file = true;
+                else {
+                    f = fopen(_testMarkupFileName.c_str(), "wb");
+                    if (NULL == f)
+                        __testlib_fail("Validator::writeTestMarkup: can't write test markup to (" + _testMarkupFileName + ")");
+                }
+                std::fprintf(f, "%s", markup.c_str());
+                std::fflush(f);
+                if (!standard_file)
+                    if (std::fclose(f))
+                        __testlib_fail("Validator::writeTestMarkup: can't close test markup file (" + _testCaseFileName + ")");
+            }
+        }
+    }
+
+    void writeTestCase() {
+        if (_testCase > 0) {
+            std::vector<int> readChars = inf.getReadChars();
+            if (!readChars.empty()) {
+                std::string content, testCaseContent;
+                bool matchedTestCase = false;
+                for (size_t i = 0; i < readChars.size(); i++) {
+                    int c = readChars[i];
+                    if (i + 1 == readChars.size() && c == -1)
+                        continue;
+                    if (c <= 256)
+                        content += char(c);
+                    else {
+                        if (matchedTestCase) {
+                            testCaseContent = content;
+                            matchedTestCase = false;
+                        }
+                        content = "";
+                        int testCase = c - 256;
+                        if (testCase == _testCase)
+                            matchedTestCase = true;
+                    }
+                }
+                if (matchedTestCase)
+                    testCaseContent = content;
+
+                if (!testCaseContent.empty()) {
+                    FILE* f;
+                    bool standard_file = false;
+                    if (_testCaseFileName.empty() || _testCaseFileName == "stdout")
+                        f = stdout, standard_file = true;
+                    else if (_testCaseFileName == "stderr")
+                        f = stderr, standard_file = true;
+                    else {
+                        f = fopen(_testCaseFileName.c_str(), "wb");
+                        if (NULL == f)
+                            __testlib_fail("Validator::writeTestCase: can't write test case to (" + _testCaseFileName + ")");
+                    }
+                    std::fprintf(f, "%s", testCaseContent.c_str());
+                    std::fflush(f);
+                    if (!standard_file)
+                        if (std::fclose(f))
+                            __testlib_fail("Validator::writeTestCase: can't close test case file (" + _testCaseFileName + ")");
+                }
+            }
         }
     }
 
@@ -2289,8 +2679,14 @@ public:
     }
 } validator;
 
+const std::string Validator::TEST_MARKUP_HEADER = "MU\xF3\x01";
+const std::string Validator::TEST_CASE_OPEN_TAG = "!c";
+const std::string Validator::TEST_CASE_CLOSE_TAG = ";";
+
 struct TestlibFinalizeGuard {
     static bool alive;
+    static bool registered;
+
     int quitCount, readEofCount;
 
     TestlibFinalizeGuard() : quitCount(0), readEofCount(0) {
@@ -2307,14 +2703,29 @@ struct TestlibFinalizeGuard {
 
             if (testlibMode == _validator && readEofCount == 0 && quitCount == 0)
                 __testlib_fail("Validator must end with readEof call.");
+
+            /* opts */
+            autoEnsureNoUnusedOpts();
+
+            if (!registered)
+                __testlib_fail("Call register-function in the first line of the main (registerTestlibCmd or other similar)");
         }
 
-        validator.writeTestOverviewLog();
+        if (__testlib_exitCode == 0) {
+            validator.writeTestOverviewLog();
+            validator.writeTestMarkup();
+            validator.writeTestCase();
+        }
     }
+
+private:
+    /* opts */
+    void autoEnsureNoUnusedOpts();
 };
 
 bool TestlibFinalizeGuard::alive = true;
-TestlibFinalizeGuard testlibFinalizeGuard;
+bool TestlibFinalizeGuard::registered = false;
+extern TestlibFinalizeGuard testlibFinalizeGuard;
 
 /*
  * Call it to disable checks on finalization.
@@ -2329,109 +2740,6 @@ std::fstream tout;
 
 /* implementation
  */
-
-#if __cplusplus > 199711L || defined(_MSC_VER)
-template<typename T>
-static std::string vtos(const T &t, std::true_type) {
-    if (t == 0)
-        return "0";
-    else {
-        T n(t);
-        bool negative = n < 0;
-        std::string s;
-        while (n != 0) {
-            T digit = n % 10;
-            if (digit < 0)
-                digit = -digit;
-            s += char('0' + digit);
-            n /= 10;
-        }
-        std::reverse(s.begin(), s.end());
-        return negative ? "-" + s : s;
-    }
-}
-
-template<typename T>
-static std::string vtos(const T &t, std::false_type) {
-    std::string s;
-    static std::stringstream ss;
-    ss.str(std::string());
-    ss.clear();
-    ss << t;
-    ss >> s;
-    return s;
-}
-
-template<typename T>
-static std::string vtos(const T &t) {
-    return vtos(t, std::is_integral<T>());
-}
-
-/* signed case. */
-template<typename T>
-static std::string toHumanReadableString(const T &n, std::false_type) {
-    if (n == 0)
-        return vtos(n);
-    int trailingZeroCount = 0;
-    T n_ = n;
-    while (n_ % 10 == 0)
-        n_ /= 10, trailingZeroCount++;
-    if (trailingZeroCount >= 7) {
-        if (n_ == 1)
-            return "10^" + vtos(trailingZeroCount);
-        else if (n_ == -1)
-            return "-10^" + vtos(trailingZeroCount);
-        else
-            return vtos(n_) + "*10^" + vtos(trailingZeroCount);
-    } else
-        return vtos(n);
-}
-
-/* unsigned case. */
-template<typename T>
-static std::string toHumanReadableString(const T &n, std::true_type) {
-    if (n == 0)
-        return vtos(n);
-    int trailingZeroCount = 0;
-    T n_ = n;
-    while (n_ % 10 == 0)
-        n_ /= 10, trailingZeroCount++;
-    if (trailingZeroCount >= 7) {
-        if (n_ == 1)
-            return "10^" + vtos(trailingZeroCount);
-        else
-            return vtos(n_) + "*10^" + vtos(trailingZeroCount);
-    } else
-        return vtos(n);
-}
-
-template<typename T>
-static std::string toHumanReadableString(const T &n) {
-    return toHumanReadableString(n, std::is_unsigned<T>());
-}
-#else
-template<typename T>
-static std::string vtos(const T& t)
-{
-    std::string s;
-    static std::stringstream ss;
-    ss.str(std::string());
-    ss.clear();
-    ss << t;
-    ss >> s;
-    return s;
-}
-
-template<typename T>
-static std::string toHumanReadableString(const T &n) {
-    return vtos(n);
-}
-#endif
-
-template<typename T>
-static std::string toString(const T &t) {
-    return vtos(t);
-}
 
 InStream::InStream() {
     reader = NULL;
@@ -2468,6 +2776,38 @@ InStream::~InStream() {
         delete reader;
         reader = NULL;
     }
+}
+
+void InStream::setTestCase(int testCase) {
+    if (testlibMode != _validator || mode != _input || !stdfile || this != &inf)
+        __testlib_fail("InStream::setTestCase can be used only for inf in validator-mode."
+            " Actually, prefer setTestCase function instead of InStream member");
+    reader->setTestCase(testCase);
+}
+
+std::vector<int> InStream::getReadChars() {
+    if (testlibMode != _validator || mode != _input || !stdfile || this != &inf)
+        __testlib_fail("InStream::getReadChars can be used only for inf in validator-mode.");
+    return reader == NULL ? std::vector<int>() : reader->getReadChars();
+}
+
+void setTestCase(int testCase) {
+    static bool first_run = true;
+    static bool zero_based = false;
+
+    if (first_run && testCase == 0)
+        zero_based = true;
+
+    if (zero_based)
+        testCase++;
+
+    __testlib_hasTestCase = true;
+    __testlib_testCase = testCase;
+
+    if (testlibMode == _validator)
+        inf.setTestCase(testCase);
+
+    first_run = false;
 }
 
 #ifdef __GNUC__
@@ -2549,8 +2889,9 @@ NORETURN void halt(int exitCode) {
     std::fprintf(stderr, "Exit code: %d\n", exitCode);
     InStream::textColor(InStream::LightGray);
 #endif
+    __testlib_exitCode = exitCode;
 #ifdef TESTLIB_THROW_EXIT_EXCEPTION_INSTEAD_OF_EXIT
-    throw exit_exception(exitCode);    
+    throw exit_exception(exitCode);
 #endif
     std::exit(exitCode);
 }
@@ -2649,6 +2990,9 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
         result = _pe;
 #endif
 
+    if (testlibMode == _scorer && result != _fail)
+        quits(_fail, "Scorer should return points only. Don't use a quit function.");
+
     if (mode != _output && result != _fail) {
         if (mode == _input && testlibMode == _validator && lastLine != -1)
             quits(_fail, __testlib_appendMessage(__testlib_appendMessage(message, name), "line " + vtos(lastLine)));
@@ -2713,7 +3057,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
             quit(_fail, "Can not write to the result file");
         }
         if (appesMode) {
-            std::fprintf(resultFile, "<?xml version=\"1.0\" encoding=\"windows-1251\"?>");
+            std::fprintf(resultFile, "<?xml version=\"1.0\" encoding=\"%s\"?>", appesModeEncoding.c_str());
             if (isPartial)
                 std::fprintf(resultFile, "<result outcome = \"%s\" pctype = \"%d\">",
                              outcomes[(int) _partially].c_str(), pctype);
@@ -2885,6 +3229,21 @@ void InStream::init(std::FILE *f, TMode mode) {
     reset(f);
 }
 
+void InStream::skipBom() {
+    const std::string utf8Bom = "\xEF\xBB\xBF";
+    size_t index = 0;
+    while (index < utf8Bom.size() && curChar() == utf8Bom[index]) {
+        index++;
+        skipChar();
+    }
+    if (index < utf8Bom.size()) {
+        while (index != 0) {
+            unreadChar(utf8Bom[index - 1]);
+            index--;
+        }
+    }
+}
+
 char InStream::curChar() {
     return char(reader->curChar());
 }
@@ -2974,6 +3333,9 @@ void InStream::readTokenTo(std::string &result) {
     readWordTo(result);
 }
 
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 static std::string __testlib_part(const std::string &s) {
     std::string t;
     for (size_t i = 0; i < s.length(); i++)
@@ -3165,7 +3527,7 @@ static inline bool equals(unsigned long long integer, const char *s) {
 }
 
 static inline double stringToDouble(InStream &in, const char *buffer) {
-    double retval;
+    double result;
 
     size_t length = strlen(buffer);
 
@@ -3199,14 +3561,14 @@ static inline double stringToDouble(InStream &in, const char *buffer) {
 
     char *suffix = new char[length + 1];
     std::memset(suffix, 0, length + 1);
-    int scanned = std::sscanf(buffer, "%lf%s", &retval, suffix);
+    int scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
     bool empty = strlen(suffix) == 0;
     delete[] suffix;
 
     if (scanned == 1 || (scanned == 2 && empty)) {
-        if (__testlib_isNaN(retval))
+        if (__testlib_isNaN(result))
             in.quit(_pe, ("Expected double, but \"" + __testlib_part(buffer) + "\" found").c_str());
-        return retval;
+        return result;
     } else
         in.quit(_pe, ("Expected double, but \"" + __testlib_part(buffer) + "\" found").c_str());
 }
@@ -3215,7 +3577,7 @@ static inline double stringToDouble(InStream &in, const std::string& buffer) {
     for (size_t i = 0; i < buffer.length(); i++)
         if (buffer[i] == '\0')
             in.quit(_pe, ("Expected double, but \"" + __testlib_part(buffer) + "\" found (it contains \\0)").c_str());
-    return stringToDouble(in, buffer.c_str());    
+    return stringToDouble(in, buffer.c_str());
 }
 
 static inline double stringToStrictDouble(InStream &in, const char *buffer,
@@ -3227,7 +3589,7 @@ static inline double stringToStrictDouble(InStream &in, const char *buffer,
         in.quit(_fail,
                 "stringToStrictDouble: minAfterPointDigitCount should be less or equal to maxAfterPointDigitCount.");
 
-    double retval;
+    double result;
 
     size_t length = strlen(buffer);
 
@@ -3276,16 +3638,16 @@ static inline double stringToStrictDouble(InStream &in, const char *buffer,
 
     char *suffix = new char[length + 1];
     std::memset(suffix, 0, length + 1);
-    int scanned = std::sscanf(buffer, "%lf%s", &retval, suffix);
+    int scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
     bool empty = strlen(suffix) == 0;
     delete[] suffix;
 
     if (scanned == 1 || (scanned == 2 && empty)) {
-        if (__testlib_isNaN(retval) || __testlib_isInfinite(retval))
+        if (__testlib_isNaN(result) || __testlib_isInfinite(result))
             in.quit(_pe, ("Expected double, but \"" + __testlib_part(buffer) + "\" found").c_str());
-        if (buffer[0] == '-' && retval >= 0)
+        if (buffer[0] == '-' && result >= 0)
             in.quit(_pe, ("Redundant minus in \"" + __testlib_part(buffer) + "\" found").c_str());
-        return retval;
+        return result;
     } else
         in.quit(_pe, ("Expected double, but \"" + __testlib_part(buffer) + "\" found").c_str());
 }
@@ -3299,24 +3661,15 @@ static inline double stringToStrictDouble(InStream &in, const std::string& buffe
 }
 
 static inline long long stringToLongLong(InStream &in, const char *buffer) {
-    if (strcmp(buffer, "-9223372036854775808") == 0)
-        return LLONG_MIN;
-
-    bool minus = false;
     size_t length = strlen(buffer);
-
-    if (length > 1 && buffer[0] == '-')
-        minus = true;
-
-    if (length > 20)
+    if (length == 0 || length > 20)
         in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
 
-    long long retval = 0LL;
-
+    bool has_minus = (length > 1 && buffer[0] == '-');
     int zeroes = 0;
     bool processingZeroes = true;
 
-    for (int i = (minus ? 1 : 0); i < int(length); i++) {
+    for (int i = (has_minus ? 1 : 0); i < int(length); i++) {
         if (buffer[i] == '0' && processingZeroes)
             zeroes++;
         else
@@ -3324,65 +3677,60 @@ static inline long long stringToLongLong(InStream &in, const char *buffer) {
 
         if (buffer[i] < '0' || buffer[i] > '9')
             in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
-        retval = retval * 10 + (buffer[i] - '0');
     }
 
-    if (retval < 0)
+    long long int result;
+    try {
+        result = std::stoll(buffer);
+    } catch (const std::exception&) {
+        in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    } catch (...) {
+        in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    }
+
+    if ((zeroes > 0 && (result != 0 || has_minus)) || zeroes > 1)
         in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
 
-    if ((zeroes > 0 && (retval != 0 || minus)) || zeroes > 1)
-        in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
-
-    retval = (minus ? -retval : +retval);
-
-    if (length < 19)
-        return retval;
-
-    if (equals(retval, buffer))
-        return retval;
-    else
-        in.quit(_pe, ("Expected int64, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    return result;
 }
 
 static inline long long stringToLongLong(InStream &in, const std::string& buffer) {
     for (size_t i = 0; i < buffer.length(); i++)
         if (buffer[i] == '\0')
             in.quit(_pe, ("Expected integer, but \"" + __testlib_part(buffer) + "\" found (it contains \\0)").c_str());
-    return stringToLongLong(in, buffer.c_str());    
+    return stringToLongLong(in, buffer.c_str());
 }
 
 static inline unsigned long long stringToUnsignedLongLong(InStream &in, const char *buffer) {
     size_t length = strlen(buffer);
 
-    if (length > 20)
+    if (length == 0 || length > 20)
         in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
     if (length > 1 && buffer[0] == '0')
         in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
 
-    unsigned long long retval = 0LL;
     for (int i = 0; i < int(length); i++) {
         if (buffer[i] < '0' || buffer[i] > '9')
             in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
-        retval = retval * 10 + (buffer[i] - '0');
     }
 
-    if (length < 19)
-        return retval;
+    unsigned long long result;
+    try {
+        result = std::stoull(buffer);
+    } catch (const std::exception&) {
+        in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    } catch (...) {
+        in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    }
 
-    if (length == 20 && strcmp(buffer, "18446744073709551615") > 0)
-        in.quit(_pe, ("Expected unsigned int64, but \"" + __testlib_part(buffer) + "\" found").c_str());
-
-    if (equals(retval, buffer))
-        return retval;
-    else
-        in.quit(_pe, ("Expected unsigned int64, but \"" + __testlib_part(buffer) + "\" found").c_str());
+    return result;
 }
 
 static inline long long stringToUnsignedLongLong(InStream &in, const std::string& buffer) {
     for (size_t i = 0; i < buffer.length(); i++)
         if (buffer[i] == '\0')
             in.quit(_pe, ("Expected unsigned integer, but \"" + __testlib_part(buffer) + "\" found (it contains \\0)").c_str());
-    return stringToUnsignedLongLong(in, buffer.c_str());    
+    return stringToUnsignedLongLong(in, buffer.c_str());
 }
 
 int InStream::readInteger() {
@@ -4026,6 +4374,7 @@ NORETURN void __testlib_help() {
     std::fprintf(stderr, "Program must be run with the following arguments: \n");
     std::fprintf(stderr, "    [--testset testset] [--group group] <input-file> <output-file> <answer-file> [<report-file> [<-appes>]]\n\n");
 
+    __testlib_exitCode = FAIL_EXIT_CODE;
     std::exit(FAIL_EXIT_CODE);
 }
 
@@ -4049,12 +4398,41 @@ static void __testlib_ensuresPreconditions() {
         quit(_fail, "Function __testlib_isNaN is not working correctly: possible reason is '-ffast-math'");
 }
 
+std::string __testlib_testset;
+
+std::string getTestset() {
+    return __testlib_testset;
+}
+
+std::string __testlib_group;
+
+std::string getGroup() {
+    return __testlib_group;
+}
+
+static void __testlib_set_testset_and_group(int argc, char* argv[]) {
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp("--testset", argv[i])) {
+            if (i + 1 < argc && strlen(argv[i + 1]) > 0)
+                __testlib_testset = argv[++i];
+            else
+                quit(_fail, std::string("Expected non-empty testset after --testset command line parameter"));
+        } else if (!strcmp("--group", argv[i])) {
+            if (i + 1 < argc)
+                __testlib_group = argv[++i];
+            else
+                quit(_fail, std::string("Expected group after --group command line parameter"));
+        }
+    }
+}
+
 void registerGen(int argc, char *argv[], int randomGeneratorVersion) {
     if (randomGeneratorVersion < 0 || randomGeneratorVersion > 1)
         quitf(_fail, "Random generator version is expected to be 0 or 1.");
     random_t::version = randomGeneratorVersion;
 
     __testlib_ensuresPreconditions();
+    TestlibFinalizeGuard::registered = true;
 
     testlibMode = _generator;
     __testlib_set_binary(stdin);
@@ -4096,6 +4474,30 @@ void registerGen(int argc, char *argv[]) {
 }
 #endif
 
+void setAppesModeEncoding(std::string appesModeEncoding) {
+    static const char* const ENCODINGS[] = {"ascii", "utf-7", "utf-8", "utf-16", "utf-16le", "utf-16be", "utf-32", "utf-32le", "utf-32be", "iso-8859-1", 
+"iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-9", "iso-8859-10", "iso-8859-11", 
+"iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", 
+"windows-1256", "windows-1257", "windows-1258", "gb2312", "gbk", "gb18030", "big5", "shift-jis", "euc-jp", "euc-kr", 
+"euc-cn", "euc-tw", "koi8-r", "koi8-u", "tis-620", "ibm437", "ibm850", "ibm852", "ibm855", "ibm857", 
+"ibm860", "ibm861", "ibm862", "ibm863", "ibm865", "ibm866", "ibm869", "macroman", "maccentraleurope", "maciceland", 
+"maccroatian", "macromania", "maccyrillic", "macukraine", "macgreek", "macturkish", "machebrew", "macarabic", "macthai", "hz-gb-2312", 
+"iso-2022-jp", "iso-2022-kr", "iso-2022-cn", "armscii-8", "tscii", "iscii", "viscii", "geostd8", "cp949", "cp874", 
+"cp1006", "cp775", "cp858", "cp737", "cp853", "cp856", "cp922", "cp1046", "cp1125", "cp1131", 
+"ptcp154", "koi8-t", "koi8-ru", "mulelao-1", "cp1133", "iso-ir-166", "tcvn", "iso-ir-14", "iso-ir-87", "iso-ir-159"};
+    
+    appesModeEncoding = lowerCase(appesModeEncoding);
+    bool valid = false;
+    for (size_t i = 0; i < sizeof(ENCODINGS) / sizeof(ENCODINGS[0]); i++)
+        if (appesModeEncoding == ENCODINGS[i]) {
+            valid = true;
+            break;
+        }
+    if (!valid)
+        quit(_fail, "Unexpected encoding for setAppesModeEncoding(encoding)");
+    ::appesModeEncoding = appesModeEncoding;
+}
+
 std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemessage.txt") { // assume in linux
     if (dir.back() != '/') dir.push_back('/');
     return dir + file;
@@ -4103,6 +4505,8 @@ std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemes
 
 void registerInteraction(int argc, char *argv[]) {
     __testlib_ensuresPreconditions();
+    __testlib_set_testset_and_group(argc, argv);
+    TestlibFinalizeGuard::registered = true;
 
     testlibMode = _interactor;
     __testlib_set_binary(stdin);
@@ -4116,18 +4520,15 @@ void registerInteraction(int argc, char *argv[]) {
                     "\nUse \"--help\" to get help information");
     }
 */
-    if (argc == 3) {
-        resultName = "";
-        appesMode = false;
-    }
-
     if (argc == 4) {
         resultName = make_new_file_in_a_dir(argv[3]);
-        tout.open(make_new_file_in_a_dir(argv[3], "teammessage.txt"), std::ios_base::out);
+        tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out);
         if (tout.fail() || !tout.is_open())
             quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
         appesMode = false;
     }
+
+#ifndef EJUDGE
 /*
     if (argc == 6) {
         if (strcmp("-APPES", argv[5]) && strcmp("-appes", argv[5])) {
@@ -4139,6 +4540,7 @@ void registerInteraction(int argc, char *argv[]) {
         }
     }
 */
+#endif
 
     inf.init(argv[1], _input);
 /*
@@ -4156,9 +4558,13 @@ void registerInteraction(int argc, char *argv[]) {
 
 void registerValidation() {
     __testlib_ensuresPreconditions();
+    TestlibFinalizeGuard::registered = true;
 
     testlibMode = _validator;
+
     __testlib_set_binary(stdin);
+    __testlib_set_binary(stdout);
+    __testlib_set_binary(stderr);
 
     inf.init(stdin, _input);
     inf.strict = true;
@@ -4166,29 +4572,60 @@ void registerValidation() {
 
 void registerValidation(int argc, char *argv[]) {
     registerValidation();
+    __testlib_set_testset_and_group(argc, argv);
+
     validator.initialize();
+    TestlibFinalizeGuard::registered = true;
+
+    std::string comment = "Validator must be run with the following arguments:"
+                            " [--testset testset]"
+                            " [--group group]"
+                            " [--testOverviewLogFileName fileName]"
+                            " [--testMarkupFileName fileName]"
+                            " [--testCase testCase]"
+                            " [--testCaseFileName fileName]"
+                            ;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp("--testset", argv[i])) {
             if (i + 1 < argc && strlen(argv[i + 1]) > 0)
                 validator.setTestset(argv[++i]);
             else
-                quit(_fail, std::string("Validator must be run with the following arguments: ") +
-                            "[--testset testset] [--group group] [--testOverviewLogFileName fileName]");
+                quit(_fail, comment);
         }
         if (!strcmp("--group", argv[i])) {
             if (i + 1 < argc)
                 validator.setGroup(argv[++i]);
             else
-                quit(_fail, std::string("Validator must be run with the following arguments: ") +
-                            "[--testset testset] [--group group] [--testOverviewLogFileName fileName]");
+                quit(_fail, comment);
         }
         if (!strcmp("--testOverviewLogFileName", argv[i])) {
             if (i + 1 < argc)
                 validator.setTestOverviewLogFileName(argv[++i]);
             else
-                quit(_fail, std::string("Validator must be run with the following arguments: ") +
-                            "[--testset testset] [--group group] [--testOverviewLogFileName fileName]");
+                quit(_fail, comment);
+        }
+        if (!strcmp("--testMarkupFileName", argv[i])) {
+            if (i + 1 < argc)
+                validator.setTestMarkupFileName(argv[++i]);
+            else
+                quit(_fail, comment);
+        }
+        if (!strcmp("--testCase", argv[i])) {
+            if (i + 1 < argc) {
+                long long testCase = stringToLongLong(inf, argv[++i]);
+                if (testCase < 1 || testCase >= __TESTLIB_MAX_TEST_CASE)
+                    quit(_fail, format("Argument testCase should be between 1 and %d, but ", __TESTLIB_MAX_TEST_CASE)
+                        + toString(testCase) + " found");
+                validator.setTestCase(int(testCase));
+            } else
+                quit(_fail, comment);
+        }
+        if (!strcmp("--testCaseFileName", argv[i])) {
+            if (i + 1 < argc) {
+                validator.setTestCaseFileName(argv[++i]);
+            } else
+                quit(_fail, comment);
         }
     }
 }
@@ -4242,13 +4679,15 @@ public:
 
 void registerTestlibCmd(int argc, char *argv[]) {
     __testlib_ensuresPreconditions();
+    __testlib_set_testset_and_group(argc, argv);
+    TestlibFinalizeGuard::registered = true;
 
     testlibMode = _checker;
     __testlib_set_binary(stdin);
 
     std::vector<std::string> args(1, argv[0]);
     checker.initialize();
-    
+
     for (int i = 1; i < argc; i++) {
         if (!strcmp("--testset", argv[i])) {
             if (i + 1 < argc && strlen(argv[i + 1]) > 0)
@@ -4274,18 +4713,18 @@ void registerTestlibCmd(int argc, char *argv[]) {
                     "\nUse \"--help\" to get help information");
     }
 */
-    appesMode = false;
-
-    if (argc == 3) {
-        resultName = "";
-        appesMode = false;
-    }
-
     if (argc == 4) {
-        resultName = make_new_file_in_a_dir(argv[3]);
+        resultName = make_new_file_in_a_dir(args[3]);
         appesMode = false;
     }
+
+#ifndef EJUDGE
 /*
+    if (argc == 5) {
+        resultName = args[4];
+        appesMode = false;
+    }
+
     if (argc == 6) {
         if ("-APPES" != args[5] && "-appes" != args[5]) {
             quit(_fail, std::string("Program must be run with the following arguments: ") +
@@ -4296,8 +4735,11 @@ void registerTestlibCmd(int argc, char *argv[]) {
         }
     }
 */
+#endif
+
     inf.init(args[1], _input);
     ouf.init(stdin, _output);
+    ouf.skipBom();
     ans.init(args[2], _answer);
 }
 
@@ -4360,7 +4802,7 @@ void setName(const char *format, ...) {
     checkerName = name;
 }
 
-/* 
+/*
  * Do not use random_shuffle, because it will produce different result
  * for different C++ compilers.
  *
@@ -4428,24 +4870,16 @@ void startTest(int test) {
         __testlib_fail("Unable to write file '" + testFileName + "'");
 }
 
-inline std::string upperCase(std::string s) {
-    for (size_t i = 0; i < s.length(); i++)
-        if ('a' <= s[i] && s[i] <= 'z')
-            s[i] = char(s[i] - 'a' + 'A');
-    return s;
-}
-
-inline std::string lowerCase(std::string s) {
-    for (size_t i = 0; i < s.length(); i++)
-        if ('A' <= s[i] && s[i] <= 'Z')
-            s[i] = char(s[i] - 'A' + 'a');
-    return s;
-}
-
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 inline std::string compress(const std::string &s) {
     return __testlib_part(s);
 }
 
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 inline std::string englishEnding(int x) {
     x %= 100;
     if (x / 10 == 1)
@@ -4460,6 +4894,9 @@ inline std::string englishEnding(int x) {
 }
 
 template<typename _ForwardIterator, typename _Separator>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::string join(_ForwardIterator first, _ForwardIterator last, _Separator separator) {
     std::stringstream ss;
     bool repeated = false;
@@ -4474,24 +4911,36 @@ std::string join(_ForwardIterator first, _ForwardIterator last, _Separator separ
 }
 
 template<typename _ForwardIterator>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::string join(_ForwardIterator first, _ForwardIterator last) {
     return join(first, last, ' ');
 }
 
 template<typename _Collection, typename _Separator>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::string join(const _Collection &collection, _Separator separator) {
     return join(collection.begin(), collection.end(), separator);
 }
 
 template<typename _Collection>
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::string join(const _Collection &collection) {
     return join(collection, ' ');
 }
 
 /**
  * Splits string s by character separator returning exactly k+1 items,
- * where k is the number of separator occurences.
+ * where k is the number of separator occurrences.
  */
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::vector<std::string> split(const std::string &s, char separator) {
     std::vector<std::string> result;
     std::string item;
@@ -4507,8 +4956,11 @@ std::vector<std::string> split(const std::string &s, char separator) {
 
 /**
  * Splits string s by character separators returning exactly k+1 items,
- * where k is the number of separator occurences.
+ * where k is the number of separator occurrences.
  */
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::vector<std::string> split(const std::string &s, const std::string &separators) {
     if (separators.empty())
         return std::vector<std::string>(1, s);
@@ -4532,6 +4984,9 @@ std::vector<std::string> split(const std::string &s, const std::string &separato
 /**
  * Splits string s by character separator returning non-empty items.
  */
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::vector<std::string> tokenize(const std::string &s, char separator) {
     std::vector<std::string> result;
     std::string item;
@@ -4550,6 +5005,9 @@ std::vector<std::string> tokenize(const std::string &s, char separator) {
 /**
  * Splits string s by character separators returning non-empty items.
  */
+#ifdef __GNUC__
+__attribute__((const))
+#endif
 std::vector<std::string> tokenize(const std::string &s, const std::string &separators) {
     if (separators.empty())
         return std::vector<std::string>(1, s);
@@ -4835,7 +5293,32 @@ void println(const A &a, const B &b, const C &c, const D &d, const E &e, const F
 }
 
 /* opts */
-size_t getOptType(char* s) {
+
+/**
+ * A struct for a singular testlib opt, containing the raw string value,
+ * and a boolean value for marking whether the opt is used.
+ */
+struct TestlibOpt {
+    std::string value;
+    bool used;
+
+    TestlibOpt() : value(), used(false) {}
+};
+
+/**
+ * Get the type of opt based on the number of `-` at the beginning and the
+ * _validity_ of the key name.
+ * 
+ * A valid key name must start with an alphabetical character.
+ * 
+ * Returns: 1 if s has one `-` at the beginning, that is, "-keyName".
+ *          2 if s has two `-` at the beginning, that is, "--keyName".
+ *          0 otherwise. That is, if s has no `-` at the beginning, or has more
+ *          than 2 at the beginning ("---keyName", "----keyName", ...), or the
+ *          keyName is invalid (the first character is not an alphabetical
+ *          character).
+ */
+size_t getOptType(char *s) {
     if (!s || strlen(s) <= 1)
         return 0;
 
@@ -4849,7 +5332,36 @@ size_t getOptType(char* s) {
     return 0;
 }
 
-size_t parseOpt(size_t argc, char* argv[], size_t index, std::map<std::string, std::string>& opts) {
+/**
+ * Parse the opt at a given index, and put it into the opts maps.
+ * 
+ * An opt can has the following form:
+ * 1) -keyName=value or --keyName=value     (ex. -n=10 --test-count=20)
+ * 2) -keyName value or --keyName value     (ex. -n 10 --test-count 20)
+ * 3) -kNumval       or --kNumval           (ex. -n10  --t20)
+ * 4) -boolProperty  or --boolProperty      (ex. -sorted --tree-only)
+ * 
+ * Only the second form consumes 2 arguments. The other consumes only 1
+ * argument.
+ * 
+ * In the third form, the key is a single character, and after the key is the
+ * value. The value _should_ be a number.
+ * 
+ * In the forth form, the value is true.
+ * 
+ * Params:
+ * - argc and argv: the number of command line arguments and the command line
+ *   arguments themselves.
+ * - index: the starting index of the opts.
+ * - opts: the map containing the resulting opt.
+ *  
+ * Returns: the number of consumed arguments to parse the opt.
+ *          0 if there is no arguments to parse.
+ * 
+ * Algorithm details:
+ * TODO. Please refer to the implementation to see how the code handles the 3rd and 4th forms separately.
+ */
+size_t parseOpt(size_t argc, char *argv[], size_t index, std::map<std::string, TestlibOpt> &opts) {
     if (index >= argc)
         return 0;
 
@@ -4873,7 +5385,7 @@ size_t parseOpt(size_t argc, char* argv[], size_t index, std::map<std::string, s
                 }
             }
         }
-        opts[key] = val;
+        opts[key].value = val;
     } else {
         return inc;
     }
@@ -4881,38 +5393,75 @@ size_t parseOpt(size_t argc, char* argv[], size_t index, std::map<std::string, s
     return inc;
 }
 
+/**
+ * Global list containing all the arguments in the order given in the command line.
+ */
 std::vector<std::string> __testlib_argv;
-std::map<std::string, std::string> __testlib_opts;
 
-void prepareOpts(int argc, char* argv[]) {
+/**
+ * Global dictionary containing all the parsed opts.
+ */
+std::map<std::string, TestlibOpt> __testlib_opts;
+
+/**
+ * Whether automatic no unused opts ensurement should be done. This flag will
+ * be turned on when `has_opt` or `opt(key, default_value)` is called.
+ * 
+ * The automatic ensurement can be suppressed when
+ * __testlib_ensureNoUnusedOptsSuppressed is true.
+ */
+bool __testlib_ensureNoUnusedOptsFlag = false;
+
+/**
+ * Suppress no unused opts automatic ensurement. Can be set to true with
+ * `suppressEnsureNoUnusedOpts()`.
+ */
+bool __testlib_ensureNoUnusedOptsSuppressed = false;
+
+/**
+ * Parse command line arguments into opts.
+ * The results are stored into __testlib_argv and __testlib_opts.
+ */
+void prepareOpts(int argc, char *argv[]) {
     if (argc <= 0)
         __testlib_fail("Opts: expected argc>=0 but found " + toString(argc));
     size_t n = static_cast<size_t>(argc); // NOLINT(hicpp-use-auto,modernize-use-auto)
-    __testlib_opts = std::map<std::string, std::string>();
+    __testlib_opts = std::map<std::string, TestlibOpt>();
     for (size_t index = 1; index < n; index += parseOpt(n, argv, index, __testlib_opts));
     __testlib_argv = std::vector<std::string>(n);
     for (size_t index = 0; index < n; index++)
         __testlib_argv[index] = argv[index];
 }
 
+/**
+ * An utility function to get the argument with a given index. This function
+ * also print a readable message when no arguments are found.
+ */
 std::string __testlib_indexToArgv(int index) {
     if (index < 0 || index >= int(__testlib_argv.size()))
-        __testlib_fail("Opts: index '" + toString(index) + "' is out of range [0," + toString(__testlib_argv.size()) + ")");
+        __testlib_fail("Opts: index '" + toString(index) + "' is out of range [0,"
+            + toString(__testlib_argv.size()) + ")");
     return __testlib_argv[size_t(index)];
 }
 
-std::string __testlib_keyToOpts(const std::string& key) {
-    if (__testlib_opts.count(key) == 0)
+/**
+ * An utility function to get the opt with a given key . This function
+ * also print a readable message when no opts are found.
+ */
+std::string __testlib_keyToOpts(const std::string &key) {
+    auto it = __testlib_opts.find(key);
+    if (it == __testlib_opts.end())
         __testlib_fail("Opts: unknown key '" + compress(key) + "'");
-    return __testlib_opts[key];
+    it->second.used = true;
+    return it->second.value;
 }
 
 template<typename T>
-T optValueToIntegral(const std::string& s, bool nonnegative);
+T optValueToIntegral(const std::string &s, bool nonnegative);
 
-long double optValueToLongDouble(const std::string& s);
+long double optValueToLongDouble(const std::string &s);
 
-std::string parseExponentialOptValue(const std::string& s) {
+std::string parseExponentialOptValue(const std::string &s) {
     size_t pos = std::string::npos;
     for (size_t i = 0; i < s.length(); i++)
         if (s[i] == 'e' || s[i] == 'E') {
@@ -4975,7 +5524,7 @@ std::string parseExponentialOptValue(const std::string& s) {
 }
 
 template<typename T>
-T optValueToIntegral(const std::string& s_, bool nonnegative) {
+T optValueToIntegral(const std::string &s_, bool nonnegative) {
     std::string s(parseExponentialOptValue(s_));
     if (s.empty())
         __testlib_fail("Opts: expected integer but '" + compress(s_) + "' found");
@@ -4992,7 +5541,7 @@ T optValueToIntegral(const std::string& s_, bool nonnegative) {
     for (size_t i = pos; i < s.length(); i++) {
         if (s[i] < '0' || s[i] > '9')
             __testlib_fail("Opts: expected integer but '" + compress(s_) + "' found");
-        value = value * 10 + s[i] - '0';
+        value = T(value * 10 + s[i] - '0');
         about = about * 10 + s[i] - '0';
     }
     value *= sign;
@@ -5002,7 +5551,7 @@ T optValueToIntegral(const std::string& s_, bool nonnegative) {
     return value;
 }
 
-long double optValueToLongDouble(const std::string& s_) {
+long double optValueToLongDouble(const std::string &s_) {
     std::string s(parseExponentialOptValue(s_));
     if (s.empty())
         __testlib_fail("Opts: expected float number but '" + compress(s_) + "' found");
@@ -5037,87 +5586,166 @@ long double optValueToLongDouble(const std::string& s_) {
     return value;
 }
 
-bool has_opt(const std::string key) {
+/**
+ * Return true if there is an opt with a given key.
+ * 
+ * By calling this function, automatic ensurement for no unused opts will be
+ * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
+ * turn it off.
+ */
+bool has_opt(const std::string &key) {
+    __testlib_ensureNoUnusedOptsFlag = true;
     return __testlib_opts.count(key) != 0;
 }
 
+/* About the following part for opt with 2 and 3 arguments.
+ * 
+ * To parse the argv/opts correctly for a give type (integer, floating point or
+ * string), some meta programming must be done to determine the type of
+ * the type, and use the correct parsing function accordingly.
+ * 
+ * The pseudo algorithm for determining the type of T and parse it accordingly
+ * is as follows:
+ * 
+ * if (T is integral type) {
+ *   if (T is unsigned) {
+ *     parse the argv/opt as an **unsigned integer** of type T.
+ *   } else {
+ *     parse the argv/opt as an **signed integer** of type T.
+ * } else {
+ *   if (T is floating point type) {
+ *     parse the argv/opt as an **floating point** of type T.
+ *   } else {
+ *     // T should be std::string
+ *     just the raw content of the argv/opts.
+ *   }
+ * }
+ * 
+ * To help with meta programming, some `opt` function with 2 or 3 arguments are
+ * defined.
+ * 
+ * Opt with 3 arguments:    T opt(true/false is_integral, true/false is_unsigned, index/key)
+ * 
+ *   + The first argument is for determining whether the type T is an integral
+ *   type. That is, the result of std::is_integral<T>() should be passed to
+ *   this argument. When false, the type _should_ be either floating point or a
+ *   std::string.
+ *   
+ *   + The second argument is for determining whether the signedness of the type
+ *   T (if it is unsigned or signed). That is, the result of
+ *   std::is_unsigned<T>() should be passed to this argument. This argument can
+ *   be ignored if the first one is false, because it only applies to integer.
+ *
+ * Opt with 2 arguments:    T opt(true/false is_floating_point, index/key)
+ *   + The first argument is for determining whether the type T is a floating
+ *   point type. That is, the result of std::is_floating_point<T>() should be
+ *   passed to this argument. When false, the type _should_ be a std::string.
+ */
+
 template<typename T>
-T opt(std::false_type, int index);
+T opt(std::false_type is_floating_point, int index);
 
 template<>
-std::string opt(std::false_type, int index) {
+std::string opt(std::false_type /*is_floating_point*/, int index) {
     return __testlib_indexToArgv(index);
 }
 
 template<typename T>
-T opt(std::true_type, int index) {
+T opt(std::true_type /*is_floating_point*/, int index) {
     return T(optValueToLongDouble(__testlib_indexToArgv(index)));
 }
 
 template<typename T, typename U>
-T opt(std::false_type, U, int index) {
+T opt(std::false_type /*is_integral*/, U /*is_unsigned*/, int index) {
     return opt<T>(std::is_floating_point<T>(), index);
 }
 
 template<typename T>
-T opt(std::true_type, std::false_type, int index) {
+T opt(std::true_type /*is_integral*/, std::false_type /*is_unsigned*/, int index) {
     return optValueToIntegral<T>(__testlib_indexToArgv(index), false);
 }
 
 template<typename T>
-T opt(std::true_type, std::true_type, int index) {
+T opt(std::true_type /*is_integral*/, std::true_type /*is_unsigned*/, int index) {
     return optValueToIntegral<T>(__testlib_indexToArgv(index), true);
 }
 
 template<>
-bool opt(std::true_type, std::true_type, int index) {
+bool opt(std::true_type /*is_integral*/, std::true_type /*is_unsigned*/, int index) {
     std::string value = __testlib_indexToArgv(index);
     if (value == "true" || value == "1")
         return true;
     if (value == "false" || value == "0")
         return false;
-    __testlib_fail("Opts: opt by index '" + toString(index) + "': expected bool true/false or 0/1 but '" + compress(value) + "' found");
+    __testlib_fail("Opts: opt by index '" + toString(index) + "': expected bool true/false or 0/1 but '"
+            + compress(value) + "' found");
 }
 
+/**
+ * Return the parsed argv by a given index.
+ */
 template<typename T>
 T opt(int index) {
     return opt<T>(std::is_integral<T>(), std::is_unsigned<T>(), index);
 }
 
+/**
+ * Return the raw string value of an argv by a given index.
+ */
 std::string opt(int index) {
     return opt<std::string>(index);
 }
 
+/**
+ * Return the parsed argv by a given index. If the index is bigger than
+ * the number of argv, return the given default_value.
+ */
 template<typename T>
-T opt(std::false_type, const std::string& key);
+T opt(int index, const T &default_value) {
+    if (index >= int(__testlib_argv.size())) {
+        return default_value;
+    }
+    return opt<T>(index);
+}
+
+/**
+ * Return the raw string value of an argv by a given index. If the index is
+ * bigger than the number of argv, return the given default_value.
+ */
+std::string opt(int index, const std::string &default_value) {
+    return opt<std::string>(index, default_value);
+}
+
+template<typename T>
+T opt(std::false_type is_floating_point, const std::string &key);
 
 template<>
-std::string opt(std::false_type, const std::string& key) {
+std::string opt(std::false_type /*is_floating_point*/, const std::string &key) {
     return __testlib_keyToOpts(key);
 }
 
 template<typename T>
-T opt(std::true_type, const std::string& key) {
+T opt(std::true_type /*is_integral*/, const std::string &key) {
     return T(optValueToLongDouble(__testlib_keyToOpts(key)));
 }
 
 template<typename T, typename U>
-T opt(std::false_type, U, const std::string& key) {
+T opt(std::false_type /*is_integral*/, U, const std::string &key) {
     return opt<T>(std::is_floating_point<T>(), key);
 }
 
 template<typename T>
-T opt(std::true_type, std::false_type, const std::string& key) {
+T opt(std::true_type /*is_integral*/, std::false_type /*is_unsigned*/, const std::string &key) {
     return optValueToIntegral<T>(__testlib_keyToOpts(key), false);
 }
 
 template<typename T>
-T opt(std::true_type, std::true_type, const std::string& key) {
+T opt(std::true_type /*is_integral*/, std::true_type /*is_unsigned*/, const std::string &key) {
     return optValueToIntegral<T>(__testlib_keyToOpts(key), true);
 }
 
 template<>
-bool opt(std::true_type, std::true_type, const std::string& key) {
+bool opt(std::true_type /*is_integral*/, std::true_type /*is_unsigned*/, const std::string &key) {
     if (!has_opt(key))
         return false;
     std::string value = __testlib_keyToOpts(key);
@@ -5125,16 +5753,321 @@ bool opt(std::true_type, std::true_type, const std::string& key) {
         return true;
     if (value == "false" || value == "0")
         return false;
-    __testlib_fail("Opts: key '" + compress(key) + "': expected bool true/false or 0/1 but '" + compress(value) + "' found");
+    __testlib_fail("Opts: key '" + compress(key) + "': expected bool true/false or 0/1 but '"
+        + compress(value) + "' found");
 }
 
+/**
+ * Return the parsed opt by a given key.
+ */
 template<typename T>
-T opt(const std::string key) {
+T opt(const std::string &key) {
     return opt<T>(std::is_integral<T>(), std::is_unsigned<T>(), key);
 }
 
-std::string opt(const std::string key) {
+/**
+ * Return the raw string value of an opt by a given key
+ */
+std::string opt(const std::string &key) {
     return opt<std::string>(key);
 }
+
+/* Scorer started. */
+
+enum TestResultVerdict {
+    SKIPPED,
+    OK,
+    WRONG_ANSWER,
+    RUNTIME_ERROR,
+    TIME_LIMIT_EXCEEDED,
+    IDLENESS_LIMIT_EXCEEDED,
+    MEMORY_LIMIT_EXCEEDED,
+    COMPILATION_ERROR,
+    CRASHED,
+    FAILED
+};
+
+std::string serializeVerdict(TestResultVerdict verdict) {
+    switch (verdict) {
+        case SKIPPED: return "SKIPPED";
+        case OK: return "OK";
+        case WRONG_ANSWER: return "WRONG_ANSWER";
+        case RUNTIME_ERROR: return "RUNTIME_ERROR";
+        case TIME_LIMIT_EXCEEDED: return "TIME_LIMIT_EXCEEDED";
+        case IDLENESS_LIMIT_EXCEEDED: return "IDLENESS_LIMIT_EXCEEDED";
+        case MEMORY_LIMIT_EXCEEDED: return "MEMORY_LIMIT_EXCEEDED";
+        case COMPILATION_ERROR: return "COMPILATION_ERROR";
+        case CRASHED: return "CRASHED";
+        case FAILED: return "FAILED";
+    }
+    throw "Unexpected verdict";
+}
+
+TestResultVerdict deserializeTestResultVerdict(std::string s) {
+    if (s == "SKIPPED")
+        return SKIPPED;
+    else if (s == "OK")
+        return OK;
+    else if (s == "WRONG_ANSWER")
+        return WRONG_ANSWER;
+    else if (s == "RUNTIME_ERROR")
+        return RUNTIME_ERROR;
+    else if (s == "TIME_LIMIT_EXCEEDED")
+        return TIME_LIMIT_EXCEEDED;
+    else if (s == "IDLENESS_LIMIT_EXCEEDED")
+        return IDLENESS_LIMIT_EXCEEDED;
+    else if (s == "MEMORY_LIMIT_EXCEEDED")
+        return MEMORY_LIMIT_EXCEEDED;
+    else if (s == "COMPILATION_ERROR")
+        return COMPILATION_ERROR;
+    else if (s == "CRASHED")
+        return CRASHED;
+    else if (s == "FAILED")
+        return FAILED;
+    ensuref(false, "Unexpected serialized TestResultVerdict");
+    // No return actually.
+    return FAILED;
+}
+
+struct TestResult {
+    int testIndex;
+    std::string testset;
+    std::string group;
+    TestResultVerdict verdict;
+    double points;
+    long long timeConsumed;
+    long long memoryConsumed;
+    std::string input;
+    std::string output;
+    std::string answer;
+    int exitCode;
+    std::string checkerComment;
+};
+
+std::string serializePoints(double points) {
+    if (std::isnan(points))
+        return "";
+    else {
+        char c[64];
+        snprintf(c, 64, "%.03lf", points);
+        return c;
+    }
+}
+
+double deserializePoints(std::string s) {
+    if (s.empty())
+        return std::numeric_limits<double>::quiet_NaN();
+    else {
+        double result;
+        ensuref(sscanf(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
+        return result;
+    }                                              
+}
+
+std::string escapeTestResultString(std::string s) {
+    std::string result;
+    for (size_t i = 0; i < s.length(); i++) {
+        if (s[i] == '\r')
+            continue;
+        if (s[i] == '\n') {
+            result += "\\n";
+            continue;
+        }
+        if (s[i] == '\\' || s[i] == ';')
+            result += '\\';
+        result += s[i];
+    }
+    return result;
+}
+
+std::string unescapeTestResultString(std::string s) {
+    std::string result;
+    for (size_t i = 0; i < s.length(); i++) {
+        if (s[i] == '\\' && i + 1 < s.length()) {
+            if (s[i + 1] == 'n') {
+                result += '\n';
+                i++;
+                continue;
+            } else if (s[i + 1] == ';' || s[i + 1] == '\\') {
+                result += s[i + 1];
+                i++;
+                continue;
+            }
+        }
+        result += s[i];
+    }
+    return result;
+}
+
+std::string serializeTestResult(TestResult tr) {
+    std::string result;
+    result += std::to_string(tr.testIndex);
+    result += ";";
+    result += escapeTestResultString(tr.testset);
+    result += ";";
+    result += escapeTestResultString(tr.group);
+    result += ";";
+    result += serializeVerdict(tr.verdict);
+    result += ";";
+    result += serializePoints(tr.points);
+    result += ";";
+    result += std::to_string(tr.timeConsumed);
+    result += ";";
+    result += std::to_string(tr.memoryConsumed);
+    result += ";";
+    result += escapeTestResultString(tr.input);
+    result += ";";
+    result += escapeTestResultString(tr.output);
+    result += ";";
+    result += escapeTestResultString(tr.answer);
+    result += ";";
+    result += std::to_string(tr.exitCode);
+    result += ";";
+    result += escapeTestResultString(tr.checkerComment);
+    return result;
+}
+
+TestResult deserializeTestResult(std::string s) {
+    std::vector<std::string> items;
+    std::string t;
+    for (size_t i = 0; i < s.length(); i++) {
+        if (s[i] == '\\') {
+            t += s[i];
+            if (i + 1 < s.length())
+                t += s[i + 1];
+            i++;
+            continue;
+        } else {
+            if (s[i] == ';') {
+                items.push_back(t);
+                t = "";
+            } else
+                t += s[i];
+        }
+    }
+    items.push_back(t);
+
+    ensuref(items.size() == 12, "Invalid TestResult serialization: expected exactly 12 items");
+    
+    TestResult tr;
+    size_t pos = 0;
+    tr.testIndex = stoi(items[pos++]);
+    tr.testset = unescapeTestResultString(items[pos++]);
+    tr.group = unescapeTestResultString(items[pos++]);
+    tr.verdict = deserializeTestResultVerdict(items[pos++]);
+    tr.points = deserializePoints(items[pos++]);
+    tr.timeConsumed = stoll(items[pos++]);
+    tr.memoryConsumed = stoll(items[pos++]);
+    tr.input = unescapeTestResultString(items[pos++]);
+    tr.output = unescapeTestResultString(items[pos++]);
+    tr.answer = unescapeTestResultString(items[pos++]);
+    tr.exitCode = stoi(items[pos++]);
+    tr.checkerComment = unescapeTestResultString(items[pos++]);
+    
+    return tr;
+}
+
+std::vector<TestResult> readTestResults(std::string fileName) {
+    std::ifstream stream;
+    stream.open(fileName.c_str(), std::ios::in);
+    ensuref(stream.is_open(), "Can't read test results file '%s'", fileName.c_str());
+    std::vector<TestResult> result;
+    std::string line;
+    while (getline(stream, line))
+        if (!line.empty())
+            result.push_back(deserializeTestResult(line));
+    stream.close();
+    return result;
+}
+
+std::function<double(std::vector<TestResult>)> __testlib_scorer;
+
+struct TestlibScorerGuard {
+    ~TestlibScorerGuard() {
+        if (testlibMode == _scorer) {
+            std::vector<TestResult> testResults;
+            while (!inf.eof()) {
+                std::string line = inf.readLine();
+                if (!line.empty())
+                    testResults.push_back(deserializeTestResult(line));
+            }
+            inf.readEof();
+            printf("%.3f\n", __testlib_scorer(testResults));
+        }
+    }
+} __testlib_scorer_guard;
+
+void registerScorer(int argc, char *argv[], std::function<double(std::vector<TestResult>)> scorer) {
+    /* Suppress unused. */
+    (void)(argc), (void)(argv);
+
+    __testlib_ensuresPreconditions();
+
+    testlibMode = _scorer;
+    __testlib_set_binary(stdin);
+
+    inf.init(stdin, _input);
+    inf.strict = false;
+
+    __testlib_scorer = scorer;
+}
+
+/* Scorer ended. */
+
+/**
+ * Return the parsed opt by a given key. If no opts with the given key are
+ * found, return the given default_value.
+ * 
+ * By calling this function, automatic ensurement for no unused opts will be
+ * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
+ * turn it off.
+ */
+template<typename T>
+T opt(const std::string &key, const T &default_value) {
+    if (!has_opt(key)) {
+        return default_value;
+    }
+    return opt<T>(key);
+}
+
+/**
+ * Return the raw string value of an opt by a given key. If no opts with the
+ * given key are found, return the given default_value.
+ * 
+ * By calling this function, automatic ensurement for no unused opts will be
+ * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
+ * turn it off.
+ */
+std::string opt(const std::string &key, const std::string &default_value) {
+    return opt<std::string>(key, default_value);
+}
+
+/**
+ * Check if all opts are used. If not, __testlib_fail is called.
+ * Should be used after calling all opt() function calls.
+ * 
+ * This function is useful when opt() with default_value for checking typos
+ * in the opt's key.
+ */
+void ensureNoUnusedOpts() {
+    for (const auto &opt: __testlib_opts) {
+        if (!opt.second.used) {
+            __testlib_fail(format("Opts: unused key '%s'", compress(opt.first).c_str()));
+        }
+    }
+}
+
+void suppressEnsureNoUnusedOpts() {
+    __testlib_ensureNoUnusedOptsSuppressed = true;
+}
+
+void TestlibFinalizeGuard::autoEnsureNoUnusedOpts() {
+    if (__testlib_ensureNoUnusedOptsFlag && !__testlib_ensureNoUnusedOptsSuppressed) {
+        ensureNoUnusedOpts();
+    }
+}
+
+TestlibFinalizeGuard testlibFinalizeGuard;
+
 #endif
 #endif
