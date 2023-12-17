@@ -90,12 +90,12 @@ class Polygon2Domjudge:
         raise ProcessError(msg)
 
     def __init__(self, package_dir, temp_dir, output_file,
-                 probid=DEFAULT_PROBID, color=DEFAULT_COLOR, validator_flags=[],
+                 short_name=DEFAULT_PROBID, color=DEFAULT_COLOR, validator_flags=[],
                  logger=None):
         self.logger = logger
 
         self.package_dir = package_dir
-        self.probid = probid
+        self.short_name = short_name
         self.color = color
         self.validator_flags = validator_flags
         self.temp_dir = temp_dir
@@ -126,7 +126,7 @@ class Polygon2Domjudge:
         self.debug('Add \'domjudge-problem.ini\':')
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
         ini_content = [
-            f'probid = {self.probid}',
+            f'short-name = {self.short_name}',
             f'timelimit = {self.timelimit}',
             f'color = {self.color}'
         ]
@@ -295,8 +295,7 @@ def main(args):
 
     package_dir = os.path.realpath(args.package)
     output_file = os.path.join(os.getcwd(), os.path.basename(package_dir))
-
-    probid = args.code if args.code else DEFAULT_PROBID
+    short_name = args.code if args.code else DEFAULT_PROBID
     color = args.color if args.color else DEFAULT_COLOR
 
     if args.output:
@@ -330,7 +329,7 @@ def main(args):
         print_info(package_dir, temp_dir, output_file)
         try:
             Polygon2Domjudge(package_dir, temp_dir, output_file,
-                             probid, color, validator_flags, logger).process()
+                             short_name, color, validator_flags, logger).process()
         except Exception as e:
             logger.error(format_exception(e))
             sys.exit(1)
