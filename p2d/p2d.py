@@ -104,18 +104,21 @@ class Polygon2Domjudge:
         self.debug('Parse \'problem.xml\':')
         xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
-        judging = root.find('judging')
-        testset = judging.find('testset')
-
-        self.name = root.find('names').find('name').attrib['value']
+        testset = root.find('judging/testset')
+        name = root.find('names/name[@language="english"]')
+        if name is None:
+            self.warning('No english name found.')
+            name = root.find('names/name')
+        self.language = name.attrib['language']
+        self.name = name.attrib['value']
         self.timelimit = int(testset.find('time-limit').text) / 1000.0
         self.memlimit = int(testset.find('memory-limit').text) // 1048576
-        self.checker = root.find('assets').find('checker')
-        self.interactor = root.find('assets').find('interactor')
+        self.checker = root.find('assets/checker')
+        self.interactor = root.find('assets/interactor')
         self.input_path_pattern = testset.find('input-path-pattern').text
         self.answer_path_pattern = testset.find('answer-path-pattern').text
         self.tests = []
-        for test in testset.find('tests').findall('test'):
+        for test in testset.findall('tests/test'):
             method = test.attrib['method']
             description = test.attrib.get('description', None)
             cmd = test.attrib.get('cmd', None)
@@ -195,12 +198,30 @@ class Polygon2Domjudge:
         ensure_dir(f'{self.temp_dir}/data')
         ensure_dir(f'{self.temp_dir}/data/sample')
         ensure_dir(f'{self.temp_dir}/data/secret')
+        sample_input_path_pattern = config['example_path_pattern']['input']
+        sample_output_path_pattern = config['example_path_pattern']['output']
+
+        def compare(src, dst):
+            s, t = os.path.basename(src), os.path.basename(dst)
+            self.debug(f'Compare {s} and {t}')
+            with open(src, 'r') as f1, open(dst, 'r') as f2:
+                if f1.read() != f2.read():
+                    self.warning(f'{s} and {t} are not the same, use {t}.')
 
         for idx, test in enumerate(self.tests, 1):
 
             input_src = f'{self.package_dir}/{self.input_path_pattern % idx}'
             output_src = f'{self.package_dir}/{self.answer_path_pattern % idx}'
-            if test.sample:
+            if test.sample and self.interactor is None:
+                # interactor can not support custom sample because DOMjudge always use sample input to test
+                sample_input_src = f'{self.package_dir}/statements/{self.language}/{sample_input_path_pattern % idx}'
+                sample_output_src = f'{self.package_dir}/statements/{self.language}/{sample_output_path_pattern % idx}'
+                if os.path.exists(sample_input_src):
+                    compare(input_src, sample_input_src)
+                    input_src = sample_input_src
+                if os.path.exists(sample_output_src):
+                    compare(output_src, sample_output_src)
+                    output_src = sample_output_src
                 input_dst = f'{self.temp_dir}/data/sample/{"%02d" % idx}.in'
                 output_dst = f'{self.temp_dir}/data/sample/{"%02d" % idx}.ans'
                 desc_dst = f'{self.temp_dir}/data/sample/{"%02d" % idx}.desc'
@@ -295,7 +316,6 @@ def main(args):
 
     package_dir = os.path.realpath(args.package)
     output_file = os.path.join(os.getcwd(), os.path.basename(package_dir))
-
     probid = args.code if args.code else DEFAULT_PROBID
     color = args.color if args.color else DEFAULT_COLOR
 
@@ -326,7 +346,7 @@ def main(args):
     if args.auto:
         validator_flags = ['__auto']
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(prefix='p2d-domjudge') as temp_dir:
         print_info(package_dir, temp_dir, output_file)
         try:
             Polygon2Domjudge(package_dir, temp_dir, output_file,
