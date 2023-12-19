@@ -28,5 +28,10 @@
         "MEMORY_LIMIT_EXCEEDED": "rum_time_error",
         "REJECTED": "run_time_error",
         "FAILED": "run_time_error"
+    },
+    "example_path_pattern": {
+        "input": "example.%02d",
+        "output": "example.%02d.a"
     }
+
 }
