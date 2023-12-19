@@ -25,7 +25,7 @@
  * Copyright (c) 2005-2023
  */
 
-#define VERSION "0.9.41-domjudge"
+#define VERSION "0.9.41-DOMJUDGE"
 
 /*
  * Mike Mirzayanov
@@ -3083,7 +3083,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
     }
 
     quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
-    std::fprintf(stderr, "\n");
+    // std::fprintf(stderr, "\n");
 
     inf.close();
     ouf.close();
@@ -3092,10 +3092,10 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
         tout.close();
 
     textColor(LightGray);
-
+/*
     if (resultName != "")
         std::fprintf(stderr, "See file to check exit message\n");
-
+*/
     halt(resultExitCode(result));
 }
 
