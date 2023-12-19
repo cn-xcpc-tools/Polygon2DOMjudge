@@ -1,6 +1,6 @@
-diff --git a/testlib.h.orig b/testlib.h
-index 8720bcb..eacc1c3 100644
---- a/testlib.h.orig
+diff --git a/testlib.h b/testlib.h
+index c45e320..17e39f2 100644
+--- a/testlib.h
 +++ b/testlib.h
 @@ -60,6 +60,8 @@
   *   Reads test from inf (mapped to args[1]), writes result to tout (mapped to argv[2],
@@ -11,7 +11,7 @@ index 8720bcb..eacc1c3 100644
   */
  
  const char *latestFeatures[] = {
-@@ -225,7 +227,7 @@ const char *latestFeatures[] = {
+@@ -234,7 +236,7 @@ const char *latestFeatures[] = {
  #   ifdef CONTESTER
  #       define OK_EXIT_CODE 0xAC
  #   else
@@ -20,7 +20,7 @@ index 8720bcb..eacc1c3 100644
  #   endif
  #endif
  
-@@ -235,7 +237,7 @@ const char *latestFeatures[] = {
+@@ -244,7 +246,7 @@ const char *latestFeatures[] = {
  #   elif defined(CONTESTER)
  #       define WA_EXIT_CODE 0xAB
  #   else
@@ -29,7 +29,7 @@ index 8720bcb..eacc1c3 100644
  #   endif
  #endif
  
-@@ -245,7 +247,7 @@ const char *latestFeatures[] = {
+@@ -254,7 +256,7 @@ const char *latestFeatures[] = {
  #   elif defined(CONTESTER)
  #       define PE_EXIT_CODE 0xAA
  #   else
@@ -38,7 +38,7 @@ index 8720bcb..eacc1c3 100644
  #   endif
  #endif
  
-@@ -263,7 +265,7 @@ const char *latestFeatures[] = {
+@@ -272,7 +274,7 @@ const char *latestFeatures[] = {
  #   ifdef EJUDGE
  #       define DIRT_EXIT_CODE 6
  #   else
@@ -47,7 +47,7 @@ index 8720bcb..eacc1c3 100644
  #   endif
  #endif
  
-@@ -272,7 +274,7 @@ const char *latestFeatures[] = {
+@@ -281,7 +283,7 @@ const char *latestFeatures[] = {
  #endif
  
  #ifndef UNEXPECTED_EOF_EXIT_CODE
@@ -56,9 +56,31 @@ index 8720bcb..eacc1c3 100644
  #endif
  
  #ifndef PC_BASE_EXIT_CODE
-@@ -4094,6 +4096,11 @@ void registerGen(int argc, char *argv[]) {
+@@ -3081,7 +3083,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
+     }
+ 
+     quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
+-    std::fprintf(stderr, "\n");
++    // std::fprintf(stderr, "\n");
+ 
+     inf.close();
+     ouf.close();
+@@ -3090,10 +3092,10 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
+         tout.close();
+ 
+     textColor(LightGray);
+-
++/*
+     if (resultName != "")
+         std::fprintf(stderr, "See file to check exit message\n");
+-
++*/
+     halt(resultExitCode(result));
  }
- #endif
+ 
+@@ -4496,6 +4498,11 @@ void setAppesModeEncoding(std::string appesModeEncoding) {
+     ::appesModeEncoding = appesModeEncoding;
+ }
  
 +std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemessage.txt") { // assume in linux
 +    if (dir.back() != '/') dir.push_back('/');
@@ -67,8 +89,8 @@ index 8720bcb..eacc1c3 100644
 +
  void registerInteraction(int argc, char *argv[]) {
      __testlib_ensuresPreconditions();
- 
-@@ -4102,24 +4109,26 @@ void registerInteraction(int argc, char *argv[]) {
+     __testlib_set_testset_and_group(argc, argv);
+@@ -4506,24 +4513,23 @@ void registerInteraction(int argc, char *argv[]) {
  
      if (argc > 1 && !strcmp("--help", argv[1]))
          __testlib_help();
@@ -81,33 +103,32 @@ index 8720bcb..eacc1c3 100644
      }
 -
 -    if (argc <= 4) {
+-        resultName = "";
 +*/
-+    if (argc == 3) {
-         resultName = "";
-         appesMode = false;
-     }
- 
--#ifndef EJUDGE
--    if (argc == 5) {
--        resultName = argv[4];
 +    if (argc == 4) {
 +        resultName = make_new_file_in_a_dir(argv[3]);
-+        tout.open(make_new_file_in_a_dir(argv[3], "teammessage.txt"), std::ios_base::out);
++        tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out);
 +        if (tout.fail() || !tout.is_open())
 +            quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
          appesMode = false;
      }
+ 
+ #ifndef EJUDGE
+-    if (argc == 5) {
+-        resultName = argv[4];
+-        appesMode = false;
+-    }
 -
 +/*
      if (argc == 6) {
          if (strcmp("-APPES", argv[5]) && strcmp("-appes", argv[5])) {
              quit(_fail, std::string("Program must be run with the following arguments: ") +
-@@ -4129,18 +4138,18 @@ void registerInteraction(int argc, char *argv[]) {
+@@ -4533,18 +4539,19 @@ void registerInteraction(int argc, char *argv[]) {
              appesMode = true;
          }
      }
--#endif
 +*/
+ #endif
  
      inf.init(argv[1], _input);
 -
@@ -126,7 +147,7 @@ index 8720bcb..eacc1c3 100644
      else
          ans.name = "unopened answer stream";
  }
-@@ -4258,23 +4267,25 @@ void registerTestlibCmd(int argc, char *argv[]) {
+@@ -4699,19 +4706,20 @@ void registerTestlibCmd(int argc, char *argv[]) {
      argc = int(args.size());
      if (argc > 1 && "--help" == args[1])
          __testlib_help();
@@ -137,36 +158,31 @@ index 8720bcb..eacc1c3 100644
                      std::string("[--testset testset] [--group group] <input-file> <output-file> <answer-file> [<report-file> [<-appes>]]") +
                      "\nUse \"--help\" to get help information");
      }
-+*/
-+    appesMode = false;
- 
--    if (argc == 4) {
-+    if (argc == 3) {
-         resultName = "";
-         appesMode = false;
-     }
- 
--    if (argc == 5) {
--        resultName = args[4];
-+    if (argc == 4) {
-+        resultName = make_new_file_in_a_dir(argv[3]);
-         appesMode = false;
-     }
 -
++*/
+     if (argc == 4) {
+-        resultName = "";
++        resultName = make_new_file_in_a_dir(args[3]);
+         appesMode = false;
+     }
+ 
+ #ifndef EJUDGE
 +/*
-     if (argc == 6) {
-         if ("-APPES" != args[5] && "-appes" != args[5]) {
-             quit(_fail, std::string("Program must be run with the following arguments: ") +
-@@ -4284,10 +4295,10 @@ void registerTestlibCmd(int argc, char *argv[]) {
+     if (argc == 5) {
+         resultName = args[4];
+         appesMode = false;
+@@ -4726,12 +4734,13 @@ void registerTestlibCmd(int argc, char *argv[]) {
              appesMode = true;
          }
      }
--
 +*/
+ #endif
+ 
      inf.init(args[1], _input);
 -    ouf.init(args[2], _output);
--    ans.init(args[3], _answer);
 +    ouf.init(stdin, _output);
+     ouf.skipBom();
+-    ans.init(args[3], _answer);
 +    ans.init(args[2], _answer);
  }
  
