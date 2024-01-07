@@ -1,23 +1,32 @@
 # Polygon2Domjudge
 
 ## 这是什么
+
 这是一个简单的将 polygon 题目包转换成 domjudge (kattis) 题目包的 python 脚本。
 
 ## 命令行使用示例
+
 ```bash
 # 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置 
 $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
 ```
+
 运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `probcode` 和 `color` 属性。
 
 ## 配置
+
 在 [config.json](config.json) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，并手动添加一些。
 
 你可以在命令行中使用 `--default` 参数，并添加自定义的参数，来强制使用 DOMJudge 默认的输出校验器。
 
-你可以在命令行中使用 `--auto` 参数来使用 DOMJudge 默认的输出校验器，如果 checker 在配置文件中被定义，能默认的输出校验器所替代。
+你可以在命令行中使用 `--auto` 参数来使用 DOMJudge 默认的输出校验器，如果 checker 在配置文件中被定义，则使用默认的输出校验器替代。
+
+你可以在命令行中使用 `--memory_limit` 参数来覆盖 DOMJudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
+
+你可以在命令行中使用 `--output_limit` 参数来覆盖 DOMJudge 题目包的输出限制，如果不设置，则使用 DOMJudge 设置中默认的输出限制。
 
 ## 环境变量
+
 某些时候可能会有用。但如果你不知道你在干啥，请不要随便修改。
 
 - `CONFIG_PATH`
