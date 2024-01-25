@@ -9,6 +9,7 @@
         "cubercsl",
         "Domjudge",
         "interactor",
+        "interactors",
         "memorylimit",
         "outputlimit",
         "pypi",
