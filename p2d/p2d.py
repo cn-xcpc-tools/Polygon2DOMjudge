@@ -22,8 +22,8 @@ from typing import Tuple, Dict
 
 config = {}
 START_OF_SUBPROCESS = '=' * 50
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent
-DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent.parent / 'asset'
+DEFAULT_ASSET_PATH = Path(__file__).resolve().parent.parent / 'asset'
+DEFAULT_TESTLIB_PATH = DEFAULT_ASSET_PATH
 DEFAULT_PROBID = 'PROB1'
 DEFAULT_COLOR = '#000000'
 
@@ -35,7 +35,7 @@ def format_exception(e: Exception):
     return ''.join(traceback.format_exception(type(e), e, e.__traceback__))
 
 
-config_file = Path(os.getenv('CONFIG_PATH', DEFAULT_CONFIG_PATH)) / 'config.json'
+config_file = Path(os.getenv('CONFIG_PATH', DEFAULT_ASSET_PATH)) / 'config.json'
 try:
     with open(config_file, 'r', encoding='utf-8') as f:
         config = json.load(f)
