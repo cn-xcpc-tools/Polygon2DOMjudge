@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "polygon2domjudge"
+name = "p2d"
 version = "0.1.0"
 description = "Simple python script converting polygon package to domjudge(kattis) package"
 authors = ["Cubercsl <hi@cubercsl.site>"]
@@ -26,3 +26,8 @@ autopep8 = "^2.0.4"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry_bumpversion.replacements]]
+files = ["p2d/__init__.py"]
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
