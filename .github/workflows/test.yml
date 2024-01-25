@@ -32,7 +32,8 @@ jobs:
 
       - name: Lint
         run: |
-          autopep8 --recursive --diff --exit-code ./p2d
+          cd p2d
+          autopep8 --recursive --diff --exit-code ./
 
       - name: Build
         run: |
