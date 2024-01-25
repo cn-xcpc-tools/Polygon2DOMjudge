@@ -30,7 +30,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-my_package_cli = 'p2d.p2d:main'
+p2d = 'p2d.p2d:main'
 
 [[tool.poetry_bumpversion.replacements]]
 files = ["p2d/__init__.py"]
