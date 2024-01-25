@@ -30,10 +30,10 @@ jobs:
           poetry --version
           poetry install
 
-    #   - name: Lint
-    #     run: |
-    #       cd p2d
-    #       autopep8 --recursive --diff --exit-code ./
+      - name: Lint
+        run: |
+          cd p2d
+          poetry autopep8 --recursive --diff --exit-code ./
 
       - name: Build
         run: |
