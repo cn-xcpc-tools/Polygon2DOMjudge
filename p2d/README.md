@@ -52,3 +52,19 @@ with tempfile.TemporaryDirectory() as temp_dir:
         # do something
         pass
 ```
+
+## Development
+
+```bash
+# install
+poetry install
+
+# build
+poetry build
+
+# run unittest
+poetry run pytest
+
+# release
+./release.sh ${your version}
+```

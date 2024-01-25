@@ -21,6 +21,7 @@
         "outputlimit",
         "pypi",
         "pyright",
+        "pytest",
         "testlib",
         "testset",
         "timelimit"
