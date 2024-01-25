@@ -40,13 +40,11 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd p2d
           poetry --version
           poetry install
 
       - name: Build
         run: |
-          cd p2d
           poetry build
 
       - name: Publish

@@ -13,6 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+include = ["./asset", "./bin"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -27,6 +28,9 @@ poetry-bumpversion = "^0.3.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+my_package_cli = 'p2d.p2d:main'
 
 [[tool.poetry_bumpversion.replacements]]
 files = ["p2d/__init__.py"]

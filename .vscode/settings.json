@@ -8,9 +8,6 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.autopep8"
     },
-    "python.analysis.extraPaths": [
-        "./p2d"
-    ],
     "cSpell.words": [
         "cubercsl",
         "Domjudge",
