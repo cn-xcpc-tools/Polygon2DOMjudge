@@ -1,2 +1,2 @@
-recursive-include asset/
-recursive-include testlib/
+include asset/*
+include testlib/*
