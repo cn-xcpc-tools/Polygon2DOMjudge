@@ -22,8 +22,8 @@ from typing import Tuple, Dict
 
 config = {}
 START_OF_SUBPROCESS = '=' * 50
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / '../'
-DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent / '../asset'
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent
+DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent.parent / 'asset'
 DEFAULT_PROBID = 'PROB1'
 DEFAULT_COLOR = '#000000'
 
