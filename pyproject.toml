@@ -18,7 +18,16 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-include = ["./asset", "./testlib", "./MANIFEST.in"]
+include = [
+    { path = "./asset/*", format = [
+        "sdist",
+        "wheel",
+    ] },
+    { path = "./testlib/*", format = [
+        "sdist",
+        "wheel",
+    ] },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
