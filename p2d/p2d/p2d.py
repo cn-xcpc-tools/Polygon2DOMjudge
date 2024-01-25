@@ -60,7 +60,7 @@ class ProcessError(Exception):
     pass
 
 
-class Polygon2Domjudge:
+class Polygon2DOMjudge:
     class Test:
         def __init__(self, method, description=None, cmd=None, sample=False):
             self.method = method
@@ -361,7 +361,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='p2d-domjudge') as temp_dir:
         print_info(package_dir, temp_dir, output_file)
         try:
-            problem = Polygon2Domjudge(package_dir, temp_dir, output_file,
+            problem = Polygon2DOMjudge(package_dir, temp_dir, output_file,
                                        short_name, color, tuple(validator_flags), logger)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:

@@ -1,4 +1,4 @@
-# Polygon2Domjudge
+# Polygon2DOMjudge
 
 [中文](README.cn.md)
 
@@ -40,14 +40,14 @@ Don't change them unless you know what you are doing.
 ```python
 import tempfile
 
-from p2d import Polygon2Domjudge
+from p2d import Polygon2DOMjudge
 
 package_dir = '/path/to/polygon-package'
 output_file = '/path/to/domjudge-package.zip'
 
 with tempfile.TemporaryDirectory() as temp_dir:
     try:
-        Polygon2Domjudge(package_dir, temp_dir, output_file).process()
+        Polygon2DOMjudge(package_dir, temp_dir, output_file).process()
     except Exception as e:
         # do something
         pass
