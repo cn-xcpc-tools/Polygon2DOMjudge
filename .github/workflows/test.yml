@@ -33,7 +33,7 @@ jobs:
       - name: Lint
         run: |
           cd p2d
-          poetry autopep8 --recursive --diff --exit-code ./
+          poetry run autopep8 --recursive --diff --exit-code ./
 
       - name: Build
         run: |
