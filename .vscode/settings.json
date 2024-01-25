@@ -6,7 +6,15 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "cSpell.words": [
+        "cubercsl",
+        "Domjudge",
+        "interactor",
+        "memorylimit",
+        "outputlimit",
         "pypi",
-        "pyright"
+        "pyright",
+        "testlib",
+        "testset",
+        "timelimit"
     ],
 }

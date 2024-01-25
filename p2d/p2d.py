@@ -141,7 +141,7 @@ class Polygon2Domjudge:
             if self.outputlimit > 0:
                 yaml_content['limits']['output'] = self.outputlimit
 
-        checker_name = self.checker.attrib.get('name', 'unkown')
+        checker_name = self.checker.attrib.get('name', 'unknown')
         if '__auto' in self.validator_flags and checker_name.startswith('std::'):
             validator_flags = config['flag'].get(checker_name.lstrip('std::'), ())
         if '__default' in self.validator_flags:
@@ -178,7 +178,7 @@ class Polygon2Domjudge:
                 shutil.copyfile(checker_file, checker_dir / 'checker.cpp')
             else:
                 self.error('No checker found.')
-        
+
         with open(yaml_file, 'w') as f:
             yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
@@ -309,7 +309,7 @@ def main():
     parser.add_argument('--output_limit', type=int, help='output limit override for domjudge (in MB), -1 means use domjudge default', default=-1)
     args = parser.parse_args()
 
-    logging.basicConfig(level=getattr(logging, args.log_level.upper(), None), 
+    logging.basicConfig(level=getattr(logging, args.log_level.upper(), None),
         format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
