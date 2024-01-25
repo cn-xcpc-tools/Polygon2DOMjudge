@@ -23,7 +23,7 @@ from typing import Tuple, Dict
 config = {}
 START_OF_SUBPROCESS = '=' * 50
 DEFAULT_ASSET_PATH = Path(__file__).resolve().parent.parent / 'asset'
-DEFAULT_TESTLIB_PATH = DEFAULT_ASSET_PATH
+DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent.parent / 'testlib'
 DEFAULT_PROBID = 'PROB1'
 DEFAULT_COLOR = '#000000'
 
