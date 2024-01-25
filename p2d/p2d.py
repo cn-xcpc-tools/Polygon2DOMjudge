@@ -9,10 +9,11 @@ import sys
 import tempfile
 import traceback
 import xml.etree.ElementTree
+
 try:
     import yaml
 except ImportError:
-    print('Can not import yaml, please install it first via pip or package manager of your distribution.')
+    print('Can not import yaml, please install PyYaml first via pip or package manager of your distribution.')
     sys.exit(1)
 
 from pathlib import Path
@@ -148,7 +149,7 @@ class Polygon2Domjudge:
         if '__default' in self.validator_flags:
             validator_flags = tuple(filter(lambda x: not x.startswith('__'), self.validator_flags))
 
-        yaml_file = self.temp_dir /'problem.yaml'
+        yaml_file = self.temp_dir / 'problem.yaml'
         output_validators_dir = self.temp_dir / 'output_validators'
         checker_dir = output_validators_dir / 'checker'
         interactor_dir = output_validators_dir / 'interactor'
@@ -199,33 +200,32 @@ class Polygon2Domjudge:
 
         for idx, test in enumerate(self.tests, 1):
 
-            input_src = self.package_dir  / (self.input_path_pattern % idx)
+            input_src = self.package_dir / (self.input_path_pattern % idx)
             output_src = self.package_dir / (self.answer_path_pattern % idx)
             if test.sample and self.interactor is None:
                 # interactor can not support custom sample because DOMjudge always use sample input to test
-                sample_input_src = self.package_dir/ 'statements' / self.language / (sample_input_path_pattern % idx)
-                sample_output_src = self.package_dir/ 'statements' / self.language / (sample_output_path_pattern % idx)
+                sample_input_src = self.package_dir / 'statements' / self.language / (sample_input_path_pattern % idx)
+                sample_output_src = self.package_dir / 'statements' / self.language / (sample_output_path_pattern % idx)
                 if sample_input_src.exists():
                     compare(input_src, sample_input_src)
                     input_src = sample_input_src
                 if sample_output_src.exists():
                     compare(output_src, sample_output_src)
                     output_src = sample_output_src
-                input_dst = self.temp_dir / 'data'/ 'sample'/ f'{"%02d" % idx}.in'
-                output_dst = self.temp_dir/ 'data' / 'sample' / f'{"%02d" % idx}.ans'
+                input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
+                output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.desc'
                 self.info(f'* sample: {"%02d" % idx}.(in/ans) {test.method}')
             else:
-                input_dst = self.temp_dir /'data' / 'secret' / f'{"%02d" % idx}.in'
-                output_dst = self.temp_dir/'data' / 'secret' / f'{"%02d" % idx}.ans'
-                desc_dst = self.temp_dir /'data' / 'secret' / f'{"%02d" % idx}.desc'
+                input_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.in'
+                output_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.ans'
+                desc_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.desc'
                 self.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
             if self.outputlimit > 0 and output_src.stat().st_size > self.outputlimit * 1048576:
                 self.warning(f'Output file {output_src.name} is exceed the output limit.')
 
             shutil.copyfile(input_src, input_dst)
             shutil.copyfile(output_src, output_dst)
-
 
             desc = []
             if test.description is not None:
@@ -306,12 +306,12 @@ def main():
     parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
     parser.add_argument('--float_absolute_tolerance', type=str, help='float_absolute_tolerance flag')
     parser.add_argument('--float_tolerance', type=str, help='float_tolerance flag')
-    parser.add_argument('--memory_limit', type=int, help='memory limit override for domjudge (in MB), -1 means use domjudge default') # default use polygon default
+    parser.add_argument('--memory_limit', type=int, help='memory limit override for domjudge (in MB), -1 means use domjudge default')  # default use polygon default
     parser.add_argument('--output_limit', type=int, help='output limit override for domjudge (in MB), -1 means use domjudge default', default=-1)
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), None),
-        format='%(asctime)s - %(levelname)s - %(message)s')
+                        format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
     def print_info(package_dir, temp_dir, output_file):
@@ -362,7 +362,7 @@ def main():
         print_info(package_dir, temp_dir, output_file)
         try:
             problem = Polygon2Domjudge(package_dir, temp_dir, output_file,
-                                        short_name, color, tuple(validator_flags), logger)
+                                       short_name, color, tuple(validator_flags), logger)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:
                 problem.memorylimit = args.memory_limit

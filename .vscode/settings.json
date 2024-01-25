@@ -5,6 +5,9 @@
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8"
+    },
     "cSpell.words": [
         "cubercsl",
         "Domjudge",

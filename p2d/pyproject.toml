@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "polygon2domjudge"
+version = "0.1.0"
+description = "Simple python script converting polygon package to domjudge(kattis) package"
+authors = ["Cubercsl <hi@cubercsl.site>"]
+readme = "README.md"
+classifiers = [
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pyyaml = "^6.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+autopep8 = "^2.0.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
