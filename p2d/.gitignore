@@ -5,3 +5,6 @@ tmp/*
 
 __pycache__/
 .pytest_cache/
+
+!/test/test_data/*
+/test/test_output

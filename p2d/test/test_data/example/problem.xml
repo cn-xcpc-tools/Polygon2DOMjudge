@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<problem revision="7" short-name="little-h-reboot" url="https://polygon.codeforces.com/p2e3I1Z/Dup4/little-h-reboot">
+        
+    <names>
+                
+        <name language="chinese" value="小 H 的重启"/>
+                
+        <name language="english" value="Little H And Reboot"/>
+            
+    </names>
+        
+    <statements>
+                
+        <statement charset="UTF-8" language="chinese" mathjax="true" path="statements/chinese/problem.tex" type="application/x-tex"/>
+                
+        <statement charset="UTF-8" language="english" mathjax="true" path="statements/english/problem.tex" type="application/x-tex"/>
+                
+        <statement charset="UTF-8" language="chinese" mathjax="true" path="statements/.html/chinese/problem.html" type="text/html"/>
+                
+        <statement charset="UTF-8" language="english" mathjax="true" path="statements/.html/english/problem.html" type="text/html"/>
+                
+        <statement language="chinese" path="statements/.pdf/chinese/problem.pdf" type="application/pdf"/>
+                
+        <statement language="english" path="statements/.pdf/english/problem.pdf" type="application/pdf"/>
+            
+    </statements>
+        
+    <judging cpu-name="Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz" cpu-speed="3600" input-file="" output-file="">
+                
+        <testset name="tests">
+                        
+            <time-limit>5000</time-limit>
+                        
+            <memory-limit>268435456</memory-limit>
+                        
+            <test-count>15</test-count>
+                        
+            <input-path-pattern>tests/%02d</input-path-pattern>
+                        
+            <answer-path-pattern>tests/%02d.a</answer-path-pattern>
+                        
+            <tests>
+                                
+                <test description="File &quot;01&quot;" method="manual" sample="true"/>
+                                
+                <test description="File &quot;02&quot;" method="manual"/>
+                                
+                <test description="File &quot;03&quot;" method="manual"/>
+                                
+                <test description="File &quot;04&quot;" method="manual"/>
+                                
+                <test description="File &quot;05&quot;" method="manual"/>
+                                
+                <test description="File &quot;06&quot;" method="manual"/>
+                                
+                <test description="File &quot;07&quot;" method="manual"/>
+                                
+                <test description="File &quot;08&quot;" method="manual"/>
+                                
+                <test description="File &quot;09&quot;" method="manual"/>
+                                
+                <test description="File &quot;10&quot;" method="manual"/>
+                                
+                <test description="File &quot;11&quot;" method="manual"/>
+                                
+                <test description="File &quot;12&quot;" method="manual"/>
+                                
+                <test description="File &quot;13&quot;" method="manual"/>
+                                
+                <test description="File &quot;14&quot;" method="manual"/>
+                                
+                <test description="File &quot;15&quot;" method="manual"/>
+                            
+            </tests>
+                    
+        </testset>
+            
+    </judging>
+        
+    <files>
+                
+        <resources>
+                        
+            <file path="files/olymp.sty"/>
+                        
+            <file path="files/problem.tex"/>
+                        
+            <file path="files/statements.ftl"/>
+                        
+            <file path="files/testlib.h" type="h.g++"/>
+                    
+        </resources>
+                
+        <executables>
+                        
+            <executable>
+                                
+                <source path="files/checker.cpp" type="cpp.g++17"/>
+                            
+            </executable>
+                        
+            <executable>
+                                
+                <source path="files/validator5.cpp" type="cpp.g++17"/>
+                            
+            </executable>
+                    
+        </executables>
+            
+    </files>
+        
+    <assets>
+                
+        <checker name="std::rcmp4.cpp" type="testlib">
+                        
+            <source path="files/check.cpp" type="cpp.g++17"/>
+                        
+            <copy path="check.cpp"/>
+                        
+            <testset>
+                                
+                <test-count>0</test-count>
+                                
+                <input-path-pattern>files/tests/checker-tests/%02d</input-path-pattern>
+                                
+                <output-path-pattern>files/tests/checker-tests/%02d.o</output-path-pattern>
+                                
+                <answer-path-pattern>files/tests/checker-tests/%02d.a</answer-path-pattern>
+                                
+                <tests/>
+                            
+            </testset>
+                    
+        </checker>
+                
+        <validators>
+                        
+            <validator>
+                                
+                <source path="files/validator5.cpp" type="cpp.g++17"/>
+                                
+                <testset>
+                                        
+                    <test-count>0</test-count>
+                                        
+                    <input-path-pattern>files/tests/validator-tests/%02d</input-path-pattern>
+                                        
+                    <tests/>
+                                    
+                </testset>
+                            
+            </validator>
+                    
+        </validators>
+                
+        <solutions>
+                        
+            <solution tag="main">
+                                
+                <source path="solutions/std.cpp" type="cpp.g++17"/>
+                            
+            </solution>
+                        
+            <solution tag="rejected">
+                                
+                <source path="solutions/wrong.cpp" type="cpp.g++17"/>
+                            
+            </solution>
+                    
+        </solutions>
+            
+    </assets>
+        
+    <properties>
+                
+        <property name="tests-wellformed" value="true"/>
+            
+    </properties>
+        
+    <stresses>
+                
+        <stress-count>0</stress-count>
+                
+        <stress-path-pattern>stresses/%03d</stress-path-pattern>
+                
+        <list/>
+            
+    </stresses>
+    
+</problem>
