@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "p2d"
-version = "0.0.7"
+version = "0.0.8"
 description = "Simple python script converting polygon package to domjudge(kattis) package"
 authors = ["Cubercsl <hi@cubercsl.site>"]
 maintainers = ["Cubercsl <hi@cubercsl.site>", "Dup4 <hi@dup4.com>"]
@@ -18,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-include = ["./asset", "./testlib"]
+include = ["./asset", "./testlib", "./MANIFEST.in"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
