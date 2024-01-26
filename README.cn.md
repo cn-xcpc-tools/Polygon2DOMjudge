@@ -1,13 +1,19 @@
-# Polygon2Domjudge
+# Polygon2DOMjudge
 
 ## 这是什么
 
 这是一个简单的将 polygon 题目包转换成 domjudge (kattis) 题目包的 python 脚本。
 
+## 安装
+
+```bash
+pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
+```
+
 ## 命令行使用示例
 
 ```bash
-# 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置 
+# 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
 $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
 ```
 
@@ -31,22 +37,38 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
-- `EXTENTION_FOR_DESC`
+- `EXTENSION_FOR_DESC`
 
 ## API 使用示例
 
 ```python
 import tempfile
 
-from p2d import Polygon2Domjudge
+from p2d import Polygon2DOMjudge
 
 package_dir = '/path/to/polygon-package'
 output_file = '/path/to/domjudge-package.zip'
 
 with tempfile.TemporaryDirectory() as temp_dir:
     try:
-        Polygon2Domjudge(package_dir, temp_dir, output_file).process()
+        Polygon2DOMjudge(package_dir, temp_dir, output_file).process()
     except Exception as e:
         # do something
         pass
+```
+
+## 开发
+
+```bash
+# install
+poetry install
+
+# build
+poetry build
+
+# run unittest
+poetry run pytest
+
+# release
+./release.sh ${your version}
 ```
