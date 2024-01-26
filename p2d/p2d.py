@@ -210,7 +210,7 @@ class Polygon2DOMjudge:
                 if self.replace_sample and sample_input_src.exists():
                     compare(input_src, sample_input_src)
                     input_src = sample_input_src
-                if self.replce_sample and sample_output_src.exists():
+                if self.replace_sample and sample_output_src.exists():
                     compare(output_src, sample_output_src)
                     output_src = sample_output_src
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
