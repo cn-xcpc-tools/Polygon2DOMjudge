@@ -10,6 +10,8 @@ import tempfile
 import traceback
 import xml.etree.ElementTree
 
+from . import __version__
+
 try:
     import yaml
 except ImportError:
@@ -317,6 +319,7 @@ def main():
     def print_info(package_dir, temp_dir, output_file):
         logger.info('This is p2d.py by cubercsl.')
         logger.info('Process Polygon Package to Domjudge Package.')
+        logger.info("Version: {}".format(__version__))
 
         if sys.platform.startswith('win'):
             logger.warning('It is not recommended running on windows.')
