@@ -76,7 +76,7 @@ poetry run pytest
 ./release.sh ${your version}
 ```
 
-[gh-test-badge]: https://github.com/cn-xcpc-tools/testlib-for-domjudge/actions/workflows/test.yml/badge.svg
-[gh-test]: https://github.com/cn-xcpc-tools/testlib-for-domjudge/actions/workflows/test.yml
-[gh-release-badge]: https://img.shields.io/github/release/cn-xcpc-tools/testlib-for-domjudge.svg
-[gh-release]: https://GitHub.com/cn-xcpc-tools/testlib-for-domjudge/releases/
+[gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg
+[gh-test]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml
+[gh-release-badge]: https://img.shields.io/github/release/cn-xcpc-tools/Polygon2DOMjudge.svg
+[gh-release]: https://GitHub.com/cn-xcpc-tools/Polygon2DOMjudge/releases/

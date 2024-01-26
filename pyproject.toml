@@ -5,9 +5,9 @@ description = "Simple python script converting polygon package to domjudge(katti
 authors = ["cubercsl <hi@cubercsl.site>"]
 maintainers = ["cubercsl <hi@cubercsl.site>", "Dup4 <hi@dup4.com>"]
 readme = ["README.md", "README.cn.md"]
-homepage = "https://github.com/cn-xcpc-tools/testlib-for-domjudge"
-repository = "https://github.com/cn-xcpc-tools/testlib-for-domjudge"
-documentation = "https://github.com/cn-xcpc-tools/testlib-for-domjudge"
+homepage = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
+repository = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
+documentation = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
 keywords = ["Polygon", "DOMjudge", "Kattis", "Codeforces"]
 classifiers = [
     "Topic :: Software Development :: Build Tools",
