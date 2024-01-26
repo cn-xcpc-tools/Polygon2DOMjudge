@@ -1,5 +1,8 @@
 # Polygon2DOMjudge
 
+[![Test][gh-test-badge]][gh-test]
+[![GitHub release][gh-release-badge]][gh-release]
+
 [中文](README.cn.md)
 
 ## What is this
@@ -74,3 +77,8 @@ poetry run pytest
 # release
 ./release.sh ${your version}
 ```
+
+[gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg
+[gh-test]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml
+[gh-release-badge]: https://img.shields.io/github/release/cn-xcpc-tools/Polygon2DOMjudge.svg
+[gh-release]: https://GitHub.com/cn-xcpc-tools/Polygon2DOMjudge/releases/
