@@ -30,7 +30,7 @@ DEFAULT_PROBID = 'PROB1'
 DEFAULT_COLOR = '#000000'
 
 testlib_path = (Path(os.getenv('TESTLIB_PATH', DEFAULT_TESTLIB_PATH)) / 'testlib.h').resolve()
-extention_for_desc = os.getenv('EXTENTION_FOR_DESC', '.desc')
+extension_for_desc = os.getenv('EXTENSION_FOR_DESC', '.desc')
 
 
 def format_exception(e: Exception):
@@ -269,7 +269,7 @@ class Polygon2DOMjudge:
                 self.error(f'The description file {desc} has error.')
             return result['File name'], result['Tag']
 
-        for desc in filter(lambda x: x.name.endswith(extention_for_desc), (self.package_dir / 'solutions').iterdir()):
+        for desc in filter(lambda x: x.name.endswith(extension_for_desc), (self.package_dir / 'solutions').iterdir()):
             solution, result = get_solution(desc)
             src = self.package_dir / 'solutions' / solution
             dst = self.temp_dir / 'submissions' / result / solution

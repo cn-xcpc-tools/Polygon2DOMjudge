@@ -37,7 +37,7 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
-- `EXTENTION_FOR_DESC`
+- `EXTENSION_FOR_DESC`
 
 ## API 使用示例
 

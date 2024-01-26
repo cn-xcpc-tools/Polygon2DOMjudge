@@ -39,7 +39,7 @@ Don't change them unless you know what you are doing.
 
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
-- `EXTENTION_FOR_DESC`
+- `EXTENSION_FOR_DESC`
 
 ## API Example
 
