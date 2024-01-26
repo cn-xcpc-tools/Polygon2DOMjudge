@@ -4,6 +4,12 @@
 
 这是一个简单的将 polygon 题目包转换成 domjudge (kattis) 题目包的 python 脚本。
 
+## 安装
+
+```bash
+pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
+```
+
 ## 命令行使用示例
 
 ```bash
