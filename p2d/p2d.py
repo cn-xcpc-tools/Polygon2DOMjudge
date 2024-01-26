@@ -87,7 +87,7 @@ class Polygon2DOMjudge:
 
     def __init__(self, package_dir: str | Path, temp_dir: str | Path, output_file: str | Path,
                  short_name=DEFAULT_PROBID, color=DEFAULT_COLOR,
-                 validator_flags=(),
+                 validator_flags=(), replace_sample=False,
                  logger=None) -> None:
         self.logger = logger
 
@@ -97,6 +97,7 @@ class Polygon2DOMjudge:
         self.validator_flags = validator_flags
         self.temp_dir = Path(temp_dir)
         self.output_file = Path(output_file)
+        self.replace_sample = replace_sample
 
         self.debug('Parse \'problem.xml\':')
         xml_file = f'{package_dir}/problem.xml'
@@ -206,10 +207,10 @@ class Polygon2DOMjudge:
                 # interactor can not support custom sample because DOMjudge always use sample input to test
                 sample_input_src = self.package_dir / 'statements' / self.language / (sample_input_path_pattern % idx)
                 sample_output_src = self.package_dir / 'statements' / self.language / (sample_output_path_pattern % idx)
-                if sample_input_src.exists():
+                if self.replace_sample and sample_input_src.exists():
                     compare(input_src, sample_input_src)
                     input_src = sample_input_src
-                if sample_output_src.exists():
+                if self.replace_sample and sample_output_src.exists():
                     compare(output_src, sample_output_src)
                     output_src = sample_output_src
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
@@ -294,8 +295,8 @@ class Polygon2DOMjudge:
 def main():
     parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
     parser.add_argument('package', type=Path, help='path of the polygon package')
-    parser.add_argument('--code', type=str, help='problem code for domjudge')
-    parser.add_argument('--color', type=str, help='problem color for domjudge (in RRGGBB format)')
+    parser.add_argument('--code', type=str, default=DEFAULT_PROBID, help='problem code for domjudge')
+    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color for domjudge (in RRGGBB format)')
     parser.add_argument('-l', '--log_level', default='info',
                         help='set log level (debug, info, warning, error, critical)')
     parser.add_argument('-o', '--output', type=Path, help='path of the output package')
@@ -306,8 +307,9 @@ def main():
     parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
     parser.add_argument('--float_absolute_tolerance', type=str, help='float_absolute_tolerance flag')
     parser.add_argument('--float_tolerance', type=str, help='float_tolerance flag')
+    parser.add_argument('--replace_sample', action='store_true', help='replace sample input and output if those in problem statement are different')
     parser.add_argument('--memory_limit', type=int, help='memory limit override for domjudge (in MB), -1 means use domjudge default')  # default use polygon default
-    parser.add_argument('--output_limit', type=int, help='output limit override for domjudge (in MB), -1 means use domjudge default', default=-1)
+    parser.add_argument('--output_limit', type=int, default=-1, help='output limit override for domjudge (in MB), -1 means use domjudge default')
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), None),
@@ -329,8 +331,9 @@ def main():
 
     package_dir = Path(args.package).resolve()
     output_file = Path.cwd() / package_dir.name
-    short_name = args.code if args.code else DEFAULT_PROBID
-    color = args.color if args.color else DEFAULT_COLOR
+    short_name = args.code
+    color = args.color
+    replace_sample = args.replace_sample
 
     if args.output:
         if Path(args.output).is_dir():
@@ -339,6 +342,10 @@ def main():
             output_file = Path(args.output.name.rstrip('.zip')).resolve()
 
     validator_flags = []
+
+    if args.auto and args.default:
+        logger.error('Can not use --auto and --default at the same time.')
+        sys.exit(1)
 
     if args.default:
         validator_flags = ['__default']
@@ -363,7 +370,7 @@ def main():
         print_info(package_dir, temp_dir, output_file)
         try:
             problem = Polygon2DOMjudge(package_dir, temp_dir, output_file,
-                                       short_name, color, tuple(validator_flags), logger)
+                                       short_name, color, tuple(validator_flags), replace_sample, logger)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:
                 problem.memorylimit = args.memory_limit
