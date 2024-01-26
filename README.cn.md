@@ -1,5 +1,8 @@
 # Polygon2DOMjudge
 
+[![Test][gh-test-badge]][gh-test]
+[![GitHub release][gh-release-badge]][gh-release]
+
 ## 这是什么
 
 这是一个简单的将 polygon 题目包转换成 domjudge (kattis) 题目包的 python 脚本。
@@ -72,3 +75,8 @@ poetry run pytest
 # release
 ./release.sh ${your version}
 ```
+
+[gh-test-badge]: https://github.com/cn-xcpc-tools/testlib-for-domjudge/actions/workflows/test.yml/badge.svg
+[gh-test]: https://github.com/cn-xcpc-tools/testlib-for-domjudge/actions/workflows/test.yml
+[gh-release-badge]: https://img.shields.io/github/release/cn-xcpc-tools/testlib-for-domjudge.svg
+[gh-release]: https://GitHub.com/cn-xcpc-tools/testlib-for-domjudge/releases/
