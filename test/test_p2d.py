@@ -1,10 +1,11 @@
-import tempfile
-from path import Path
-from p2d import __version__
-from p2d import Polygon2DOMjudge
 import os
 import shutil
 import zipfile
+import tempfile
+from path import Path
+
+from p2d import __version__
+from p2d import Polygon2DOMjudge
 
 
 def test_version():
