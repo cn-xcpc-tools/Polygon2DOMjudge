@@ -317,7 +317,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     def print_info(package_dir, temp_dir, output_file):
-        logger.info('This is p2d.py by cubercsl.')
+        logger.info('This is Polygon2DOMjudge by cubercsl.')
         logger.info('Process Polygon Package to Domjudge Package.')
         logger.info("Version: {}".format(__version__))
 
