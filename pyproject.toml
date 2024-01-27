@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "p2d"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple python script converting polygon package to domjudge(kattis) package"
 license = "MIT"
 authors = ["cubercsl <hi@cubercsl.site>"]
