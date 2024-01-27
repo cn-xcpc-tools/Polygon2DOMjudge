@@ -54,7 +54,7 @@ import tempfile
 from p2d import Polygon2DOMjudge
 
 package_dir = '/path/to/polygon-package'
-output_file = '/path/to/domjudge-package.zip'
+output_file = '/path/to/domjudge-package' # without '.zip' suffix
 
 with tempfile.TemporaryDirectory() as temp_dir:
     try:
