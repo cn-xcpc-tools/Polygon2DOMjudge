@@ -2,6 +2,7 @@
 name = "p2d"
 version = "0.1.0"
 description = "Simple python script converting polygon package to domjudge(kattis) package"
+license = "MIT"
 authors = ["cubercsl <hi@cubercsl.site>"]
 maintainers = ["cubercsl <hi@cubercsl.site>", "Dup4 <hi@dup4.com>"]
 readme = ["README.md", "README.cn.md"]
