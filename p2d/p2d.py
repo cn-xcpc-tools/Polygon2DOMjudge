@@ -1,20 +1,12 @@
-import argparse
 import json
-import logging
 import os
 import shutil
 import sys
-import tempfile
-import traceback
 import xml.etree.ElementTree
 
-from . import __version__
+import yaml
 
-try:
-    import yaml
-except ImportError:
-    print('Can not import yaml, please install PyYaml first via pip or package manager of your distribution.')
-    sys.exit(1)
+from . import __version__
 
 from pathlib import Path
 from typing import Tuple, Dict
@@ -24,16 +16,11 @@ config = {}
 START_OF_SUBPROCESS = '=' * 50
 DEFAULT_ASSET_PATH = Path(__file__).resolve().parent / 'asset'
 DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent / 'testlib'
-DEFAULT_PROBID = 'PROB1'
+DEFAULT_CODE = 'PROB1'
 DEFAULT_COLOR = '#000000'
 
 testlib_path = (Path(os.getenv('TESTLIB_PATH', DEFAULT_TESTLIB_PATH)) / 'testlib.h').resolve()
 extension_for_desc = os.getenv('EXTENSION_FOR_DESC', '.desc')
-
-
-def format_exception(e: Exception):
-    return ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-
 
 config_file = Path(os.getenv('CONFIG_PATH', DEFAULT_ASSET_PATH)) / 'config.json'
 try:
@@ -42,8 +29,8 @@ try:
 except FileNotFoundError:
     print('\'config.json\' not found!')
 except json.JSONDecodeError as e:
-    print(format_exception(e))
-    exit(1)
+    print('\'config.json\' has error!')
+    sys.exit(1)
 
 
 def ensure_dir(s: Path):
@@ -86,7 +73,7 @@ class Polygon2DOMjudge:
         raise ProcessError(msg)
 
     def __init__(self, package_dir: str | Path, temp_dir: str | Path, output_file: str | Path,
-                 short_name=DEFAULT_PROBID, color=DEFAULT_COLOR,
+                 short_name=DEFAULT_CODE, color=DEFAULT_COLOR,
                  validator_flags=(), replace_sample=False,
                  logger=None) -> None:
         self.logger = logger
@@ -281,95 +268,12 @@ class Polygon2DOMjudge:
         self.info(f'Make package {self.output_file.name}.zip success.')
 
     def process(self):
-        subprocess = (
+        subprocesses = (
             self._write_ini,
             self._write_yaml,
             self._add_tests,
             self._add_jury_solutions,
             self._archive
         )
-        for func in subprocess:
-            self.info(START_OF_SUBPROCESS)
-            func()
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
-    parser.add_argument('package', type=Path, help='path of the polygon package directory')
-    parser.add_argument('--code', type=str, default=DEFAULT_PROBID, help='problem short name in domjudge')
-    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color in domjudge (in RRGGBB format)')
-    parser.add_argument('-l', '--log-level', default='info',
-                        help='set log level (debug, info, warning, error, critical)')
-    parser.add_argument('-o', '--output', type=Path, help='path of the output package')
-    parser.add_argument('--default', action='store_true', help='force use the default output validator.')
-    parser.add_argument('--validator-flags', nargs='*', help='add some flags to the output validator, only works when "--default" is set.')
-    parser.add_argument('--auto', action='store_true', help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
-    parser.add_argument('--memory-limit', type=int,
-                        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')  # default use polygon default
-    parser.add_argument('--output-limit', type=int, default=-1,
-                        help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
-    parser.add_argument('--replace-sample', action='store_true',
-                        help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
-    args = parser.parse_args()
-
-    logging.basicConfig(level=getattr(logging, args.log_level.upper(), None),
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger(__name__)
-
-    def print_info(package_dir, temp_dir, output_file):
-        logger.info('This is Polygon2DOMjudge by cubercsl.')
-        logger.info('Process Polygon Package to Domjudge Package.')
-        logger.info("Version: {}".format(__version__))
-
-        if sys.platform.startswith('win'):
-            logger.warning('It is not recommended running on windows.')
-
-        logger.info(f'Package directory: {package_dir}')
-        logger.info(f'Temp directory: {temp_dir}')
-        logger.info(f'Output file: {output_file}.zip')
-        input("Press enter to continue...")
-
-    package_dir = Path(args.package).resolve()
-    output_file = Path.cwd() / package_dir.name
-    short_name = args.code
-    color = args.color
-    replace_sample = args.replace_sample
-
-    if args.output:
-        if Path(args.output).is_dir():
-            output_file = Path(args.output).resolve() / package_dir.name
-        else:
-            output_file = Path(args.output.name.rstrip('.zip')).resolve()
-
-    validator_flags = ()
-
-    if args.auto and args.default:
-        logger.error('Can not use --auto and --default at the same time.')
-        sys.exit(1)
-
-    if args.default:
-        validator_flags = ('__default') + tuple(args.validator_flags or ())
-    elif args.validator_flags:
-        logger.warning('You are not using default validation, validator flags will be ignored.')
-
-    if args.auto:
-        validator_flags = ('__auto')
-
-    with tempfile.TemporaryDirectory(prefix='p2d-domjudge') as temp_dir:
-        print_info(package_dir, temp_dir, output_file)
-        try:
-            problem = Polygon2DOMjudge(package_dir, temp_dir, output_file,
-                                       short_name, color, validator_flags, replace_sample, logger)
-            # memory_limit and output_limit can be override by command line
-            if args.memory_limit:
-                problem.memorylimit = args.memory_limit
-            if args.output_limit:
-                problem.outputlimit = args.output_limit
-            problem.process()
-        except Exception as e:
-            logger.error(format_exception(e))
-            sys.exit(1)
-
-
-if __name__ == '__main__':
-    main()
+        for subprocess in subprocesses:
+            subprocess()

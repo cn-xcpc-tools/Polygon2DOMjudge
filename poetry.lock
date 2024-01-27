@@ -30,6 +30,17 @@ pycodestyle = ">=2.10.0"
 tomli = {version = "*", markers = "python_version < \"3.11\""}
 
 [[package]]
+name = "betterlogging"
+version = "0.2.1"
+description = "My logging improvement"
+optional = false
+python-versions = "*"
+files = [
+    {file = "betterlogging-0.2.1-py3-none-any.whl", hash = "sha256:fc289ac94bf13b44286438d73edd0563f2259b681364f34eeeaff970fada46dd"},
+    {file = "betterlogging-0.2.1.tar.gz", hash = "sha256:e2bc423ba0e06c94dc90f5db06d2d8b656807e33fecd02c43af7175236849d34"},
+]
+
+[[package]]
 name = "build"
 version = "1.0.3"
 description = "A simple, correct Python build frontend"
@@ -1453,4 +1464,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "57d63f2dc8192506c3bc02333fd0c717f250511ced847d8cca0c5f2382f44ee0"
+content-hash = "634b3dbd9c34f16319aae5885f7e58ad3551713991d430c3f06e43bb31c122b7"
