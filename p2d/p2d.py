@@ -55,29 +55,10 @@ class Polygon2DOMjudge:
             self.cmd = cmd
             self.sample = sample
 
-    def debug(self, msg):
-        if self.logger is not None:
-            self.logger.debug(msg)
-
-    def info(self, msg):
-        if self.logger is not None:
-            self.logger.info(msg)
-
-    def warning(self, msg):
-        if self.logger is not None:
-            self.logger.warning(msg)
-
-    def error(self, msg):
-        if self.logger is not None:
-            self.logger.error(msg)
-        raise ProcessError(msg)
-
     def __init__(self, package_dir: str | Path, temp_dir: str | Path, output_file: str | Path,
                  short_name=DEFAULT_CODE, color=DEFAULT_COLOR,
                  validator_flags=(), replace_sample=False,
-                 logger=None) -> None:
-        self.logger = logger
-
+                 logger=None):
         self.package_dir = Path(package_dir)
         self.short_name = short_name
         self.color = color
@@ -86,13 +67,15 @@ class Polygon2DOMjudge:
         self.output_file = Path(output_file)
         self.replace_sample = replace_sample
 
-        self.debug('Parse \'problem.xml\':')
+        if logger is not None:
+            logger.debug('Parse \'problem.xml\':')
         xml_file = f'{package_dir}/problem.xml'
         root = xml.etree.ElementTree.parse(xml_file)
         testset = root.find('judging/testset')
         name = root.find('names/name[@language="english"]')
         if name is None:
-            self.warning('No english name found.')
+            if logger is not None:
+                logger.warning('No english name found.')
             name = root.find('names/name')
         self.language = name.attrib['language']
         self.name = name.attrib['value']
@@ -111,17 +94,29 @@ class Polygon2DOMjudge:
             sample = bool(test.attrib.get('sample', False))
             self.tests.append(self.Test(method, description, cmd, sample))
 
-    def _write_ini(self) -> None:
-        self.debug('Add \'domjudge-problem.ini\':')
+        self.logger = logger
+
+    def _write_ini(self, logger=None):
+        if logger is None:
+            logger = self.logger
+        if logger is not None:
+            logger.debug('Add \'domjudge-problem.ini\':')
+
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
         ini_content = (f'short-name = {self.short_name}', f'timelimit = {self.timelimit}', f'color = {self.color}')
         for line in ini_content:
-            self.info(line)
+            if logger is not None:
+                logger.info(line)
         with open(ini_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(ini_content) + '\n')
 
-    def _write_yaml(self) -> None:
-        self.debug('Add \'problem.yaml\':')
+        return self
+
+    def _write_yaml(self, logger=None):
+        if logger is None:
+            logger = self.logger
+        if logger is not None:
+            logger.debug('Add \'problem.yaml\':')
 
         yaml_file = self.temp_dir / 'problem.yaml'
         yaml_content = dict(name=self.name)
@@ -145,14 +140,16 @@ class Polygon2DOMjudge:
 
         if self.interactor is None and ('__auto' in self.validator_flags and checker_name.startswith('std::') or '__default' in self.validator_flags):
             # can not support both interactor and checker
-            self.info(f'Use std checker: {checker_name}')
+            if logger is not None:
+                logger.info(f'Use std checker: {checker_name}')
             yaml_content['validation'] = 'default'
             if validator_flags:
                 yaml_content['validator_flags'] = ' '.join(validator_flags)
         else:
             ensure_dir(output_validators_dir)
             if self.interactor is not None:
-                self.info('Use custom interactor.')
+                if logger is not None:
+                    logger.info('Use custom interactor.')
                 yaml_content['validation'] = 'custom interactive'
                 ensure_dir(interactor_dir)
                 shutil.copyfile(testlib_path, interactor_dir / 'testlib.h')
@@ -160,7 +157,8 @@ class Polygon2DOMjudge:
                 interactor_file = self.package_dir / interactor_path
                 shutil.copyfile(interactor_file, interactor_dir / 'interactor.cpp')
             elif self.checker is not None:
-                self.info('Use custom checker.')
+                if logger is not None:
+                    logger.info('Use custom checker.')
                 yaml_content['validation'] = 'custom'
                 ensure_dir(checker_dir)
                 shutil.copyfile(testlib_path, checker_dir / 'testlib.h')
@@ -168,13 +166,20 @@ class Polygon2DOMjudge:
                 checker_file = self.package_dir / checker_path
                 shutil.copyfile(checker_file, checker_dir / 'checker.cpp')
             else:
-                self.error('No checker found.')
+                if logger is not None:
+                    logger.error('No checker found.')
 
         with open(yaml_file, 'w') as f:
             yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
-    def _add_tests(self) -> None:
-        self.debug('Add tests:')
+        return self
+
+    def _add_tests(self, logger=None):
+        if logger is None:
+            logger = self.logger
+        if logger is not None:
+            logger.debug('Add tests:')
+
         ensure_dir(self.temp_dir / 'data' / 'sample')
         ensure_dir(self.temp_dir / 'data' / 'secret')
         sample_input_path_pattern = config['example_path_pattern']['input']
@@ -182,7 +187,8 @@ class Polygon2DOMjudge:
 
         def compare(src: Path, dst: Path):
             s, t = src.name, dst.name
-            self.debug(f'Compare {s} and {t}')
+            if logger is not None:
+                logger.debug(f'Compare {s} and {t}')
             with open(src, 'r') as f1, open(dst, 'r') as f2:
                 if f1.read() != f2.read():
                     self.warning(f'{s} and {t} are not the same, use {t}.')
@@ -204,12 +210,14 @@ class Polygon2DOMjudge:
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.desc'
-                self.info(f'* sample: {"%02d" % idx}.(in/ans) {test.method}')
+                if logger is not None:
+                    logger.info(f'* sample: {"%02d" % idx}.(in/ans) {test.method}')
             else:
                 input_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.desc'
-                self.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
+                if logger is not None:
+                    logger.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
             if self.outputlimit > 0 and output_src.stat().st_size > self.outputlimit * 1048576:
                 self.warning(f'Output file {output_src.name} is exceed the output limit.')
 
@@ -218,19 +226,27 @@ class Polygon2DOMjudge:
 
             desc = []
             if test.description is not None:
-                self.info(test.description)
+                if logger is not None:
+                    logger.info(test.description)
                 desc.append(test.description)
 
             if test.cmd is not None:
-                self.info(f'[GEN] {test.cmd}')
+                if logger is not None:
+                    logger.info(f'[GEN] {test.cmd}')
                 desc.append(f'[GEN] {test.cmd}')
 
             if desc:
                 with open(desc_dst, 'w', encoding='utf-8') as f:
                     f.write(f'{" ".join(desc)}\n')
 
-    def _add_jury_solutions(self) -> None:
-        self.debug('Add jury solutions:')
+            return self
+
+    def _add_jury_solutions(self, logger=None):
+        if logger is None:
+            logger = self.logger
+        if logger is not None:
+            logger.debug('Add jury solutions:')
+
         ensure_dir(self.temp_dir / 'submissions' / 'accepted')
         ensure_dir(self.temp_dir / 'submissions' / 'wrong_answer')
         ensure_dir(self.temp_dir / 'submissions' / 'time_limit_exceeded')
@@ -247,33 +263,38 @@ class Polygon2DOMjudge:
                     elif key == 'Tag':
                         try:
                             if value not in config['tag'].keys():
-                                self.error(f'Unknown tag: {value}')
+                                if logger is not None:
+                                    logger.error(f'Unknown tag: {value}')
                             result[key] = config['tag'][value]
                         except KeyError:
                             self.warning(f'Treat unknown tag \'{value}\' as \'accepted\'.')
                             result[key] = 'accepted'
             if not ('File name' in result.keys() and 'Tag' in result.keys()):
-                self.error(f'The description file {desc} has error.')
+                if logger is not None:
+                    logger.error(f'The description file {desc} has error.')
             return result['File name'], result['Tag']
 
         for desc in filter(lambda x: x.name.endswith(extension_for_desc), (self.package_dir / 'solutions').iterdir()):
             solution, result = get_solution(desc)
             src = self.package_dir / 'solutions' / solution
             dst = self.temp_dir / 'submissions' / result / solution
-            self.info(f'- {solution} (Expected Result: {result})')
+            if logger is not None:
+                logger.info(f'- {solution} (Expected Result: {result})')
             shutil.copyfile(src, dst)
+        return self
 
-    def _archive(self):
-        shutil.make_archive(self.output_file, 'zip', self.temp_dir, logger=self.logger)
-        self.info(f'Make package {self.output_file.name}.zip success.')
+    def _archive(self, logger=None):
+        if logger is None:
+            logger = self.logger
+
+        shutil.make_archive(self.output_file, 'zip', self.temp_dir, logger=logger)
+        if logger is not None:
+            logger.info(f'Make package {self.output_file.name}.zip success.')
+        return self
 
     def process(self):
-        subprocesses = (
-            self._write_ini,
-            self._write_yaml,
-            self._add_tests,
-            self._add_jury_solutions,
-            self._archive
-        )
-        for subprocess in subprocesses:
-            subprocess()
+        return self._write_ini() \
+            ._write_yaml() \
+            ._add_tests() \
+            ._add_jury_solutions() \
+            ._archive()
