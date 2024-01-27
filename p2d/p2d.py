@@ -127,10 +127,11 @@ class Polygon2DOMjudge:
     def _write_ini(self) -> None:
         self.debug('Add \'domjudge-problem.ini\':')
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
-        ini_content = f'short-name = {self.short_name}\ntimelimit = {self.timelimit}\ncolor = {self.color}'
-        self.info(ini_content)
+        ini_content = (f'short-name = {self.short_name}', f'timelimit = {self.timelimit}', f'color = {self.color}')
+        for line in ini_content:
+            self.info(line)
         with open(ini_file, 'w', encoding='utf-8') as f:
-            f.write(ini_content)
+            f.write('\n'.join(ini_content))
 
     def _write_yaml(self) -> None:
         self.debug('Add \'problem.yaml\':')
@@ -294,22 +295,21 @@ class Polygon2DOMjudge:
 
 def main():
     parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
-    parser.add_argument('package', type=Path, help='path of the polygon package')
-    parser.add_argument('--code', type=str, default=DEFAULT_PROBID, help='problem code for domjudge')
-    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color for domjudge (in RRGGBB format)')
-    parser.add_argument('-l', '--log_level', default='info',
+    parser.add_argument('package', type=Path, help='path of the polygon package directory')
+    parser.add_argument('--code', type=str, default=DEFAULT_PROBID, help='problem short name in domjudge')
+    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color in domjudge (in RRGGBB format)')
+    parser.add_argument('-l', '--log-level', default='info',
                         help='set log level (debug, info, warning, error, critical)')
     parser.add_argument('-o', '--output', type=Path, help='path of the output package')
-    parser.add_argument('--default', action='store_true', help='use default validation')
-    parser.add_argument('--auto', action='store_true', help='use default validation it can be replaced by the default one')
-    parser.add_argument('--case_sensitive', action='store_true', help='case_sensitive flag')
-    parser.add_argument('--space_change_sensitive', action='store_true', help='space_change_sensitive flag')
-    parser.add_argument('--float_relative_tolerance', type=str, help='float_relative_tolerance flag')
-    parser.add_argument('--float_absolute_tolerance', type=str, help='float_absolute_tolerance flag')
-    parser.add_argument('--float_tolerance', type=str, help='float_tolerance flag')
-    parser.add_argument('--replace_sample', action='store_true', help='replace sample input and output if those in problem statement are different')
-    parser.add_argument('--memory_limit', type=int, help='memory limit override for domjudge (in MB), -1 means use domjudge default')  # default use polygon default
-    parser.add_argument('--output_limit', type=int, default=-1, help='output limit override for domjudge (in MB), -1 means use domjudge default')
+    parser.add_argument('--default', action='store_true', help='force use the default output validator.')
+    parser.add_argument('--validator-flags', nargs='*', help='add some flags to the output validator, only works when "--default" is set.')
+    parser.add_argument('--auto', action='store_true', help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
+    parser.add_argument('--memory-limit', type=int,
+                        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')  # default use polygon default
+    parser.add_argument('--output-limit', type=int, default=-1,
+                        help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
+    parser.add_argument('--replace-sample', action='store_true',
+                        help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), None),
@@ -341,36 +341,25 @@ def main():
         else:
             output_file = Path(args.output.name.rstrip('.zip')).resolve()
 
-    validator_flags = []
+    validator_flags = ()
 
     if args.auto and args.default:
         logger.error('Can not use --auto and --default at the same time.')
         sys.exit(1)
 
     if args.default:
-        validator_flags = ['__default']
-        if args.case_sensitive:
-            validator_flags.append('case_sensitive')
-        if args.space_change_sensitive:
-            validator_flags.append('space_change_sensitive')
-        if args.float_relative_tolerance:
-            validator_flags.append('float_relative_tolerance')
-            validator_flags.append(args.float_relative_tolerance)
-        if args.float_absolute_tolerance:
-            validator_flags.append('float_absolute_tolerance')
-            validator_flags.append(args.float_absolute_tolerance)
-        if args.float_tolerance:
-            validator_flags.append('float_tolerance')
-            validator_flags.append(args.float_tolerance)
+        validator_flags = ('__default') + tuple(args.validator_flags or ())
+    elif args.validator_flags:
+        logger.warning('You are not using default validation, validator flags will be ignored.')
 
     if args.auto:
-        validator_flags = ['__auto']
+        validator_flags = ('__auto')
 
     with tempfile.TemporaryDirectory(prefix='p2d-domjudge') as temp_dir:
         print_info(package_dir, temp_dir, output_file)
         try:
             problem = Polygon2DOMjudge(package_dir, temp_dir, output_file,
-                                       short_name, color, tuple(validator_flags), replace_sample, logger)
+                                       short_name, color, validator_flags, replace_sample, logger)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:
                 problem.memorylimit = args.memory_limit
