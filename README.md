@@ -7,7 +7,7 @@
 
 ## What is this
 
-It is a simple python script converting polygon package to domjudge(kattis) package.
+It is a simple python script converting polygon package to DOMjudge (kattis) package.
 
 ## Install
 
@@ -22,19 +22,22 @@ pip install p2d
 $ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
 ```
 
-Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `probcode` and `color`.
+Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `code` and `color`.
+
+All available parameters are:
+
+- `--code`: problem short name in DOMjudge.
+- `--color`: problem color in DOMjudge.
+- `--default`: force use the default output validator.
+- `--validator-flags`: add some flags to the output validator, only works when `--default` is set.
+- `--auto`: use the default output validator if the checker is defined in config and can be replaced by the default one.
+- `--memory-limit`: override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package.
+- `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
+- `--replace-sample`: replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).
 
 ## Config
 
 In [config.json](config.json), you can change some special checker's validator's flag or add some checker configs manually.
-
-You can use `--default` to force use the default output validator, and add some flags by command line.
-
-You can use `--auto` to use the default output validator if the checker is defined in config and can be replaced by the default one.
-
-You can use `--memory_limit` to override the memory limit for domjudge package, default is using the memory limit defined in polygon package.
-
-You can use `--output_limit` to override the output limit for domjudge package, default is using the default output limit in domjudge setting.
 
 ## Environment Variable
 

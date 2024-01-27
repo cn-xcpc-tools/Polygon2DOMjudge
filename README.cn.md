@@ -5,7 +5,7 @@
 
 ## 这是什么
 
-这是一个简单的将 polygon 题目包转换成 domjudge (kattis) 题目包的 python 脚本。
+这是一个简单的将 polygon 题目包转换成 DOMjudge (kattis) 题目包的 python 脚本。
 
 ## 安装
 
@@ -20,19 +20,23 @@ pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
 $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
 ```
 
-运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `probcode` 和 `color` 属性。
+运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
+
+所有可用的命令行参数如下：
+
+- `--code`: 题目在 DOMjudge 中的 short name。
+- `--color`: 题目在 DOMjudge 中的颜色。
+- `--default`: 强制使用 DOMjudge 默认的输出校验器。
+- `--validator-flags`: 为输出校验器添加一些命令行参数，仅在 `--default` 被设置时生效。
+- `--auto`: 自动使用 DOMjudge 默认的输出校验器，即如果 checker 在配置文件中被定义，则使用默认的输出校验器与合适的命令行参数替代。
+- `--memory-limit`: 覆盖 DOMjudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
+- `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
+- `--replace-sample`: 替换样例输入输出，如果样例输入输出与题面中的样例输入输出不同，则使用题面中的样例输入输出替换（例如防止样例输出与正确解答的输出不同）。
 
 ## 配置
 
 在 [config.json](config.json) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，并手动添加一些。
 
-你可以在命令行中使用 `--default` 参数，并添加自定义的参数，来强制使用 DOMJudge 默认的输出校验器。
-
-你可以在命令行中使用 `--auto` 参数来使用 DOMJudge 默认的输出校验器，如果 checker 在配置文件中被定义，则使用默认的输出校验器替代。
-
-你可以在命令行中使用 `--memory_limit` 参数来覆盖 DOMJudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
-
-你可以在命令行中使用 `--output_limit` 参数来覆盖 DOMJudge 题目包的输出限制，如果不设置，则使用 DOMJudge 设置中默认的输出限制。
 
 ## 环境变量
 

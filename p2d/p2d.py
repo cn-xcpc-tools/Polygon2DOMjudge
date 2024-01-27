@@ -131,7 +131,7 @@ class Polygon2DOMjudge:
         for line in ini_content:
             self.info(line)
         with open(ini_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(ini_content))
+            f.write('\n'.join(ini_content) + '\n')
 
     def _write_yaml(self) -> None:
         self.debug('Add \'problem.yaml\':')
