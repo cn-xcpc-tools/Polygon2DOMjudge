@@ -10,7 +10,7 @@ from . import __version__
 from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR
 
 
-def main():
+def main(args=None) -> int:
 
     parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
     parser.add_argument('package', type=Path, help='path of the polygon package directory')
@@ -18,6 +18,8 @@ def main():
     parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color in domjudge (in RRGGBB format)')
     parser.add_argument('-l', '--log-level', default='info',
                         help='set log level (debug, info, warning, error, critical)')
+    parser.add_argument('-v', '--version', action='version', version=__version__)
+    parser.add_argument('-y', '--yes', action='store_true', help='skip confirmation')
     parser.add_argument('-o', '--output', type=Path, help='path of the output package')
     parser.add_argument('--default', action='store_true', help='force use the default output validator.')
     parser.add_argument('--validator-flags', nargs='*', help='add some flags to the output validator, only works when "--default" is set.')
@@ -28,12 +30,12 @@ def main():
                         help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
     parser.add_argument('--replace-sample', action='store_true',
                         help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     logging.basic_colorized_config(level=args.log_level.upper())
     logger = logging.getLogger(__name__)
 
-    def print_info(package_dir, temp_dir, output_file):
+    def print_info(package_dir, temp_dir, output_file, skip_confirmation=False):
         logger.info('This is Polygon2DOMjudge by cubercsl.')
         logger.info('Process Polygon Package to Domjudge Package.')
         logger.info("Version: {}".format(__version__))
@@ -44,7 +46,8 @@ def main():
         logger.info(f'Package directory: {package_dir}')
         logger.info(f'Temp directory: {temp_dir}')
         logger.info(f'Output file: {output_file}.zip')
-        input("Press enter to continue...")
+        if not skip_confirmation:
+            input("Press enter to continue...")
 
     with tempfile.TemporaryDirectory(prefix='p2d-polygon-') as polygon_temp_dir, \
             tempfile.TemporaryDirectory(prefix='p2d-domjudge-') as domjudge_temp_dir:
@@ -59,7 +62,7 @@ def main():
             logger.info(f'Using {package_dir}')
         else:
             logger.error(f'\'{package_dir}\' is not a file or directory.')
-            sys.exit(1)
+            return 1
 
         short_name: str = args.code
         color: str = args.color
@@ -76,13 +79,13 @@ def main():
 
         if Path(output_file.name + '.zip').resolve().exists():
             logger.error(f'\'{output_file}.zip\' already exists.')
-            sys.exit(1)
+            return 1
 
         validator_flags = ()
 
         if args.auto and args.default:
             logger.error('Can not use --auto and --default at the same time.')
-            sys.exit(1)
+            return 1
 
         if args.default:
             validator_flags = ('__default') + tuple(args.validator_flags or ())
@@ -92,7 +95,7 @@ def main():
         if args.auto:
             validator_flags = ('__auto')
 
-        print_info(package_dir, domjudge_temp_dir, output_file)
+        print_info(package_dir, domjudge_temp_dir, output_file, args.yes)
         try:
             problem = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file,
                                        short_name, color, validator_flags, replace_sample, logger)
@@ -104,8 +107,9 @@ def main():
             problem.process()
         except Exception as e:
             logger.exception(e)
-            sys.exit(1)
+            return 1
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
