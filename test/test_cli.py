@@ -158,3 +158,23 @@ def test_interaction():
     # make sure that interactor and testlib.h are copied
     assert (output_dir / 'output_validators' / 'interactor' / 'testlib.h').is_file()
     assert (output_dir / 'output_validators' / 'interactor' / 'interactor.cpp').is_file()
+
+
+def test_override():
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge', '--memory-limit', '-1', '--output-limit', '64' , '-y', 'example-polygon.zip')
+    test_output_dir, output_dir = run_cli_with_testcase('03_auto_validation', 'little-h-reboot-7$linux.zip', False, *args)
+    assert (test_output_dir / 'example-domjudge.zip').is_file()
+    assert (output_dir / 'domjudge-problem.ini').is_file()
+    assert (output_dir / 'problem.yaml').is_file()
+
+    with open(output_dir / 'domjudge-problem.ini', 'r') as f:
+        assert f.read() == 'short-name = A\ntimelimit = 5.0\ncolor = #FF0000\n'
+
+    with open(output_dir / 'problem.yaml', 'r') as f:
+        assert yaml.safe_load(f.read()) == {
+            'limits': {
+                'output': 64
+            },
+            'name': 'Little H And Reboot',
+            'validation': 'custom'
+        }
