@@ -161,7 +161,7 @@ def test_interaction():
 
 
 def test_override():
-    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge', '--memory-limit', '-1', '--output-limit', '64' , '-y', 'example-polygon.zip')
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge', '--memory-limit', '-1', '--output-limit', '64', '-y', 'example-polygon.zip')
     test_output_dir, output_dir = run_cli_with_testcase('05_override', 'little-h-reboot-7$linux.zip', False, *args)
     assert (test_output_dir / 'example-domjudge.zip').is_file()
     assert (output_dir / 'domjudge-problem.ini').is_file()
