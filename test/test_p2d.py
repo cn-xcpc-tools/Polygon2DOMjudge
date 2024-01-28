@@ -64,6 +64,9 @@ def test_normal():
     assert (output_dir / 'output_validators' / 'checker' / 'testlib.h').is_file()
     assert (output_dir / 'output_validators' / 'checker' / 'checker.cpp').is_file()
 
+    # make sure std.cpp is copied to correct solution directory
+    assert (output_dir / 'submissions' / 'accepted' / 'std.cpp').is_file()
+
 
 def test_auto_validation():
     test_output_dir, output_dir = run_p2d_with_testcase('02_auto_validation', 'little-h-reboot-7$linux.zip', 'A', '#FF0000', validator_flags=('__auto'))

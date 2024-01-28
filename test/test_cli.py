@@ -77,6 +77,9 @@ def test_normal_zip():
     assert (output_dir / 'data' / 'sample' / '01.in').is_file()
     assert (output_dir / 'data' / 'sample' / '01.ans').is_file()
 
+    # make sure std.cpp is copied to correct solution directory
+    assert (output_dir / 'submissions' / 'accepted' / 'std.cpp').is_file()
+
 
 def test_normal_dir():
     args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge.zip', '-y', 'example-polygon.zip')
@@ -100,6 +103,9 @@ def test_normal_dir():
     # make sure that sample data are copied
     assert (output_dir / 'data' / 'sample' / '01.in').is_file()
     assert (output_dir / 'data' / 'sample' / '01.ans').is_file()
+
+    # make sure std.cpp is copied to correct solution directory
+    assert (output_dir / 'submissions' / 'accepted' / 'std.cpp').is_file()
 
 
 def test_auto_validation():
