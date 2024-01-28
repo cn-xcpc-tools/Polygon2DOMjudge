@@ -1,20 +1,29 @@
+import contextlib
 import shutil
-import zipfile
-import tempfile
+import pytest
 import yaml
+import zipfile
+
+from os import chdir
 from pathlib import Path
 
-from p2d import __version__
-from p2d import Polygon2DOMjudge
+from p2d.cli import main
 
 
-def test_version():
-    assert len(__version__) > 0
+@contextlib.contextmanager
+def working_directory(path):
+    """Changes working directory and returns to previous on exit."""
+    prev_cwd = Path.cwd()
+    chdir(path)
+    try:
+        yield
+    finally:
+        chdir(prev_cwd)
 
 
-def run_p2d_with_testcase(name, test_case, *args, **kwargs):
+def run_cli_with_testcase(name, test_case, use_zip, *args):
     test_data_dir = Path(__file__).parent / 'test_data'
-    test_output_dir = Path(__file__).parent / 'test_output' / 'p2d' / name
+    test_output_dir = Path(__file__).parent / 'test_output' / 'cli' / name
     if test_output_dir.is_dir():
         shutil.rmtree(test_output_dir)
     test_output_dir.mkdir(parents=True, exist_ok=True)
@@ -23,13 +32,16 @@ def run_p2d_with_testcase(name, test_case, *args, **kwargs):
     target_polygon_package_zip = test_output_dir / 'example-polygon.zip'
     package_dir = test_output_dir / 'example-polygon'
     shutil.copyfile(polygon_package_zip, target_polygon_package_zip)
-    with zipfile.ZipFile(target_polygon_package_zip, 'r') as zip_ref:
-        zip_ref.extractall(package_dir)
 
-    output_file = test_output_dir / 'example-domjudge'
-    with tempfile.TemporaryDirectory(prefix='p2d-domjudge-test') as temp_dir:
-        p = Polygon2DOMjudge(package_dir, temp_dir, output_file, *args, **kwargs)
-        p.process()
+    if not use_zip:
+        with zipfile.ZipFile(target_polygon_package_zip, 'r') as zip_ref:
+            zip_ref.extractall(package_dir)
+
+    with working_directory(test_output_dir):
+        exit_code = main(list(args))
+
+    if exit_code != 0:
+        raise RuntimeError(f'Exit code is {exit_code}')
 
     output_dir = test_output_dir / 'example-domjudge'
     with zipfile.ZipFile(test_output_dir / 'example-domjudge.zip', 'r') as zip_ref:
@@ -37,8 +49,14 @@ def run_p2d_with_testcase(name, test_case, *args, **kwargs):
     return test_output_dir, output_dir
 
 
-def test_normal():
-    test_output_dir, output_dir = run_p2d_with_testcase('01_normal', 'little-h-reboot-7$linux.zip', 'A', '#FF0000')
+def test_fail():
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-polygon', '-y', 'example-polygon.zip')
+    pytest.raises(RuntimeError, run_cli_with_testcase, '00_fail', 'little-h-reboot-7$linux.zip', True, *args)
+
+
+def test_normal_zip():
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge.zip', '-y', 'example-polygon.zip')
+    test_output_dir, output_dir = run_cli_with_testcase('01_normal_zip', 'little-h-reboot-7$linux.zip', True, *args)
     assert (test_output_dir / 'example-domjudge.zip').is_file()
     assert (output_dir / 'domjudge-problem.ini').is_file()
     assert (output_dir / 'problem.yaml').is_file()
@@ -58,15 +76,35 @@ def test_normal():
     # make sure that sample data are copied
     assert (output_dir / 'data' / 'sample' / '01.in').is_file()
     assert (output_dir / 'data' / 'sample' / '01.ans').is_file()
-    assert (output_dir / 'data' / 'sample' / '01.desc').is_file()
 
-    # make sure that checker and testlib.h are copied
-    assert (output_dir / 'output_validators' / 'checker' / 'testlib.h').is_file()
-    assert (output_dir / 'output_validators' / 'checker' / 'checker.cpp').is_file()
+
+def test_normal_dir():
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge.zip', '-y', 'example-polygon.zip')
+    test_output_dir, output_dir = run_cli_with_testcase('01_normal_dir', 'little-h-reboot-7$linux.zip', False, *args)
+    assert (test_output_dir / 'example-domjudge.zip').is_file()
+    assert (output_dir / 'domjudge-problem.ini').is_file()
+    assert (output_dir / 'problem.yaml').is_file()
+
+    with open(output_dir / 'domjudge-problem.ini', 'r') as f:
+        assert f.read() == 'short-name = A\ntimelimit = 5.0\ncolor = #FF0000\n'
+
+    with open(output_dir / 'problem.yaml', 'r') as f:
+        assert yaml.safe_load(f.read()) == {
+            'limits': {
+                'memory': 256
+            },
+            'name': 'Little H And Reboot',
+            'validation': 'custom'
+        }
+
+    # make sure that sample data are copied
+    assert (output_dir / 'data' / 'sample' / '01.in').is_file()
+    assert (output_dir / 'data' / 'sample' / '01.ans').is_file()
 
 
 def test_auto_validation():
-    test_output_dir, output_dir = run_p2d_with_testcase('02_auto_validation', 'little-h-reboot-7$linux.zip', 'A', '#FF0000', validator_flags=('__auto'))
+    args = ('--color', '#FF0000', '--code', 'A', '-o', 'example-domjudge', '--auto', '-y', 'example-polygon.zip')
+    test_output_dir, output_dir = run_cli_with_testcase('03_auto_validation', 'little-h-reboot-7$linux.zip', False, *args)
     assert (test_output_dir / 'example-domjudge.zip').is_file()
     assert (output_dir / 'domjudge-problem.ini').is_file()
     assert (output_dir / 'problem.yaml').is_file()
@@ -90,7 +128,8 @@ def test_auto_validation():
 
 
 def test_interaction():
-    test_output_dir, output_dir = run_p2d_with_testcase('03_interaction', 'guess-array-1$linux.zip', 'B', '#FF7F00')
+    args = ('--color', '#FF7F00', '--code', 'B', '-o', 'example-domjudge', '--auto', '-y', 'example-polygon.zip')
+    test_output_dir, output_dir = run_cli_with_testcase('04_interaction', 'guess-array-1$linux.zip', False, *args)
     assert (test_output_dir / 'example-domjudge.zip').is_file()
     assert (output_dir / 'domjudge-problem.ini').is_file()
     assert (output_dir / 'problem.yaml').is_file()

@@ -1,7 +1,7 @@
 import json
 import os
+import re
 import shutil
-import sys
 import xml.etree.ElementTree
 
 import yaml
@@ -27,10 +27,9 @@ try:
     with open(config_file, 'r', encoding='utf-8') as f:
         config = json.load(f)
 except FileNotFoundError:
-    print('\'config.json\' not found!')
+    raise ImportError('\'config.json\' not found!')
 except json.JSONDecodeError as e:
-    print('\'config.json\' has error!')
-    sys.exit(1)
+    raise ImportError(f'\'config.json\' has error: {e}')
 
 
 def ensure_dir(s: Path):
@@ -43,7 +42,7 @@ def ensure_no_dir(s: Path):
         shutil.rmtree(s)
 
 
-class ProcessError(Exception):
+class ProcessError(RuntimeError):
     pass
 
 
@@ -168,6 +167,7 @@ class Polygon2DOMjudge:
             else:
                 if logger is not None:
                     logger.error('No checker found.')
+                raise ProcessError('No checker found.')
 
         with open(yaml_file, 'w') as f:
             yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
@@ -255,24 +255,26 @@ class Polygon2DOMjudge:
         def get_solution(desc: str | Path) -> Tuple[str, str]:
             result: Dict[str, str] = {}
             desc_file = self.package_dir / 'solutions' / desc
+            desc_matcher = re.compile(r'^(?P<key>[^:]+): (?P<value>.*)$')
             with open(desc_file, 'r', encoding='utf-8') as f:
-                for line in f.readlines():
-                    key, value = line.strip().split(': ', maxsplit=2)
-                    if key == 'File name':
-                        result[key] = value
-                    elif key == 'Tag':
-                        try:
-                            if value not in config['tag'].keys():
-                                if logger is not None:
-                                    logger.error(f'Unknown tag: {value}')
-                            result[key] = config['tag'][value]
-                        except KeyError:
-                            self.warning(f'Treat unknown tag \'{value}\' as \'accepted\'.')
-                            result[key] = 'accepted'
-            if not ('File name' in result.keys() and 'Tag' in result.keys()):
+                for line in f:
+                    desc_matcher_result = desc_matcher.match(line.strip())
+                    key, value = desc_matcher_result.group('key'), desc_matcher_result.group('value')
+                    result[key] = value
+
+            solution = result.get('File name', None)
+            result = config['tag'].get(result.get('Tag', None), None)
+
+            if result is None:
+                result = 'accepted'
+                if logger is not None:
+                    logger.warning(f'No tag found in {desc}, use accepted.')
+
+            if not all((solution, result)):
                 if logger is not None:
                     logger.error(f'The description file {desc} has error.')
-            return result['File name'], result['Tag']
+                raise ProcessError(f'The description file {desc} has error.')
+            return solution, result
 
         for desc in filter(lambda x: x.name.endswith(extension_for_desc), (self.package_dir / 'solutions').iterdir()):
             solution, result = get_solution(desc)
@@ -298,3 +300,6 @@ class Polygon2DOMjudge:
             ._add_tests() \
             ._add_jury_solutions() \
             ._archive()
+
+
+__all__ = ['Polygon2DOMjudge', 'ProcessError']
