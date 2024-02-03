@@ -1,118 +1,82 @@
 import shutil
 import zipfile
-import tempfile
-import yaml
+
+import pytest
+
 from pathlib import Path
 
-from p2d import __version__
-from p2d import Polygon2DOMjudge
+from .utils.dataloader import load_cli_test_data, load_api_test_data
 
 
 def test_version():
-    assert len(__version__) > 0
+    from p2d import __version__
+    assert len(__version__.split('.')) == 3
 
 
-def run_p2d_with_testcase(name, test_case, *args, **kwargs):
+def test_cli_version(capsys):
+    from p2d import __version__
+    from p2d.cli import main
+    with pytest.raises(SystemExit):
+        main(['--version'])
+    captured = capsys.readouterr()
+    assert captured.out.strip() == f'{__version__}'
+
+
+@pytest.mark.parametrize('package_name, args, validator, expectation', load_api_test_data())
+def test_api(tmp_path, monkeypatch, package_name, args, validator, expectation):
+    import tempfile
+    monkeypatch.chdir(tmp_path)
     test_data_dir = Path(__file__).parent / 'test_data'
-    test_output_dir = Path(__file__).parent / 'test_output' / 'p2d' / name
-    if test_output_dir.is_dir():
-        shutil.rmtree(test_output_dir)
-    test_output_dir.mkdir(parents=True, exist_ok=True)
+    polygon_package_dir = tmp_path / 'example-polygon-dir'
+    domjudge_package_dir = tmp_path / 'example-domjudge-dir'
+    polygon_package = tmp_path / 'example-polygon.zip'
+    domjudge_package = tmp_path / 'example-domjudge.zip'
+    domjudge_package_without_ext = tmp_path / 'example-domjudge'
 
-    polygon_package_zip = test_data_dir / test_case
-    target_polygon_package_zip = test_output_dir / 'example-polygon.zip'
-    package_dir = test_output_dir / 'example-polygon'
-    shutil.copyfile(polygon_package_zip, target_polygon_package_zip)
-    with zipfile.ZipFile(target_polygon_package_zip, 'r') as zip_ref:
-        zip_ref.extractall(package_dir)
+    shutil.copyfile(test_data_dir / package_name, polygon_package)
+    with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
+        zip_ref.extractall(polygon_package_dir)
 
-    output_file = test_output_dir / 'example-domjudge'
-    with tempfile.TemporaryDirectory(prefix='p2d-domjudge-test') as temp_dir:
-        p = Polygon2DOMjudge(package_dir, temp_dir, output_file, *args, **kwargs)
-        p.process()
+    from p2d import Polygon2DOMjudge
 
-    output_dir = test_output_dir / 'example-domjudge'
-    with zipfile.ZipFile(test_output_dir / 'example-domjudge.zip', 'r') as zip_ref:
-        zip_ref.extractall(output_dir)
-    return test_output_dir, output_dir
+    with expectation:
+        with tempfile.TemporaryDirectory('p2d-domjudge-') as tmpdir:
+            p = Polygon2DOMjudge(polygon_package_dir, tmpdir, domjudge_package_without_ext, **args)
+            p.process()
 
+        assert domjudge_package.is_file()
 
-def test_normal():
-    test_output_dir, output_dir = run_p2d_with_testcase('01_normal', 'little-h-reboot-7$linux.zip', 'A', '#FF0000')
-    assert (test_output_dir / 'example-domjudge.zip').is_file()
-    assert (output_dir / 'domjudge-problem.ini').is_file()
-    assert (output_dir / 'problem.yaml').is_file()
+        # Extract the output zip file for further assertion
+        with zipfile.ZipFile(domjudge_package, 'r') as zip_ref:
+            zip_ref.extractall(domjudge_package_dir)
 
-    with open(output_dir / 'domjudge-problem.ini', 'r') as f:
-        assert f.read() == 'short-name = A\ntimelimit = 5.0\ncolor = #FF0000\n'
-
-    with open(output_dir / 'problem.yaml', 'r') as f:
-        assert yaml.safe_load(f.read()) == {
-            'limits': {
-                'memory': 256
-            },
-            'name': 'Little H And Reboot',
-            'validation': 'custom'
-        }
-
-    # make sure that sample data are copied
-    assert (output_dir / 'data' / 'sample' / '01.in').is_file()
-    assert (output_dir / 'data' / 'sample' / '01.ans').is_file()
-    assert (output_dir / 'data' / 'sample' / '01.desc').is_file()
-
-    # make sure that checker and testlib.h are copied
-    assert (output_dir / 'output_validators' / 'checker' / 'testlib.h').is_file()
-    assert (output_dir / 'output_validators' / 'checker' / 'checker.cpp').is_file()
-
-    # make sure std.cpp is copied to correct solution directory
-    assert (output_dir / 'submissions' / 'accepted' / 'std.cpp').is_file()
+        validator(domjudge_package_dir)
 
 
-def test_auto_validation():
-    test_output_dir, output_dir = run_p2d_with_testcase('02_auto_validation', 'little-h-reboot-7$linux.zip', 'A', '#FF0000', validator_flags=('__auto'))
-    assert (test_output_dir / 'example-domjudge.zip').is_file()
-    assert (output_dir / 'domjudge-problem.ini').is_file()
-    assert (output_dir / 'problem.yaml').is_file()
+@pytest.mark.parametrize('package_name, args, extract, validator, expectation', load_cli_test_data())
+def test_cli(tmp_path, monkeypatch, package_name, args, extract, validator, expectation):
+    monkeypatch.chdir(tmp_path)
+    test_data_dir = Path(__file__).parent / 'test_data'
+    test_data_dir = Path(__file__).parent / 'test_data'
+    polygon_package_dir = tmp_path / 'example-polygon-dir'
+    domjudge_package_dir = tmp_path / 'example-domjudge-dir'
+    polygon_package = tmp_path / 'example-polygon.zip'
+    domjudge_package = tmp_path / 'example-domjudge.zip'
 
-    with open(output_dir / 'domjudge-problem.ini', 'r') as f:
-        assert f.read() == 'short-name = A\ntimelimit = 5.0\ncolor = #FF0000\n'
+    shutil.copyfile(test_data_dir / package_name, polygon_package)
+    if extract:
+        with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
+            zip_ref.extractall(polygon_package_dir)
 
-    with open(output_dir / 'problem.yaml', 'r') as f:
-        assert yaml.safe_load(f.read()) == {
-            'limits': {
-                'memory': 256
-            },
-            'name': 'Little H And Reboot',
-            'validation': 'default',
-            'validator_flags': 'float_tolerance 1e-4'
-        }
+    from p2d.cli import main
 
-    # make sure that no checker and testlib.h are copied because of std::rcmp4 is found
-    assert not (output_dir / 'output_validator' / 'testlib.h').is_file()
-    assert not (output_dir / 'output_validator' / 'checker.cpp').is_file()
+    with expectation:
+        assert main(args, raise_exception=True) == 0
 
+        assert domjudge_package.is_file()
 
-def test_interaction():
-    test_output_dir, output_dir = run_p2d_with_testcase('03_interaction', 'guess-array-1$linux.zip', 'B', '#FF7F00')
-    assert (test_output_dir / 'example-domjudge.zip').is_file()
-    assert (output_dir / 'domjudge-problem.ini').is_file()
-    assert (output_dir / 'problem.yaml').is_file()
+        # Extract the output zip file for further assertion
+        with zipfile.ZipFile(domjudge_package, 'r') as zip_ref:
+            zip_ref.extractall(domjudge_package_dir)
 
-    with open(output_dir / 'domjudge-problem.ini', 'r') as f:
-        assert f.read() == 'short-name = B\ntimelimit = 1.0\ncolor = #FF7F00\n'
-
-    with open(output_dir / 'problem.yaml', 'r') as f:
-        assert yaml.safe_load(f.read()) == {
-            'limits': {
-                'memory': 512
-            },
-            'name': 'Guess The Array',
-            'validation': 'custom interactive'
-        }
-
-    # interaction problem does not have sample data for download
-    assert not any((output_dir / 'data' / 'sample').iterdir())
-
-    # make sure that interactor and testlib.h are copied
-    assert (output_dir / 'output_validators' / 'interactor' / 'testlib.h').is_file()
-    assert (output_dir / 'output_validators' / 'interactor' / 'interactor.cpp').is_file()
+        validator(domjudge_package_dir)

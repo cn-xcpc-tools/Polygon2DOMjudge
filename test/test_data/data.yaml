@@ -1,0 +1,233 @@
+__test_data:
+  - &normal-package "little-h-reboot-7$linux.zip"
+  - &interaction-package "guess-array-1$linux.zip"
+
+# validate converted DOMjudge package
+__validator:
+  # validate converted DOMjudge package with testlib checker
+  normal: &normal-validator
+    type: NormalValidator
+    args:
+      expect_ini: &normal-ini |+
+        short-name = A
+        timelimit = 5.0
+        color = #FF0000
+      expect_yaml: &normal-yaml
+        limits:
+          memory: 256
+        name: Little H And Reboot
+        validation: custom
+
+  # validate converted DOMjudge package with auto detected checker
+  auto_validation: &auto-validation-validator
+    type: AutoValidationValidator
+    args:
+      expect_ini: *normal-ini
+      expect_yaml:
+        <<: *normal-yaml
+        validation: default
+        validator_flags: float_tolerance 1e-4
+
+  # validate converted DOMjudge package with interaction problem
+  interaction: &interaction-validator
+    type: InteractionValidator
+    args:
+      expect_ini: |+
+        short-name = A
+        timelimit = 1.0
+        color = #FF0000
+      expect_yaml:
+        limits:
+          memory: 512
+        name: Guess The Array
+        validation: custom interactive
+
+  # override memory limit and output limit
+  override: &override-validator
+    type: DOMjudgePackageValidator
+    args:
+      expect_ini: *normal-ini
+      expect_yaml:
+        <<: *normal-yaml
+        limits:
+          output: 64
+
+api:
+  __base: &base-api
+    args:
+      short_name: A
+      color: "#FF0000"
+  normal:
+    <<: *base-api
+    input: *normal-package
+    validator: *normal-validator
+
+  auto_validation:
+    <<: *base-api
+    input: *normal-package
+    args:
+      short_name: A
+      color: "#FF0000"
+      validator_flags: __auto
+    validator: *auto-validation-validator
+
+  interaction:
+    <<: *base-api
+    input: *interaction-package
+    validator: *interaction-validator
+
+# cli test data
+cli:
+  __base: &base-cli
+    extract: false
+    package: example-polygon.zip
+
+  normal: &normal-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge.zip
+      - -y
+    validator: *normal-validator
+
+  auto_validation: &auto-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --auto
+      - -y
+    validator: *auto-validation-validator
+
+  interaction: &interaction-cli
+    <<: *base-cli
+    input: *interaction-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --auto
+      - -y
+    validator: *interaction-validator
+
+  override: &override-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --memory-limit
+      - "-1"
+      - --output-limit
+      - "64"
+      - -y
+    validator: *override-validator
+
+  zip_exists: &zip-exists-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-polygon
+      - -y
+    raise:
+      type: FileExistsError
+      match: example-polygon.zip
+
+  invalid_cli_args: &invalid-cli-args-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - --default
+      - --auto
+      - -o
+      - example-domjudge.zip
+      - -y
+    raise:
+      type: ValueError
+      match: Can not use --auto and --default at the same time.
+
+  file_not_found: # only test without extract zip
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge.zip
+      - -y
+    package: not-exist.zip
+    raise:
+      type: FileNotFoundError
+      match: "No such file or directory"
+
+  missing_args: &missing-args-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - --code
+      - A
+      - o
+      - example-domjudge.zip
+      - -y
+    raise:
+      type: SystemExit
+      match: "2"
+
+  # test cases that pass extracted package as input
+  normal_extract_zip:
+    <<: *normal-cli
+    extract: true
+    package: example-polygon-dir
+  auto_validation_extract_zip:
+    <<: *auto-cli
+    extract: true
+    package: example-polygon-dir
+  interaction_extract_zip:
+    <<: *interaction-cli
+    extract: true
+    package: example-polygon-dir
+  override_extract_zip:
+    <<: *override-cli
+    extract: true
+    package: example-polygon-dir
+  zip_exists_extract_zip:
+    <<: *zip-exists-cli
+    extract: true
+    package: example-polygon-dir
+  invalid_cli_args_extract_zip:
+    <<: *invalid-cli-args-cli
+    extract: true
+    package: example-polygon-dir
+  missing_args_extract_zip:
+    <<: *missing-args-cli
+    extract: true
+    package: example-polygon-dir
