@@ -19,7 +19,7 @@ def test_cli_version(capsys):
     with pytest.raises(SystemExit):
         main(['--version'])
     captured = capsys.readouterr()
-    assert captured.out.strip() == f'{__version__}'
+    assert captured.out.strip() == __version__
 
 
 @pytest.mark.parametrize('package_name, args, validator, expectation', load_api_test_data())
@@ -56,7 +56,6 @@ def test_api(tmp_path, monkeypatch, package_name, args, validator, expectation):
 @pytest.mark.parametrize('package_name, args, extract, validator, expectation', load_cli_test_data())
 def test_cli(tmp_path, monkeypatch, package_name, args, extract, validator, expectation):
     monkeypatch.chdir(tmp_path)
-    test_data_dir = Path(__file__).parent / 'test_data'
     test_data_dir = Path(__file__).parent / 'test_data'
     polygon_package_dir = tmp_path / 'example-polygon-dir'
     domjudge_package_dir = tmp_path / 'example-domjudge-dir'
