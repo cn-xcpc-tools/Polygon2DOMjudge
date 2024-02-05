@@ -3,22 +3,33 @@ import pytest
 from pathlib import Path
 
 from contextlib import nullcontext as does_not_raise
+from functools import partial
 
-
-from . import validator
+from . import assertions
 
 with open(Path(__file__).parent.parent / 'test_data' / 'data.yaml', 'r') as f:
     _data = yaml.safe_load(f)
 
 
-def _get_validator(validator_data):
-    if validator_data is None:
-        return None
-    return getattr(validator, validator_data['type'])(**validator_data['args'])
+def __get_all_assertions(data):
+    for assertion in data:
+        if isinstance(assertion, str):
+            yield getattr(assertions, f'assert_{assertion}')
+        else:
+            yield partial(getattr(assertions, f'assert_{assertion["type"]}'), **assertion.get('args', {}))
 
 
-def _get_raises(raise_data):
-    if raise_data is None:
+def _get_asserts(data):
+
+    def func(*args, **kwargs):
+        for assertion in __get_all_assertions(data):
+            assertion(*args, **kwargs)
+
+    return func
+
+
+def _get_raises(data):
+    if data is None:
         return does_not_raise()
 
     error_type = dict(
@@ -26,8 +37,9 @@ def _get_raises(raise_data):
         ValueError=ValueError,
         FileExistsError=FileExistsError,
         SystemExit=SystemExit,
-    ).get(raise_data['type'], Exception)
-    return pytest.raises(error_type, match=raise_data['match'])
+    ).get(data['type'], Exception)
+
+    return pytest.raises(error_type, match=data['match'])
 
 
 def load_cli_test_data():
@@ -38,7 +50,7 @@ def load_cli_test_data():
             test_case['input'],                                 # package_name
             test_case['args'] + [test_case['package']],         # args
             test_case['extract'],                               # extract
-            _get_validator(test_case.get('validator', None)),   # validator
+            _get_asserts(test_case.get('assertions', None)),    # asserts
             _get_raises(test_case.get('raise', None)),          # expectation
             id=name,
         )
@@ -51,7 +63,7 @@ def load_api_test_data():
         yield pytest.param(
             test_case['input'],                                 # package_name
             test_case['args'],                                  # args
-            _get_validator(test_case.get('validator', None)),   # validator
+            _get_asserts(test_case.get('assertions', None)),    # asserts
             _get_raises(test_case.get('raise', None)),          # expectation
             id=name
         )

@@ -1,0 +1,26 @@
+# DO NOY EDIT THIS FILE
+# This is the default configuration file for Polygon2DOMjudge
+# If you want to override the default configuration,
+# create a new file named "config.toml" and override the default values there
+
+[flag]
+"rcmp4.cpp" = ["float_tolerance", "1e-4"]
+"rcmp6.cpp" = ["float_tolerance", "1e-6"]
+"rcmp9.cpp" = ["float_tolerance", "1e-9"]
+"fcmp.cpp" = ["case_sensitive", "space_change_sensitive"]
+
+[tag]
+MAIN = "accepted"
+ACCEPTED = "accepted"
+WRONG_ANSWER = "wrong_answer"
+PRESENTATION_ERROR = "wrong_answer"
+TIME_LIMIT_EXCEEDED = "time_limit_exceeded"
+TIME_LIMIT_EXCEEDED_OR_ACCEPTED = "time_limit_exceeded"
+TIME_LIMIT_EXCEEDED_OR_MEMORY_LIMIT_EXCEEDED = "run_time_error"
+MEMORY_LIMIT_EXCEEDED = "rum_time_error"
+REJECTED = "run_time_error"
+FAILED = "run_time_error"
+
+[example_path_pattern]
+input = "example.%02d"
+output = "example.%02d.a"

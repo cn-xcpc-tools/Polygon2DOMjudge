@@ -1,80 +1,165 @@
-__test_data:
+polygon_packages:
   - &normal-package "little-h-reboot-7$linux.zip"
   - &interaction-package "guess-array-1$linux.zip"
 
 # validate converted DOMjudge package
-__validator:
+assertions:
   # validate converted DOMjudge package with testlib checker
-  normal: &normal-validator
-    type: NormalValidator
-    args:
-      expect_ini: &normal-ini |+
-        short-name = A
-        timelimit = 5.0
-        color = #FF0000
-      expect_yaml: &normal-yaml
-        limits:
-          memory: 256
-        name: Little H And Reboot
-        validation: custom
+  normal: &normal-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: &normal-ini |+
+          short-name = A
+          timelimit = 5.0
+          color = #FF0000
+    - type: problem_yaml
+      args:
+        expect: &normal-yaml
+          limits:
+            memory: 256
+          name: Little H And Reboot
+          validation: custom
+    - sample_data
+    - &std_cpp_submission
+      type: submission
+      args:
+        result: accepted
+        name: std.cpp
+    - checker_and_testlib
 
   # validate converted DOMjudge package with auto detected checker
-  auto_validation: &auto-validation-validator
-    type: AutoValidationValidator
-    args:
-      expect_ini: *normal-ini
-      expect_yaml:
-        <<: *normal-yaml
-        validation: default
-        validator_flags: float_tolerance 1e-4
+  auto_validation: &auto-validation-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: *normal-ini
+    - type: problem_yaml
+      args:
+        expect:
+          <<: *normal-yaml
+          validation: default
+          validator_flags: float_tolerance 1e-4
+    - sample_data
+    - *std_cpp_submission
+    - no_checker_and_testlib
+
+  # validate converted DOMjudge package with custom validator_flags
+  custom_validator_flags: &custom-validator-flags-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: *normal-ini
+    - type: problem_yaml
+      args:
+        expect:
+          <<: *normal-yaml
+          validation: default
+          validator_flags: float_tolerance 1e-6
+    - sample_data
+    - *std_cpp_submission
+    - no_checker_and_testlib
+
+  # validate converted DOMjudge package with hide sample data
+  hide_sample_data: &hide-sample-data-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: *normal-ini
+    - type: problem_yaml
+      args:
+        expect: *normal-yaml
+    - no_sample_data
+    - *std_cpp_submission
+    - checker_and_testlib
 
   # validate converted DOMjudge package with interaction problem
-  interaction: &interaction-validator
-    type: InteractionValidator
-    args:
-      expect_ini: |+
-        short-name = A
-        timelimit = 1.0
-        color = #FF0000
-      expect_yaml:
-        limits:
-          memory: 512
-        name: Guess The Array
-        validation: custom interactive
+  interaction: &interaction-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: |+
+          short-name = A
+          timelimit = 1.0
+          color = #FF0000
+    - type: problem_yaml
+      args:
+        expect:
+          limits:
+            memory: 512
+          name: Guess The Array
+          validation: custom interactive
+    - no_sample_data
+    - *std_cpp_submission
+    - interactor_and_testlib
 
   # override memory limit and output limit
-  override: &override-validator
-    type: DOMjudgePackageValidator
-    args:
-      expect_ini: *normal-ini
-      expect_yaml:
-        <<: *normal-yaml
-        limits:
-          output: 64
+  override: &override-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: *normal-ini
+    - type: problem_yaml
+      args:
+        expect:
+          <<: *normal-yaml
+          limits:
+            output: 64
 
 api:
-  __base: &base-api
-    args:
+  __base:
+    args: &base-api-args
       short_name: A
       color: "#FF0000"
   normal:
-    <<: *base-api
+    args:
+      <<: *base-api-args
     input: *normal-package
-    validator: *normal-validator
+    assertions: *normal-assertions
 
   auto_validation:
-    <<: *base-api
     input: *normal-package
     args:
-      short_name: A
-      color: "#FF0000"
-      validator_flags: __auto
-    validator: *auto-validation-validator
+      <<: *base-api-args
+      auto_detect_std_checker: true
+    assertions: *auto-validation-assertions
+
+  custom_validator_flags:
+    input: *normal-package
+    args:
+      <<: *base-api-args
+      force_default_validator: true
+      validator_flags: [float_tolerance, "1e-6"]
+    assertions: *custom-validator-flags-assertions
+
+  hide_sample_data:
+    input: *normal-package
+    args:
+      <<: *base-api-args
+      hide_sample: true
+    assertions: *hide-sample-data-assertions
 
   interaction:
-    <<: *base-api
+    args:
+      <<: *base-api-args
     input: *interaction-package
-    validator: *interaction-validator
+    assertions: *interaction-assertions
+
+  wrong_args:
+    input: *normal-package
+    args:
+      <<: *base-api-args
+      auto_detect_std_checker: true
+      force_default_validator: true
+    raise:
+      type: ValueError
+      match: Can not use auto_detect_std_checker and force_default_validator at the same time.
 
 # cli test data
 cli:
@@ -93,7 +178,7 @@ cli:
       - -o
       - example-domjudge.zip
       - -y
-    validator: *normal-validator
+    assertions: *normal-assertions
 
   auto_validation: &auto-cli
     <<: *base-cli
@@ -107,7 +192,76 @@ cli:
       - example-domjudge
       - --auto
       - -y
-    validator: *auto-validation-validator
+    assertions: *auto-validation-assertions
+
+  custom_validator_flags: &custom-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --default
+      - --validator-flags
+      - float_tolerance
+      - "1e-6"
+      - -y
+    assertions: *custom-validator-flags-assertions
+
+  custom_validator_flags_at_last_args_failed: &custom-2-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --default
+      - -y
+      - --validator-flags
+      - float_tolerance
+      - "1e-6"
+    raise:
+      type: SystemExit
+      match: "2"
+    assertions: *custom-validator-flags-assertions
+
+  custom_validator_flags_at_last_args_ok: &custom-3-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --default
+      - -y
+      - --validator-flags
+      - float_tolerance
+      - "1e-6"
+      - --
+    assertions: *custom-validator-flags-assertions
+
+  hide_sample_data: &hide-sample-data-cli
+    <<: *base-cli
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge
+      - --hide-sample
+      - -y
+    assertions: *hide-sample-data-assertions
 
   interaction: &interaction-cli
     <<: *base-cli
@@ -121,7 +275,7 @@ cli:
       - example-domjudge
       - --auto
       - -y
-    validator: *interaction-validator
+    assertions: *interaction-assertions
 
   override: &override-cli
     <<: *base-cli
@@ -138,7 +292,7 @@ cli:
       - --output-limit
       - "64"
       - -y
-    validator: *override-validator
+    assertions: *override-assertions
 
   zip_exists: &zip-exists-cli
     <<: *base-cli
@@ -209,6 +363,22 @@ cli:
     package: example-polygon-dir
   auto_validation_extract_zip:
     <<: *auto-cli
+    extract: true
+    package: example-polygon-dir
+  custom_validator_flags_extract_zip:
+    <<: *custom-cli
+    extract: true
+    package: example-polygon-dir
+  custom_validator_flags_at_last_args_failed_extract_zip:
+    <<: *custom-2-cli
+    extract: true
+    package: example-polygon-dir
+  custom_validator_flags_at_last_args_ok_extract_zip:
+    <<: *custom-3-cli
+    extract: true
+    package: example-polygon-dir
+  hide_sample_data_extract_zip:
+    <<: *hide-sample-data-cli
     extract: true
     package: example-polygon-dir
   interaction_extract_zip:

@@ -22,8 +22,8 @@ def test_cli_version(capsys):
     assert captured.out.strip() == __version__
 
 
-@pytest.mark.parametrize('package_name, args, validator, expectation', load_api_test_data())
-def test_api(tmp_path, monkeypatch, package_name, args, validator, expectation):
+@pytest.mark.parametrize('package_name, args, assertion, expectation', load_api_test_data())
+def test_api(tmp_path, monkeypatch, package_name, args, assertion, expectation):
     import tempfile
     monkeypatch.chdir(tmp_path)
     test_data_dir = Path(__file__).parent / 'test_data'
@@ -50,11 +50,11 @@ def test_api(tmp_path, monkeypatch, package_name, args, validator, expectation):
         with zipfile.ZipFile(domjudge_package, 'r') as zip_ref:
             zip_ref.extractall(domjudge_package_dir)
 
-        validator(domjudge_package_dir)
+        assertion(domjudge_package_dir)
 
 
-@pytest.mark.parametrize('package_name, args, extract, validator, expectation', load_cli_test_data())
-def test_cli(tmp_path, monkeypatch, package_name, args, extract, validator, expectation):
+@pytest.mark.parametrize('package_name, args, extract, assertion, expectation', load_cli_test_data())
+def test_cli(tmp_path, monkeypatch, package_name, args, extract, assertion, expectation):
     monkeypatch.chdir(tmp_path)
     test_data_dir = Path(__file__).parent / 'test_data'
     polygon_package_dir = tmp_path / 'example-polygon-dir'
@@ -78,4 +78,4 @@ def test_cli(tmp_path, monkeypatch, package_name, args, extract, validator, expe
         with zipfile.ZipFile(domjudge_package, 'r') as zip_ref:
             zip_ref.extractall(domjudge_package_dir)
 
-        validator(domjudge_package_dir)
+        assertion(domjudge_package_dir)

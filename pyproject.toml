@@ -24,11 +24,14 @@ classifiers = [
 python = "^3.8"
 pyyaml = "^6.0.1"
 betterlogging = "^0.2.1"
+tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
 autopep8 = "^2.0.4"
 poetry-bumpversion = "^0.3.2"
+types-pyyaml = "^6.0.12.12"
+mypy = "^1.8.0"
 
 [build-system]
 requires = ["poetry-core"]

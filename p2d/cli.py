@@ -5,11 +5,13 @@ import sys
 import tempfile
 import zipfile
 
-import betterlogging as logging
+import betterlogging as logging # type: ignore
 from pathlib import Path
 
 from . import __version__
-from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR
+from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG
+from .utils import load_config, dict_merge
+from .typing import Config
 
 
 def main(args=None, raise_exception=False) -> int:
@@ -32,6 +34,10 @@ def main(args=None, raise_exception=False) -> int:
                         help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
     parser.add_argument('--replace-sample', action='store_true',
                         help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
+    parser.add_argument('--hide-sample', action='store_true',
+                        help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
+    parser.add_argument('--config', type=Path, default='config.toml',
+                        help='path of the config file to override the default config, default is using "config.toml" in current directory')
     args = parser.parse_args(args)
 
     logging.basic_colorized_config(level=args.log_level.upper())
@@ -69,7 +75,19 @@ def main(args=None, raise_exception=False) -> int:
             short_name: str = args.code
             color: str = args.color
             replace_sample: bool = args.replace_sample
+            hide_sample: bool = args.hide_sample
+            auto_detect_std_checker: bool = args.auto
+            force_default_validator: bool = args.default
+            validator_flags = args.validator_flags if args.validator_flags else []
             output_file = Path.cwd() / short_name
+            config_file = Path(args.config)
+            if config_file.is_file():
+                logger.info(f'Using config file: {config_file}')
+                config_override = load_config(config_file)
+            else:
+                config_override = {}
+
+            config: Config = dict_merge(DEFAULT_CONFIG, config_override, add_keys=False)
 
             if args.output:
                 if Path(args.output).is_dir():
@@ -82,28 +100,27 @@ def main(args=None, raise_exception=False) -> int:
             if Path(output_file.name + '.zip').resolve().exists():
                 raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
 
-            validator_flags = ()
-
             if args.auto and args.default:
                 raise ValueError('Can not use --auto and --default at the same time.')
 
-            if args.default:
-                validator_flags = ('__default') + tuple(args.validator_flags or ())
-            elif args.validator_flags:
+            if not args.default and args.validator_flags:
                 logger.warning('You are not using default validation, validator flags will be ignored.')
 
-            if args.auto:
-                validator_flags = ('__auto')
-
             print_info(package_dir, domjudge_temp_dir, output_file, args.yes)
-            problem = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file,
-                                       short_name, color, validator_flags, replace_sample, logger)
+            p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color,
+                                 auto_detect_std_checker=auto_detect_std_checker,
+                                 force_default_validator=force_default_validator,
+                                 validator_flags=validator_flags,
+                                 replace_sample=replace_sample,
+                                 hide_sample=hide_sample,
+                                 config=config,
+                                 logger=logger)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:
-                problem.memorylimit = args.memory_limit
+                p.override_memory_limit(args.memory_limit)
             if args.output_limit:
-                problem.outputlimit = args.output_limit
-            problem.process()
+                p.override_output_limit(args.output_limit)
+            p.process()
         except Exception as e:
             logger.exception(e)
             if raise_exception:
