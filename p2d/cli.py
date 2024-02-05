@@ -5,7 +5,7 @@ import sys
 import tempfile
 import zipfile
 
-import betterlogging as logging # type: ignore
+import betterlogging as logging  # type: ignore
 from pathlib import Path
 
 from . import __version__
