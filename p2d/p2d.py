@@ -7,7 +7,7 @@ import xml.etree.ElementTree
 import yaml
 
 from pathlib import Path
-from typing import cast
+from typing import cast, Optional, Union
 from xml.etree.ElementTree import Element
 
 from . import __version__
@@ -32,7 +32,7 @@ class ProcessError(RuntimeError):
 
 
 class Test:
-    def __init__(self, method: str, description: str | None = None, cmd: str | None = None, sample=False):
+    def __init__(self, method: str, description: Optional[str] = None, cmd: Optional[str] = None, sample=False):
         self.method = method
         self.description = description
         self.cmd = cmd
@@ -102,12 +102,12 @@ class Problem:
             ) for test in testset.findall('tests/test')
         )
 
-    def _get_preference_name(self, names: Element | None):
+    def _get_preference_name(self, names: Optional[Element]):
         if names is None:
             logger.error('Can not find names in problem.xml.')
             raise ProcessError('Can not find names in problem.xml.')
 
-        def _is_valid_name(name: Element | None):
+        def _is_valid_name(name: Optional[Element]):
             return name is not None and 'value' in name.attrib and 'language' in name.attrib
 
         for lang in self._NAME_LANGUAGE_PREFERENCE:
@@ -158,7 +158,7 @@ class Problem:
 
 class Polygon2DOMjudge:
 
-    def __init__(self, package_dir: str | Path, temp_dir: str | Path, output_file: str | Path,
+    def __init__(self, package_dir: Union[str, Path], temp_dir: Union[str, Path], output_file: Union[str, Path],
                  short_name=DEFAULT_CODE,
                  color=DEFAULT_COLOR, *,
                  force_default_validator=False,
@@ -166,7 +166,7 @@ class Polygon2DOMjudge:
                  validator_flags=(),
                  replace_sample=False,
                  hide_sample=False,
-                 config: Config | None = None,
+                 config: Optional[Config] = None,
                  Problem=Problem):
         self.package_dir = Path(package_dir)
         self.short_name = short_name
@@ -346,7 +346,7 @@ class Polygon2DOMjudge:
         return self
 
     def _get_submission_and_result(self, desc: Path):
-        solution: str | None = None
+        solution: Optional[str] = None
         tag: _Tag | None = None
 
         file_name_pat = re.compile(r'File name: (?P<value>.*)')

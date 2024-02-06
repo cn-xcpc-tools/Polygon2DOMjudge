@@ -4,6 +4,7 @@ import shutil
 import tomli
 
 from pathlib import Path
+from typing import Union
 
 
 def ensure_dir(s: Path):
@@ -16,7 +17,7 @@ def ensure_no_dir(s: Path):
         shutil.rmtree(s)
 
 
-def load_config(config_file: str | Path):
+def load_config(config_file: Union[str, Path]):
     try:
         with open(config_file, 'r') as f:
             return tomli.loads(f.read())

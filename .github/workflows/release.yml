@@ -31,12 +31,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install poetry
+        run: pipx install poetry
+
       - name: Set up Python runtime
         uses: actions/setup-python@v4
         with:
           python-version: "${{ env.python_version }}"
-
-      - uses: Gr1N/setup-poetry@v8
+          cache: "poetry"
 
       - name: Install Dependencies
         run: |

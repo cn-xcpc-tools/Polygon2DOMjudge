@@ -1,4 +1,4 @@
-from typing import TypedDict, Dict, Iterable, List, Literal
+from typing import TypedDict, Dict, Iterable, List, Literal, Union
 
 _Tag = Literal[
     'MAIN',
@@ -21,13 +21,13 @@ _Result = Literal[
     'runtime_error',
 ]
 
-_ValidatorFlag = Literal[
+_ValidatorFlag = Union[Literal[
     'case_insensitive',
     'space_change_sensitive',
     'float_tolerance',
     'float_relative_tolerance',
     'float_absolute_tolerance',
-] | str
+], str]
 
 Tag = Dict[_Tag, _Result]
 
