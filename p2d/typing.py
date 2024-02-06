@@ -1,4 +1,4 @@
-from typing import TypedDict, Dict, List, Literal
+from typing import TypedDict, Dict, Iterable, List, Literal
 
 _Tag = Literal[
     'MAIN',
@@ -21,7 +21,7 @@ _Result = Literal[
     'runtime_error',
 ]
 
-_ValidatorFlags = Literal[
+_ValidatorFlag = Literal[
     'case_insensitive',
     'space_change_sensitive',
     'float_tolerance',
@@ -31,7 +31,9 @@ _ValidatorFlags = Literal[
 
 Tag = Dict[_Tag, _Result]
 
-Flag = Dict[str, List[_ValidatorFlags]]
+Flag = Dict[str, List[_ValidatorFlag]]
+
+ValidatorFlags = Iterable[_ValidatorFlag]
 
 
 class ExamplePathPattern(TypedDict):

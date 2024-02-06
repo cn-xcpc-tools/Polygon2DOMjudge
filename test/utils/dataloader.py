@@ -65,5 +65,5 @@ def load_api_test_data():
             test_case['args'],                                  # args
             _get_asserts(test_case.get('assertions', None)),    # asserts
             _get_raises(test_case.get('raise', None)),          # expectation
-            id=name
+            id=name,
         )

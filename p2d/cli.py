@@ -9,9 +9,8 @@ import betterlogging as logging  # type: ignore
 from pathlib import Path
 
 from . import __version__
-from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG
-from .utils import load_config, dict_merge
-from .typing import Config
+from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG_FILE
+from .utils import load_config, update_dict
 
 
 def main(args=None, raise_exception=False) -> int:
@@ -80,6 +79,7 @@ def main(args=None, raise_exception=False) -> int:
             force_default_validator: bool = args.default
             validator_flags = args.validator_flags if args.validator_flags else []
             output_file = Path.cwd() / short_name
+            config = load_config(DEFAULT_CONFIG_FILE)
             config_file = Path(args.config)
             if config_file.is_file():
                 logger.info(f'Using config file: {config_file}')
@@ -87,7 +87,7 @@ def main(args=None, raise_exception=False) -> int:
             else:
                 config_override = {}
 
-            config: Config = dict_merge(DEFAULT_CONFIG, config_override, add_keys=False)
+            update_dict(config, config_override, add_keys=False)
 
             if args.output:
                 if Path(args.output).is_dir():
@@ -113,8 +113,7 @@ def main(args=None, raise_exception=False) -> int:
                                  validator_flags=validator_flags,
                                  replace_sample=replace_sample,
                                  hide_sample=hide_sample,
-                                 config=config,
-                                 logger=logger)
+                                 config=config)
             # memory_limit and output_limit can be override by command line
             if args.memory_limit:
                 p.override_memory_limit(args.memory_limit)

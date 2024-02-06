@@ -26,39 +26,18 @@ def load_config(config_file: str | Path):
         raise ImportError('\'config.toml\' is not a valid TOML file!')
 
 
-def dict_merge(dct, merge_dct, add_keys=True):
-    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
+def update_dict(orig, update, add_keys=True):
+    """Deep update of a dictionary
 
-    This version will return a copy of the dictionary and leave the original
-    arguments untouched.
+    For each entry (k, v) in update such that both orig[k] and v are
+    dictionaries, orig[k] is recurisvely updated to v.
 
-    The optional argument ``add_keys``, determines whether keys which are
-    present in ``merge_dict`` but not ``dct`` should be included in the
-    new dict.
-
-    Args:
-        dct (dict) onto which the merge is executed
-        merge_dct (dict): dct merged into dct
-        add_keys (bool): whether to add new keys
-
-    Returns:
-        dict: updated dict
+    For all other entries (k, v), orig[k] is set to v.
     """
-    dct = dct.copy()
-    if not add_keys:
-        merge_dct = {
-            k: merge_dct[k]
-            for k in set(dct).intersection(set(merge_dct))
-        }
-
-    for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
-            dct[k] = dict_merge(dct[k], merge_dct[k], add_keys=add_keys)
-        else:
-            dct[k] = merge_dct[k]
-
-    return dct
+    for (key, value) in update.items():
+        if key in orig and \
+                isinstance(value, collections.abc.Mapping) and \
+                isinstance(orig[key], collections.abc.Mapping):
+            update_dict(orig[key], value)
+        elif add_keys or key in orig:
+            orig[key] = value
