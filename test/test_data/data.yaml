@@ -22,6 +22,7 @@ assertions:
           name: Little H And Reboot
           validation: custom
     - sample_data
+    - secret_data
     - &std_cpp_submission
       type: submission
       args:
@@ -43,6 +44,7 @@ assertions:
           validation: default
           validator_flags: float_tolerance 1e-4
     - sample_data
+    - secret_data
     - *std_cpp_submission
     - no_checker_and_testlib
 
@@ -60,6 +62,7 @@ assertions:
           validation: default
           validator_flags: float_tolerance 1e-6
     - sample_data
+    - secret_data
     - *std_cpp_submission
     - no_checker_and_testlib
 
@@ -74,6 +77,7 @@ assertions:
       args:
         expect: *normal-yaml
     - no_sample_data
+    - secret_data
     - *std_cpp_submission
     - checker_and_testlib
 
@@ -95,6 +99,7 @@ assertions:
           name: Guess The Array
           validation: custom interactive
     - no_sample_data
+    - secret_data
     - *std_cpp_submission
     - interactor_and_testlib
 
@@ -306,8 +311,8 @@ cli:
       - example-polygon
       - -y
     raise:
-      type: FileExistsError
-      match: example-polygon.zip
+      type: SystemExit
+      match: "1"
 
   invalid_cli_args: &invalid-cli-args-cli
     <<: *base-cli
@@ -323,8 +328,8 @@ cli:
       - example-domjudge.zip
       - -y
     raise:
-      type: ValueError
-      match: Can not use --auto and --default at the same time.
+      type: SystemExit
+      match: "2"
 
   file_not_found: # only test without extract zip
     <<: *base-cli
@@ -339,8 +344,8 @@ cli:
       - -y
     package: not-exist.zip
     raise:
-      type: FileNotFoundError
-      match: "No such file or directory"
+      type: SystemExit
+      match: "1"
 
   missing_args: &missing-args-cli
     <<: *base-cli

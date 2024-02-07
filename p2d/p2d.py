@@ -1,13 +1,17 @@
 import os
+import errno
 import logging
 import re
 import shutil
+import sys
+import tempfile
 import xml.etree.ElementTree
+import zipfile
 
 import yaml
 
 from pathlib import Path
-from typing import cast, Optional, Union
+from typing import cast, Any, Dict, Optional, Sequence, Tuple, Type, Union
 from xml.etree.ElementTree import Element
 
 from . import __version__
@@ -23,8 +27,8 @@ DEFAULT_CODE = 'PROB1'
 DEFAULT_COLOR = '#000000'
 UNKNOWN = 'unknown'
 
-testlib_path = (Path(os.getenv('TESTLIB_PATH', DEFAULT_TESTLIB_PATH)) / 'testlib.h').resolve()
-extension_for_desc = os.getenv('EXTENSION_FOR_DESC', '.desc')
+TESTLIB_PATH = (Path(os.getenv('TESTLIB_PATH', DEFAULT_TESTLIB_PATH)) / 'testlib.h').resolve()
+EXTENSION_FOR_DESC = os.getenv('EXTENSION_FOR_DESC', '.desc')
 
 
 class ProcessError(RuntimeError):
@@ -32,7 +36,13 @@ class ProcessError(RuntimeError):
 
 
 class Test:
-    def __init__(self, method: str, description: Optional[str] = None, cmd: Optional[str] = None, sample=False):
+    def __init__(
+        self,
+        method: str,
+        description: Optional[str] = None,
+        cmd: Optional[str] = None,
+        sample=False
+    ) -> None:
         self.method = method
         self.description = description
         self.cmd = cmd
@@ -43,16 +53,35 @@ class Test:
 
 
 class Problem:
+    '''
+    The problem class.
+    '''
 
-    _NAME_LANGUAGE_PREFERENCE = (
+    _LANGUAGE_PREFERENCE = (
         'english',
         'russian',
         'chinese',
     )
 
-    def __init__(self, problem_xml: Path, Test=Test):
+    def __init__(
+        self,
+        problem_xml: Path,
+        **kwargs: Union[Sequence[str], Type[Test]]
+    ) -> None:
+        """Initialize the problem class from problem.xml.
+
+        Args:
+            problem_xml (Path): Path to problem.xml.
+
+        Raises:
+            ProcessError: If some mandatory fields are missing or invalid.
+        """
+
+        language_preference = cast(Sequence[str], kwargs.get('language_preference', self._LANGUAGE_PREFERENCE))
+        _Test = cast(Type[Test], kwargs.get('Test', Test))
+
         root = xml.etree.ElementTree.parse(problem_xml)
-        name = self._get_preference_name(root.find('names'))
+        name, language = self._get_preference_name(root.find('names'), language_preference)
 
         testset = root.find('judging/testset')
         if testset is None:
@@ -63,10 +92,6 @@ class Problem:
         memorylimit = testset.find('memory-limit')
         input_path_pattern = testset.find('input-path-pattern')
         answer_path_pattern = testset.find('answer-path-pattern')
-
-        if 'value' not in name.attrib or 'language' not in name.attrib:
-            logger.error('Name is invalid in problem.xml.')
-            raise ProcessError('Name is invalid in problem.xml.')
 
         if timelimit is None or timelimit.text is None or not timelimit.text.isdigit():
             logger.error('Time limit is invalid in problem.xml.')
@@ -84,8 +109,8 @@ class Problem:
             logger.error('Answer path pattern is invalid in problem.xml.')
             raise ProcessError('Answer path pattern is invalid in problem.xml.')
 
-        self.name = name.attrib['value']
-        self.language = name.attrib['language']
+        self.name = name
+        self.language = language
         self.timelimit = int(timelimit.text) / 1000.0
         self.memorylimit = int(memorylimit.text) // 1048576
         self.outputlimit = -1
@@ -94,7 +119,7 @@ class Problem:
         self.checker = root.find('assets/checker')
         self.interactor = root.find('assets/interactor')
         self.tests = tuple(
-            Test(
+            _Test(
                 method=test.attrib['method'],
                 description=test.attrib.get('description', None),
                 cmd=test.attrib.get('cmd', None),
@@ -102,23 +127,36 @@ class Problem:
             ) for test in testset.findall('tests/test')
         )
 
-    def _get_preference_name(self, names: Optional[Element]):
+    def _get_preference_name(
+        self,
+        names: Optional[Element],
+        language_preference: Sequence[str] = _LANGUAGE_PREFERENCE
+    ) -> Tuple[str, str]:
+        """Get the preference name.
+
+        Args:
+            names (Optional[Element]): names element in problem.xml.
+            language_preference (Sequence[str], optional): language preference.
+
+        Raises:
+            ProcessError: If can not find a valid name.
+
+        Returns:
+            Tuple[str, str]: The name and language.
+        """
         if names is None:
             logger.error('Can not find names in problem.xml.')
             raise ProcessError('Can not find names in problem.xml.')
 
-        def _is_valid_name(name: Optional[Element]):
-            return name is not None and 'value' in name.attrib and 'language' in name.attrib
-
-        for lang in self._NAME_LANGUAGE_PREFERENCE:
+        for lang in language_preference:
             name = names.find(f'name[@language="{lang}"]')
-            if _is_valid_name(name):
-                return name
+            if name is not None and 'value' in name.attrib and 'language' in name.attrib:
+                return name.attrib['value'], name.attrib['language']
 
         # if no preference language found, return the first name
         name = names.find('name')
-        if _is_valid_name(name):
-            return name
+        if name is not None and 'value' in name.attrib and 'language' in name.attrib:
+            return name.attrib['value'], name.attrib['language']
 
         logger.error('Name is invalid in problem.xml.')
         raise ProcessError('Name is invalid in problem.xml.')
@@ -157,30 +195,55 @@ class Problem:
 
 
 class Polygon2DOMjudge:
+    """Polygon to DOMjudge package.
+    """
 
-    def __init__(self, package_dir: Union[str, Path], temp_dir: Union[str, Path], output_file: Union[str, Path],
-                 short_name=DEFAULT_CODE,
-                 color=DEFAULT_COLOR, *,
-                 force_default_validator=False,
-                 auto_detect_std_checker=False,
-                 validator_flags=(),
-                 replace_sample=False,
-                 hide_sample=False,
-                 config: Optional[Config] = None,
-                 Problem=Problem):
+    def __init__(
+        self,
+        package_dir: Union[str, Path],
+        temp_dir: Union[str, Path],
+        output_file: Union[str, Path], /,
+        short_name: str = DEFAULT_CODE,
+        color: str = DEFAULT_COLOR,
+        **kwargs: Union[str, Path, bool, Config, ValidatorFlags, Type[Test], Type[Problem]]
+    ) -> None:
+        """Initialize the Polygon2DOMjudge class.
+
+        Args:
+            package_dir (Union[str, Path]): The path to the polygon package directory.
+            temp_dir (Union[str, Path]): The path to the temporary directory.
+            output_file (Union[str, Path]): The path to the output DOMjudge package.
+            short_name (str, optional): The short name of the problem.
+            color (str, optional): The color of the problem.
+
+        Raises:
+            ProcessError: If some mandatory fields are missing or invalid.
+        """
+
+        force_default_validator = cast(bool, kwargs.get('force_default_validator', False))
+        auto_detect_std_checker = cast(bool, kwargs.get('auto_detect_std_checker', False))
+        validator_flags = cast(ValidatorFlags, kwargs.get('validator_flags', ()))
+        replace_sample = cast(bool, kwargs.get('replace_sample', False))
+        hide_sample = cast(bool, kwargs.get('hide_sample', False))
+        config = cast(Config, kwargs.get('config', load_config(DEFAULT_CONFIG_FILE)))
+
+        _Problem = cast(Type[Problem], kwargs.get('Problem', Problem))
+        _Test = cast(Type[Test], kwargs.get('Test', Test))
+
         self.package_dir = Path(package_dir)
         self.short_name = short_name
         self.color = color
         self.temp_dir = Path(temp_dir)
         self.output_file = Path(output_file)
 
-        if config is None:
-            self._config: Config = load_config(DEFAULT_CONFIG_FILE)
-        else:
-            self._config = config
+        self._config = config
 
         logger.debug('Parse \'problem.xml\':')
-        self._problem = Problem(self.package_dir / 'problem.xml')
+        self._problem = _Problem(
+            self.package_dir / 'problem.xml',
+            language_preference=self._config['language_preference'],
+            Test=_Test
+        )
 
         if force_default_validator and auto_detect_std_checker:
             logger.error('Can not use auto_detect_std_checker and force_default_validator at the same time.')
@@ -193,30 +256,27 @@ class Polygon2DOMjudge:
 
         if self._use_std_checker:
             if force_default_validator:
-                self._validator_flags = validator_flags or ()
+                self._validator_flags = validator_flags
             else:
-                self._validator_flags = self._config['flag'].get(self._problem.checker_name[5:], ())
+                self._validator_flags = cast(ValidatorFlags, self._config['flag'].get(self._problem.checker_name[5:], ()))
 
-    def _write_ini(self):
-
+    def _write_ini(self) -> 'Polygon2DOMjudge':
         logger.debug('Add \'domjudge-problem.ini\':')
-
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
         ini_content = (f'short-name = {self.short_name}', f'timelimit = {self._problem.timelimit}', f'color = {self.color}')
         for line in ini_content:
-
             logger.info(line)
+
         with open(ini_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(ini_content) + '\n')
 
         return self
 
-    def _write_yaml(self):
-
+    def _write_yaml(self) -> 'Polygon2DOMjudge':
         logger.debug('Add \'problem.yaml\':')
 
         yaml_file = self.temp_dir / 'problem.yaml'
-        yaml_content = dict(name=self._problem.name)
+        yaml_content: Dict[str, Any] = dict(name=self._problem.name)
         memorylimit, outputlimit = self._problem.memorylimit, self._problem.outputlimit
         if memorylimit > 0 or outputlimit > 0:
             yaml_content['limits'] = {}
@@ -236,27 +296,25 @@ class Polygon2DOMjudge:
             logger.info(f'Use std checker: {checker_name}')
             yaml_content['validation'] = 'default'
             if self._validator_flags:
+                logger.info(f'Validator flags: {" ".join(self._validator_flags)}')
                 yaml_content['validator_flags'] = ' '.join(self._validator_flags)
         else:
             ensure_dir(output_validators_dir)
             if self._problem.has_interactor:
-
                 logger.info('Use custom interactor.')
                 yaml_content['validation'] = 'custom interactive'
                 interactor_file = self.package_dir / self._problem.interactor_path
                 ensure_dir(interactor_dir)
-                shutil.copyfile(testlib_path, interactor_dir / 'testlib.h')
+                shutil.copyfile(TESTLIB_PATH, interactor_dir / 'testlib.h')
                 shutil.copyfile(interactor_file, interactor_dir / 'interactor.cpp')
             elif self._problem.has_checker:
-
                 logger.info('Use custom checker.')
                 yaml_content['validation'] = 'custom'
                 checker_file = self.package_dir / self._problem.checker_path
                 ensure_dir(checker_dir)
-                shutil.copyfile(testlib_path, checker_dir / 'testlib.h')
+                shutil.copyfile(TESTLIB_PATH, checker_dir / 'testlib.h')
                 shutil.copyfile(checker_file, checker_dir / 'checker.cpp')
             else:
-
                 logger.error('No checker found.')
                 raise ProcessError('No checker found.')
 
@@ -265,8 +323,7 @@ class Polygon2DOMjudge:
 
         return self
 
-    def _add_tests(self):
-
+    def _add_tests(self) -> 'Polygon2DOMjudge':
         logger.debug('Add tests:')
 
         ensure_dir(self.temp_dir / 'data' / 'sample')
@@ -280,7 +337,6 @@ class Polygon2DOMjudge:
             logger.debug(f'Compare {s} and {t}')
             with open(src, 'r') as f1, open(dst, 'r') as f2:
                 if f1.read() != f2.read():
-
                     logger.warning(f'{s} and {t} are not the same, use {t}.')
 
         for idx, test in enumerate(self._problem.tests, 1):
@@ -310,7 +366,7 @@ class Polygon2DOMjudge:
                 logger.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
 
             if self._problem.outputlimit > 0 and output_src.stat().st_size > self._problem.outputlimit * 1048576:
-                self.warning(f'Output file {output_src.name} is exceed the output limit.')
+                logger.warning(f'Output file {output_src.name} is exceed the output limit.')
 
             shutil.copyfile(input_src, input_dst)
             shutil.copyfile(output_src, output_dst)
@@ -320,10 +376,9 @@ class Polygon2DOMjudge:
                 with open(desc_dst, 'w', encoding='utf-8') as f:
                     f.write(test.__str__())
 
-            return self
+        return self
 
-    def _add_jury_solutions(self):
-
+    def _add_jury_solutions(self) -> 'Polygon2DOMjudge':
         logger.debug('Add jury solutions:')
 
         ensure_dir(self.temp_dir / 'submissions' / 'accepted')
@@ -331,7 +386,7 @@ class Polygon2DOMjudge:
         ensure_dir(self.temp_dir / 'submissions' / 'time_limit_exceeded')
         ensure_dir(self.temp_dir / 'submissions' / 'run_time_error')
 
-        for desc in filter(lambda x: x.name.endswith(extension_for_desc), (self.package_dir / 'solutions').iterdir()):
+        for desc in filter(lambda x: x.name.endswith(EXTENSION_FOR_DESC), (self.package_dir / 'solutions').iterdir()):
             solution, result = self._get_submission_and_result(desc)
             src = self.package_dir / 'solutions' / solution
             dst = self.temp_dir / 'submissions' / result / solution
@@ -345,7 +400,7 @@ class Polygon2DOMjudge:
         logger.info(f'Make package {self.output_file.name}.zip success.')
         return self
 
-    def _get_submission_and_result(self, desc: Path):
+    def _get_submission_and_result(self, desc: Path) -> Tuple[str, str]:
         solution: Optional[str] = None
         tag: _Tag | None = None
 
@@ -382,21 +437,25 @@ class Polygon2DOMjudge:
 
         return solution, result
 
-    def override_memory_limit(self, memory_limit: int):
+    def override_memory_limit(self, memory_limit: int) -> 'Polygon2DOMjudge':
+        if not isinstance(memory_limit, int):
+            raise TypeError('memory_limit must be an integer.')
         if self._problem.memorylimit == memory_limit:
             return self
         logger.info(f'Override memory limit: {memory_limit}')
         self._problem.memorylimit = memory_limit
         return self
 
-    def override_output_limit(self, output_limit: int):
+    def override_output_limit(self, output_limit: int) -> 'Polygon2DOMjudge':
+        if not isinstance(output_limit, int):
+            raise TypeError('output_limit must be an integer.')
         if self._problem.outputlimit == output_limit:
             return self
         logger.info(f'Override output limit: {output_limit}')
         self._problem.outputlimit = output_limit
         return self
 
-    def process(self):
+    def process(self) -> 'Polygon2DOMjudge':
         return self._write_ini() \
             ._write_yaml() \
             ._add_tests() \
@@ -404,4 +463,90 @@ class Polygon2DOMjudge:
             ._archive()
 
 
-__all__ = ['Polygon2DOMjudge', 'ProcessError', 'Problem', 'Test']
+def convert_polygon_to_domjudge(
+    package: Union[str, Path],
+    output: Optional[Union[str, Path]] = None,
+    short_name: str = DEFAULT_CODE,
+    color: str = DEFAULT_COLOR,
+    **kwargs: Union[int, str, Path, bool, Config, ValidatorFlags, Type[Test], Type[Problem]]
+) -> None:
+    """Convert a Polygon package to a DOMjudge package.
+
+    Args:
+        package (Union[str, Path]): The path to the polygon package directory.
+        output (Union[str, Path]): The path to the output DOMjudge package.
+        short_name (str, optional): The short name of the problem.
+        color (str, optional): The color of the problem.
+
+    Raises:
+        ProcessError: If convert failed.
+        FileNotFoundError: If the package is not found.
+        FileExistsError: If the output file already exists.
+    """
+
+    def print_info(package_dir, temp_dir, output_file, skip_confirmation=False):
+        logger.info('This is Polygon2DOMjudge by cubercsl.')
+        logger.info('Process Polygon Package to Domjudge Package.')
+        logger.info("Version: {}".format(__version__))
+
+        if sys.platform.startswith('win'):
+            logger.warning('It is not recommended running on windows.')
+
+        logger.info(f'Package directory: {package_dir}')
+        logger.info(f'Temp directory: {temp_dir}')
+        logger.info(f'Output file: {output_file}.zip')
+        if not skip_confirmation:
+            input("Press enter to continue...")
+
+    if kwargs.get('code'):  # code is alias of short_name
+        short_name = cast(str, kwargs['code'])
+
+    _kwargs = dict(
+        replace_sample=kwargs.get('replace_sample', False),
+        hide_sample=kwargs.get('hide_sample', False),
+        auto_detect_std_checker=kwargs.get('auto_detect_std_checker', False),
+        force_default_validator=kwargs.get('force_default_validator', False),
+        validator_flags=kwargs.get('validator_flags', []),
+        config=kwargs.get('config', load_config(DEFAULT_CONFIG_FILE)),
+    )
+
+    skip_confirmation = kwargs.get('skip_confirmation', False)
+
+    with tempfile.TemporaryDirectory(prefix='p2d-polygon-') as polygon_temp_dir, \
+            tempfile.TemporaryDirectory(prefix='p2d-domjudge-') as domjudge_temp_dir:
+        package_dir = Path(package).resolve()
+        if package_dir.is_file():
+            with zipfile.ZipFile(package, 'r') as zip_ref:
+                logger.info(f'Extracting {package_dir.name} to {polygon_temp_dir}')
+                package_dir = Path(polygon_temp_dir)
+                zip_ref.extractall(package_dir)
+        elif package_dir.is_dir():
+            logger.info(f'Using {package_dir}')
+        else:
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), package_dir.name)
+
+        if output:
+            if Path(output).is_dir():
+                output_file = Path(output).resolve() / short_name
+            elif Path(output).name.endswith('.zip'):
+                output_file = Path(Path(output).name[:-4]).resolve()
+            else:
+                output_file = Path(output).resolve()
+        else:
+            output_file = Path.cwd() / short_name
+
+        if Path(output_file.name + '.zip').resolve().exists():
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
+
+        print_info(package_dir, domjudge_temp_dir, output_file, skip_confirmation=skip_confirmation)
+
+        p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color, **_kwargs)
+
+        if kwargs.get('memory_limit'):
+            p.override_memory_limit(cast(int, kwargs['memory_limit']))
+        if kwargs.get('output_limit'):
+            p.override_output_limit(cast(int, kwargs['output_limit']))
+        p.process()
+
+
+__all__ = ['Polygon2DOMjudge', 'ProcessError', 'Problem', 'Test', 'convert_polygon_to_domjudge']

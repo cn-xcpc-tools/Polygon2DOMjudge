@@ -20,6 +20,8 @@ pip install p2d
 ```bash
 # Unzip your polygon-package to /path/to/polygon-package first
 $ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+# Or you can use /path/to/polygon-package.zip directly
+$ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package.zip
 ```
 
 Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `code` and `color`.
@@ -40,7 +42,7 @@ All available parameters are:
 
 In [config.toml](./p2d/asset/config.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.
 
-> [!NOTE]  
+> [!NOTE]
 > You should not edit this file directly, instead, you should create a new file named `config.toml` or something else and pass it to the script with `--config` parameter. The script will merge the default config with your config.
 
 ## Environment Variable
@@ -53,20 +55,29 @@ Don't change them unless you know what you are doing.
 
 ## API Example
 
+This is an example to convert all problems in a contest defined in [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) to DOMjudge package.
+
 ```python
-import tempfile
+import yaml
 
-from p2d import Polygon2DOMjudge
+from pathlib import Path
 
-package_dir = '/path/to/polygon-package'
-output_file = '/path/to/domjudge-package' # without '.zip' suffix
+from p2d import convert_polygon_to_domjudge
 
-with tempfile.TemporaryDirectory() as temp_dir:
-    try:
-        Polygon2DOMjudge(package_dir, temp_dir, output_file).process()
-    except Exception as e:
-        # do something
-        pass
+polygon = Path('/path/to/polygon-packages')
+domjudge = Path('/path/to/domjudge-packages')
+
+with open(domjudge / 'problems.yaml') as f:
+    problems = yaml.safe_load(f)
+
+for problem in problems:
+    prob_id = problem['id']
+    convert_polygon_to_domjudge(
+        polygon / f'{prob_id}.zip',
+        domjudge / f'{prob_id}.zip',
+        code=problem['label'],
+        color=problem['rgb'],
+    )
 ```
 
 ## Development

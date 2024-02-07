@@ -1,19 +1,15 @@
 import argparse
-import errno
-import os
 import sys
-import tempfile
-import zipfile
 
 import betterlogging as logging  # type: ignore
 from pathlib import Path
 
 from . import __version__
-from .p2d import Polygon2DOMjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG_FILE
+from .p2d import convert_polygon_to_domjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG_FILE
 from .utils import load_config, update_dict
 
 
-def main(args=None, raise_exception=False) -> int:
+def main(args=None) -> int:
 
     parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
     parser.add_argument('package', type=Path, help='path of the polygon package directory')
@@ -42,89 +38,50 @@ def main(args=None, raise_exception=False) -> int:
     logging.basic_colorized_config(level=args.log_level.upper())
     logger = logging.getLogger(__name__)
 
-    def print_info(package_dir, temp_dir, output_file, skip_confirmation=False):
-        logger.info('This is Polygon2DOMjudge by cubercsl.')
-        logger.info('Process Polygon Package to Domjudge Package.')
-        logger.info("Version: {}".format(__version__))
+    try:
+        config = load_config(DEFAULT_CONFIG_FILE)
+        config_file = Path(args.config)
+        if config_file.is_file():
+            logger.info(f'Using config file: {config_file}')
+            config_override = load_config(config_file)
+        else:
+            config_override = {}
+        update_dict(config, config_override, add_keys=False)
 
-        if sys.platform.startswith('win'):
-            logger.warning('It is not recommended running on windows.')
+        if args.auto and args.default:
+            raise argparse.ArgumentError(None, 'You cannot use both "--auto" and "--default" at the same time.')
 
-        logger.info(f'Package directory: {package_dir}')
-        logger.info(f'Temp directory: {temp_dir}')
-        logger.info(f'Output file: {output_file}.zip')
-        if not skip_confirmation:
-            input("Press enter to continue...")
+        if not args.default and args.validator_flags:
+            logger.warning('You are not using default validation, validator flags will be ignored.')
 
-    with tempfile.TemporaryDirectory(prefix='p2d-polygon-') as polygon_temp_dir, \
-            tempfile.TemporaryDirectory(prefix='p2d-domjudge-') as domjudge_temp_dir:
+        kwargs = dict(
+            short_name=args.code,
+            color=args.color,
+            replace_sample=args.replace_sample,
+            hide_sample=args.hide_sample,
+            auto_detect_std_checker=args.auto,
+            force_default_validator=args.default,
+            validator_flags=args.validator_flags,
+            memory_limit=args.memory_limit,
+            output_limit=args.output_limit,
+            skip_confirmation=args.yes,
+            config=config,
+        )
 
-        try:
-            package_dir = Path(args.package).resolve()
-            if package_dir.is_file():
-                with zipfile.ZipFile(args.package, 'r') as zip_ref:
-                    logger.info(f'Extracting {package_dir.name} to {polygon_temp_dir}')
-                    package_dir = Path(polygon_temp_dir)
-                    zip_ref.extractall(package_dir)
-            elif package_dir.is_dir():
-                logger.info(f'Using {package_dir}')
-            else:
-                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), package_dir.name)
-
-            short_name: str = args.code
-            color: str = args.color
-            replace_sample: bool = args.replace_sample
-            hide_sample: bool = args.hide_sample
-            auto_detect_std_checker: bool = args.auto
-            force_default_validator: bool = args.default
-            validator_flags = args.validator_flags if args.validator_flags else []
-            output_file = Path.cwd() / short_name
-            config = load_config(DEFAULT_CONFIG_FILE)
-            config_file = Path(args.config)
-            if config_file.is_file():
-                logger.info(f'Using config file: {config_file}')
-                config_override = load_config(config_file)
-            else:
-                config_override = {}
-
-            update_dict(config, config_override, add_keys=False)
-
-            if args.output:
-                if Path(args.output).is_dir():
-                    output_file = Path(args.output).resolve() / short_name
-                elif args.output.name.endswith('.zip'):
-                    output_file = Path(args.output.name[:-4]).resolve()
-                else:
-                    output_file = Path(args.output).resolve()
-
-            if Path(output_file.name + '.zip').resolve().exists():
-                raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
-
-            if args.auto and args.default:
-                raise ValueError('Can not use --auto and --default at the same time.')
-
-            if not args.default and args.validator_flags:
-                logger.warning('You are not using default validation, validator flags will be ignored.')
-
-            print_info(package_dir, domjudge_temp_dir, output_file, args.yes)
-            p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color,
-                                 auto_detect_std_checker=auto_detect_std_checker,
-                                 force_default_validator=force_default_validator,
-                                 validator_flags=validator_flags,
-                                 replace_sample=replace_sample,
-                                 hide_sample=hide_sample,
-                                 config=config)
-            # memory_limit and output_limit can be override by command line
-            if args.memory_limit:
-                p.override_memory_limit(args.memory_limit)
-            if args.output_limit:
-                p.override_output_limit(args.output_limit)
-            p.process()
-        except Exception as e:
-            logger.exception(e)
-            if raise_exception:
-                raise e
-            return 1
+        convert_polygon_to_domjudge(
+            args.package,
+            args.output,
+            **kwargs
+        )
+    except argparse.ArgumentError as e:
+        logger.error(e)
+        sys.exit(2)
+    except (FileNotFoundError, FileExistsError) as e:
+        logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.exception(e)
+        sys.exit(1)
     return 0
 
 

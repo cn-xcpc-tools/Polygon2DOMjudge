@@ -33,6 +33,10 @@ def assert_no_sample_data(package_dir):
     assert not any((package_dir / 'data' / 'sample').iterdir())
 
 
+def assert_secret_data(package_dir):
+    assert any((package_dir / 'data' / 'secret').iterdir())
+
+
 def assert_submission(package_dir, result, name):
     assert (package_dir / 'submissions' / result / name).is_file()
 

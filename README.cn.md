@@ -18,6 +18,8 @@ pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
 ```bash
 # 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
 $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+# 或者也可以不解压，直接使用 /path/to/polygon-package.zip
+$ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package.zip
 ```
 
 运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
@@ -38,7 +40,7 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 
 在 [config.toml](./p2d/asset/config.toml) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，这会在 `--auto` 参数被设置时用来将 checker 替换为默认的输出校验器。
 
-> [!NOTE]  
+> [!NOTE]
 > 你不应该直接编辑这个文件，而是应该创建一个新的文件，命名为 `config.toml` 或其他名称，并使用 `--config` 参数将其传递给脚本。脚本将会合并默认配置和你的配置。
 
 ## 环境变量
@@ -51,21 +53,31 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 
 ## API 使用示例
 
+这是一个将 [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) 中定义的比赛中的所有题目转换为 DOMjudge 题目包的示例。
+
 ```python
-import tempfile
+import yaml
 
-from p2d import Polygon2DOMjudge
+from pathlib import Path
 
-package_dir = '/path/to/polygon-package'
-output_file = '/path/to/domjudge-package' # without '.zip' suffix
+from p2d import convert_polygon_to_domjudge
 
-with tempfile.TemporaryDirectory() as temp_dir:
-    try:
-        Polygon2DOMjudge(package_dir, temp_dir, output_file).process()
-    except Exception as e:
-        # do something
-        pass
+polygon = Path('/path/to/polygon-packages')
+domjudge = Path('/path/to/domjudge-packages')
+
+with open(domjudge / 'problems.yaml') as f:
+    problems = yaml.safe_load(f)
+
+for problem in problems:
+    prob_id = problem['id']
+    convert_polygon_to_domjudge(
+        polygon / f'{prob_id}.zip',
+        domjudge / f'{prob_id}.zip',
+        code=problem['label'],
+        color=problem['rgb'],
+    )
 ```
+
 
 ## 开发
 

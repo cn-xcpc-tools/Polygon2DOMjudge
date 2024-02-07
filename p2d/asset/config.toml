@@ -3,6 +3,8 @@
 # If you want to override the default configuration,
 # create a new file named "config.toml" and override the default values there
 
+language_preference = ["english", "russian", "chinese"]
+
 [flag]
 "rcmp4.cpp" = ["float_tolerance", "1e-4"]
 "rcmp6.cpp" = ["float_tolerance", "1e-6"]
