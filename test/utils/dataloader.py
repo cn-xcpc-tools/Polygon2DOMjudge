@@ -1,9 +1,9 @@
-import yaml
-import pytest
-from pathlib import Path
-
 from contextlib import nullcontext as does_not_raise
 from functools import partial
+from pathlib import Path
+
+import pytest
+import yaml
 
 from . import assertions
 
@@ -47,9 +47,8 @@ def load_cli_test_data():
         if name.startswith('__'):
             continue
         yield pytest.param(
-            test_case['input'],                                 # package_name
-            test_case['args'] + [test_case['package']],         # args
-            test_case['extract'],                               # extract
+            test_case['input'],                          # package_name
+            test_case['args'],                                  # args
             _get_asserts(test_case.get('assertions', None)),    # asserts
             _get_raises(test_case.get('raise', None)),          # expectation
             id=name,

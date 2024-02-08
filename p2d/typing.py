@@ -1,6 +1,6 @@
-from typing import TypedDict, Dict, List, Literal, Sequence
+from typing import Dict, List, Literal, Sequence, TypedDict
 
-_Tag = Literal[
+Tag = Literal[
     'MAIN',
     'ACCEPTED',
     'WRONG_ANSWER',
@@ -12,18 +12,19 @@ _Tag = Literal[
     'FAILED'
 ]
 
-_Result = Literal[
+Result = Literal[
     'accepted',
     'wrong_answer',
     'time_limit_exceeded',
     # 'memory_limit_exceeded',   # not used in domjudge
     'output_limit_exceeded',
     'runtime_error',
+    'rejected',
 ]
 
-Tag = Dict[_Tag, _Result]
+TagMapping = Dict[Tag, Result]
 
-Flag = Dict[str, List[str]]
+FlagMapping = Dict[str, List[str]]
 
 ValidatorFlags = Sequence[str]
 
@@ -35,6 +36,6 @@ class ExamplePathPattern(TypedDict):
 
 class Config(TypedDict):
     language_preference: List[str]
-    flag: Flag
-    tag: Tag
+    flag: FlagMapping
+    tag: TagMapping
     example_path_pattern: ExamplePathPattern

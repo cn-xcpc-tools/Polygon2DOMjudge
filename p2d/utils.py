@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import collections
 import shutil
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomli
 
-from pathlib import Path
-from typing import Union
+if TYPE_CHECKING:
+    from _typeshed import StrPath
 
 
 def ensure_dir(s: Path):
@@ -17,7 +21,7 @@ def ensure_no_dir(s: Path):
         shutil.rmtree(s)
 
 
-def load_config(config_file: Union[str, Path]):
+def load_config(config_file: StrPath):
     try:
         with open(config_file, 'r') as f:
             return tomli.loads(f.read())

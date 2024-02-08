@@ -1,9 +1,8 @@
 import shutil
 import zipfile
+from pathlib import Path
 
 import pytest
-
-from pathlib import Path
 
 from .utils.dataloader import load_cli_test_data, load_api_test_data
 
@@ -22,8 +21,9 @@ def test_cli_version(capsys):
     assert captured.out.strip() == __version__
 
 
+@pytest.mark.parametrize('extract', [True, False], ids=['extract', 'no_extract'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_api_test_data())
-def test_api(tmp_path, monkeypatch, package_name, args, assertion, expectation):
+def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expectation):
     monkeypatch.chdir(tmp_path)
     test_data_dir = Path(__file__).parent / 'test_data'
     polygon_package_dir = tmp_path / 'example-polygon-dir'
@@ -31,14 +31,21 @@ def test_api(tmp_path, monkeypatch, package_name, args, assertion, expectation):
     polygon_package = tmp_path / 'example-polygon.zip'
     domjudge_package = tmp_path / 'example-domjudge.zip'
 
-    shutil.copyfile(test_data_dir / package_name, polygon_package)
-    with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
-        zip_ref.extractall(polygon_package_dir)
+    if (test_data_dir / package_name).exists():
+        # there are some test cases that tests the package is not found
+        # keep this error in api calling.
+        shutil.copyfile(test_data_dir / package_name, polygon_package)
+        if extract:
+            with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
+                zip_ref.extractall(polygon_package_dir)
 
     from p2d import convert_polygon_to_domjudge
 
+    package = polygon_package_dir if extract else polygon_package
+
     with expectation:
-        convert_polygon_to_domjudge(polygon_package, domjudge_package, skip_confirmation=True, **args)
+        # Skip confirmation for testing
+        convert_polygon_to_domjudge(package, domjudge_package, skip_confirmation=True, **args)
 
         assert domjudge_package.is_file()
 
@@ -49,7 +56,8 @@ def test_api(tmp_path, monkeypatch, package_name, args, assertion, expectation):
         assertion(domjudge_package_dir)
 
 
-@pytest.mark.parametrize('package_name, args, extract, assertion, expectation', load_cli_test_data())
+@pytest.mark.parametrize('extract', [True, False], ids=['extract', 'no_extract'])
+@pytest.mark.parametrize('package_name, args, assertion, expectation', load_cli_test_data())
 def test_cli(tmp_path, monkeypatch, package_name, args, extract, assertion, expectation):
     monkeypatch.chdir(tmp_path)
     test_data_dir = Path(__file__).parent / 'test_data'
@@ -58,15 +66,20 @@ def test_cli(tmp_path, monkeypatch, package_name, args, extract, assertion, expe
     polygon_package = tmp_path / 'example-polygon.zip'
     domjudge_package = tmp_path / 'example-domjudge.zip'
 
-    shutil.copyfile(test_data_dir / package_name, polygon_package)
-    if extract:
-        with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
-            zip_ref.extractall(polygon_package_dir)
+    if (test_data_dir / package_name).exists():
+        # there are some test cases that tests the package is not found
+        # keep this error in cli calling.
+        shutil.copyfile(test_data_dir / package_name, polygon_package)
+        if extract:
+            with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
+                zip_ref.extractall(polygon_package_dir)
 
     from p2d.cli import main
 
+    package = polygon_package_dir if extract else polygon_package
+
     with expectation:
-        assert main(args) == 0
+        assert main(args + [package.name]) == 0
 
         assert domjudge_package.is_file()
 

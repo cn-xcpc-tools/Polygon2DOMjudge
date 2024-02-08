@@ -166,14 +166,18 @@ api:
       type: ValueError
       match: Can not use auto_detect_std_checker and force_default_validator at the same time.
 
+  non_exist_package:
+    input: not-exist.zip
+    args:
+      <<: *base-api-args
+    raise:
+      type: FileNotFoundError
+      match: e
+
 # cli test data
 cli:
-  __base: &base-cli
-    extract: false
-    package: example-polygon.zip
 
-  normal: &normal-cli
-    <<: *base-cli
+  normal:
     input: *normal-package
     args:
       - --color
@@ -185,8 +189,7 @@ cli:
       - -y
     assertions: *normal-assertions
 
-  auto_validation: &auto-cli
-    <<: *base-cli
+  auto_validation:
     input: *normal-package
     args:
       - --color
@@ -199,8 +202,7 @@ cli:
       - -y
     assertions: *auto-validation-assertions
 
-  custom_validator_flags: &custom-cli
-    <<: *base-cli
+  custom_validator_flags:
     input: *normal-package
     args:
       - --color
@@ -216,8 +218,7 @@ cli:
       - -y
     assertions: *custom-validator-flags-assertions
 
-  custom_validator_flags_at_last_args_failed: &custom-2-cli
-    <<: *base-cli
+  custom_validator_flags_at_last_args_failed:
     input: *normal-package
     args:
       - --color
@@ -236,8 +237,7 @@ cli:
       match: "2"
     assertions: *custom-validator-flags-assertions
 
-  custom_validator_flags_at_last_args_ok: &custom-3-cli
-    <<: *base-cli
+  custom_validator_flags_at_last_args_ok:
     input: *normal-package
     args:
       - --color
@@ -254,8 +254,7 @@ cli:
       - --
     assertions: *custom-validator-flags-assertions
 
-  hide_sample_data: &hide-sample-data-cli
-    <<: *base-cli
+  hide_sample_data:
     input: *normal-package
     args:
       - --color
@@ -268,8 +267,7 @@ cli:
       - -y
     assertions: *hide-sample-data-assertions
 
-  interaction: &interaction-cli
-    <<: *base-cli
+  interaction:
     input: *interaction-package
     args:
       - --color
@@ -282,8 +280,7 @@ cli:
       - -y
     assertions: *interaction-assertions
 
-  override: &override-cli
-    <<: *base-cli
+  override:
     input: *normal-package
     args:
       - --color
@@ -299,8 +296,7 @@ cli:
       - -y
     assertions: *override-assertions
 
-  zip_exists: &zip-exists-cli
-    <<: *base-cli
+  zip_exists:
     input: *normal-package
     args:
       - --color
@@ -314,8 +310,7 @@ cli:
       type: SystemExit
       match: "1"
 
-  invalid_cli_args: &invalid-cli-args-cli
-    <<: *base-cli
+  invalid_cli_args:
     input: *normal-package
     args:
       - --color
@@ -331,9 +326,8 @@ cli:
       type: SystemExit
       match: "2"
 
-  file_not_found: # only test without extract zip
-    <<: *base-cli
-    input: *normal-package
+  file_not_found:
+    input: not-exist.zip
     args:
       - --color
       - "#FF0000"
@@ -347,8 +341,7 @@ cli:
       type: SystemExit
       match: "1"
 
-  missing_args: &missing-args-cli
-    <<: *base-cli
+  missing_args:
     input: *normal-package
     args:
       - --color
@@ -361,48 +354,3 @@ cli:
       type: SystemExit
       match: "2"
 
-  # test cases that pass extracted package as input
-  normal_extract_zip:
-    <<: *normal-cli
-    extract: true
-    package: example-polygon-dir
-  auto_validation_extract_zip:
-    <<: *auto-cli
-    extract: true
-    package: example-polygon-dir
-  custom_validator_flags_extract_zip:
-    <<: *custom-cli
-    extract: true
-    package: example-polygon-dir
-  custom_validator_flags_at_last_args_failed_extract_zip:
-    <<: *custom-2-cli
-    extract: true
-    package: example-polygon-dir
-  custom_validator_flags_at_last_args_ok_extract_zip:
-    <<: *custom-3-cli
-    extract: true
-    package: example-polygon-dir
-  hide_sample_data_extract_zip:
-    <<: *hide-sample-data-cli
-    extract: true
-    package: example-polygon-dir
-  interaction_extract_zip:
-    <<: *interaction-cli
-    extract: true
-    package: example-polygon-dir
-  override_extract_zip:
-    <<: *override-cli
-    extract: true
-    package: example-polygon-dir
-  zip_exists_extract_zip:
-    <<: *zip-exists-cli
-    extract: true
-    package: example-polygon-dir
-  invalid_cli_args_extract_zip:
-    <<: *invalid-cli-args-cli
-    extract: true
-    package: example-polygon-dir
-  missing_args_extract_zip:
-    <<: *missing-args-cli
-    extract: true
-    package: example-polygon-dir

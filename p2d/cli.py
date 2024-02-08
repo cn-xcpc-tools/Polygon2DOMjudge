@@ -1,20 +1,21 @@
-import argparse
 import sys
+from argparse import ArgumentParser, ArgumentError
+from pathlib import Path
+from typing import List, Optional
 
 import betterlogging as logging  # type: ignore
-from pathlib import Path
 
 from . import __version__
 from .p2d import convert_polygon_to_domjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG_FILE
 from .utils import load_config, update_dict
 
 
-def main(args=None) -> int:
+def main(cmdline_args: Optional[List[str]] = None) -> int:
 
-    parser = argparse.ArgumentParser(description='Process Polygon Package to Domjudge Package.')
+    parser = ArgumentParser(description='Process Polygon Package to Domjudge Package.')
     parser.add_argument('package', type=Path, help='path of the polygon package directory')
     parser.add_argument('--code', type=str, default=DEFAULT_CODE, help='problem short name in domjudge')
-    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color in domjudge (in RRGGBB format)')
+    parser.add_argument('--color', type=str, default=DEFAULT_COLOR, help='problem color in domjudge (in #RRGGBB format)')
     parser.add_argument('-l', '--log-level', default='info',
                         help='set log level (debug, info, warning, error, critical)')
     parser.add_argument('-v', '--version', action='version', version=__version__)
@@ -33,7 +34,7 @@ def main(args=None) -> int:
                         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
     parser.add_argument('--config', type=Path, default='config.toml',
                         help='path of the config file to override the default config, default is using "config.toml" in current directory')
-    args = parser.parse_args(args)
+    args = parser.parse_args(cmdline_args)
 
     logging.basic_colorized_config(level=args.log_level.upper())
     logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ def main(args=None) -> int:
         update_dict(config, config_override, add_keys=False)
 
         if args.auto and args.default:
-            raise argparse.ArgumentError(None, 'You cannot use both "--auto" and "--default" at the same time.')
+            raise ArgumentError(None, 'You cannot use both "--auto" and "--default" at the same time.')
 
         if not args.default and args.validator_flags:
             logger.warning('You are not using default validation, validator flags will be ignored.')
@@ -73,7 +74,7 @@ def main(args=None) -> int:
             args.output,
             **kwargs
         )
-    except argparse.ArgumentError as e:
+    except ArgumentError as e:
         logger.error(e)
         sys.exit(2)
     except (FileNotFoundError, FileExistsError) as e:

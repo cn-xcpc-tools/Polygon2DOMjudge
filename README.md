@@ -19,9 +19,9 @@ pip install p2d
 
 ```bash
 # Unzip your polygon-package to /path/to/polygon-package first
-$ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package
 # Or you can use /path/to/polygon-package.zip directly
-$ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package.zip
+$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package.zip
 ```
 
 Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `code` and `color`.
