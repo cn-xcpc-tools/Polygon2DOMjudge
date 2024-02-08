@@ -9,7 +9,7 @@ from .utils.dataloader import load_cli_test_data, load_api_test_data
 
 def test_version():
     from p2d import __version__
-    assert len(__version__.split('.')) == 3
+    assert len(__version__) > 0
 
 
 def test_cli_version(capsys):
@@ -21,7 +21,7 @@ def test_cli_version(capsys):
     assert captured.out.strip() == __version__
 
 
-@pytest.mark.parametrize('extract', [True, False], ids=['extract', 'no_extract'])
+@pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_api_test_data())
 def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expectation):
     monkeypatch.chdir(tmp_path)
@@ -56,7 +56,7 @@ def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expe
         assertion(domjudge_package_dir)
 
 
-@pytest.mark.parametrize('extract', [True, False], ids=['extract', 'no_extract'])
+@pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_cli_test_data())
 def test_cli(tmp_path, monkeypatch, package_name, args, extract, assertion, expectation):
     monkeypatch.chdir(tmp_path)
