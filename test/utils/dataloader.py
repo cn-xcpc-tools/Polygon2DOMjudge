@@ -7,7 +7,7 @@ import yaml
 
 from . import assertions
 
-with open(Path(__file__).parent.parent / 'test_data' / 'data.yaml', 'r') as f:
+with open(Path(__file__).parent.parent / 'test_data' / 'data.yaml', 'r', encoding='utf-8') as f:
     _data = yaml.safe_load(f)
 
 

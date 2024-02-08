@@ -18,7 +18,7 @@ def assert_domjudge_problem_ini(package_dir, expect):
 
 def assert_problem_yaml(package_dir, expect):
     assert (package_dir / 'problem.yaml').is_file()
-    with open(package_dir / 'problem.yaml', 'r') as f:
+    with open(package_dir / 'problem.yaml', 'r', encoding='utf-8') as f:
         actual = yaml.safe_load(f.read())
         assert actual == expect, f'actual: {actual}, expect: {expect}'
 

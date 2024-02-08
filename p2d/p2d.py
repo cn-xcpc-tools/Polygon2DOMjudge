@@ -344,7 +344,7 @@ class Polygon2DOMjudge:
                 logger.error('No checker found.')
                 raise ProcessError('No checker found.')
 
-        with open(yaml_file, 'w') as f:
+        with open(yaml_file, 'w', encoding='utf-8') as f:
             yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
         return self
