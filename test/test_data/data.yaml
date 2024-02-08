@@ -117,6 +117,19 @@ assertions:
           limits:
             output: 64
 
+  # change language to Chinese
+  chinese: &chinese-assertions
+    - data_dir
+    - submissions_dir
+    - type: domjudge_problem_ini
+      args:
+        expect: *normal-ini
+    - type: problem_yaml
+      args:
+        expect:
+          <<: *normal-yaml
+          name: "小 H 的重启"
+
 api:
   __base:
     args: &base-api-args
@@ -174,9 +187,16 @@ api:
       type: FileNotFoundError
       match: e
 
+  language_preference:
+    input: *normal-package
+    args:
+      <<: *base-api-args
+      config:
+        language_preference: ["russian", "chinese", "english"]
+    assertions: *chinese-assertions
+
 # cli test data
 cli:
-
   normal:
     input: *normal-package
     args:
@@ -353,4 +373,3 @@ cli:
     raise:
       type: SystemExit
       match: "2"
-

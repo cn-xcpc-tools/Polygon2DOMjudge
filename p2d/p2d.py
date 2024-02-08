@@ -17,7 +17,7 @@ import yaml
 
 from . import __version__
 from .typing import Config, ValidatorFlags, Tag, Result
-from .utils import ensure_dir, load_config
+from .utils import ensure_dir, load_config, update_dict
 
 if sys.version_info < (3, 11):
     from typing_extensions import Unpack
@@ -509,7 +509,7 @@ class Options(TypedDict, total=False):
     validator_flags: ValidatorFlags
     replace_sample: bool
     hide_sample: bool
-    config: Config
+    config: Optional[Config]
     memory_limit: int
     output_limit: int
     skip_confirmation: bool
@@ -546,8 +546,12 @@ def convert_polygon_to_domjudge(
         'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
         'force_default_validator': kwargs.get('force_default_validator', False),
         'validator_flags': kwargs.get('validator_flags', []),
-        'config': kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE))),
+        'config': load_config(DEFAULT_CONFIG_FILE),
     }
+
+    # config override
+    if kwargs.get('config') is not None:
+        update_dict(_kwargs['config'], cast(Config, kwargs['config']))
 
     skip_confirmation = kwargs.get('skip_confirmation', False)
 
@@ -593,6 +597,7 @@ __all__ = [
     'DEFAULT_CODE',
     'DEFAULT_COLOR',
     'DEFAULT_CONFIG_FILE',
+    'Options',
     'Polygon2DOMjudge',
     'ProcessError',
     'Problem',

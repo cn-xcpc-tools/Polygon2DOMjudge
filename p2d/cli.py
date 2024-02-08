@@ -1,13 +1,14 @@
 import sys
 from argparse import ArgumentParser, ArgumentError
 from pathlib import Path
-from typing import List, Optional
+from typing import cast, List, Optional
 
 import betterlogging as logging  # type: ignore
 
 from . import __version__
-from .p2d import convert_polygon_to_domjudge, DEFAULT_CODE, DEFAULT_COLOR, DEFAULT_CONFIG_FILE
-from .utils import load_config, update_dict
+from .p2d import convert_polygon_to_domjudge, DEFAULT_CODE, DEFAULT_COLOR
+from .utils import load_config
+from .typing import Config
 
 
 def main(cmdline_args: Optional[List[str]] = None) -> int:
@@ -40,14 +41,12 @@ def main(cmdline_args: Optional[List[str]] = None) -> int:
     logger = logging.getLogger(__name__)
 
     try:
-        config = load_config(DEFAULT_CONFIG_FILE)
         config_file = Path(args.config)
         if config_file.is_file():
             logger.info(f'Using config file: {config_file}')
-            config_override = load_config(config_file)
+            config = cast(Config, load_config(config_file))
         else:
-            config_override = {}
-        update_dict(config, config_override, add_keys=False)
+            config = None
 
         if args.auto and args.default:
             raise ArgumentError(None, 'You cannot use both "--auto" and "--default" at the same time.')
@@ -55,24 +54,24 @@ def main(cmdline_args: Optional[List[str]] = None) -> int:
         if not args.default and args.validator_flags:
             logger.warning('You are not using default validation, validator flags will be ignored.')
 
-        kwargs = dict(
-            short_name=args.code,
-            color=args.color,
-            replace_sample=args.replace_sample,
-            hide_sample=args.hide_sample,
-            auto_detect_std_checker=args.auto,
-            force_default_validator=args.default,
-            validator_flags=args.validator_flags,
-            memory_limit=args.memory_limit,
-            output_limit=args.output_limit,
-            skip_confirmation=args.yes,
-            config=config,
-        )
+        _kwargs = {
+            'short_name': args.code,
+            'color': args.color,
+            'replace_sample': args.replace_sample,
+            'hide_sample': args.hide_sample,
+            'auto_detect_std_checker': args.auto,
+            'force_default_validator': args.default,
+            'validator_flags': args.validator_flags,
+            'memory_limit': args.memory_limit,
+            'output_limit': args.output_limit,
+            'skip_confirmation': args.yes,
+            'config': config,
+        }
 
         convert_polygon_to_domjudge(
             args.package,
             args.output,
-            **kwargs
+            **_kwargs,
         )
     except ArgumentError as e:
         logger.error(e)
