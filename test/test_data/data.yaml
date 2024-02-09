@@ -23,6 +23,11 @@ assertions:
           validation: custom
     - sample_data
     - secret_data
+    - type: file
+      args:
+        file: data/sample/01.desc
+        expect: |+
+          File "01"
     - &std_cpp_submission
       type: submission
       args:
@@ -45,6 +50,11 @@ assertions:
           validator_flags: float_tolerance 1e-4
     - sample_data
     - secret_data
+    - type: file
+      args:
+        file: data/sample/01.desc
+        expect: |+
+          File "01"
     - *std_cpp_submission
     - no_checker_and_testlib
 
@@ -63,6 +73,11 @@ assertions:
           validator_flags: float_tolerance 1e-6
     - sample_data
     - secret_data
+    - type: file
+      args:
+        file: data/sample/01.desc
+        expect: |+
+          File "01"
     - *std_cpp_submission
     - no_checker_and_testlib
 
@@ -100,6 +115,14 @@ assertions:
           validation: custom interactive
     - no_sample_data
     - secret_data
+    - type: no_file
+      args:
+        file: data/secret/01.desc
+    - type: file
+      args:
+        file: data/secret/02.desc
+        expect: |+
+          [GEN] random_gen -n 10 1
     - *std_cpp_submission
     - interactor_and_testlib
 

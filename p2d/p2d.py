@@ -74,7 +74,9 @@ class Test:
         self.sample = sample
 
     def __str__(self):
-        return f'{self.description} {"[GEN] " + self.cmd if self.cmd else ""}'.strip()
+        description = self.description if self.description else ''
+        cmd = f'[GEN] {self.cmd}' if self.cmd else ''
+        return f'{description} {cmd}'.strip()
 
 
 class Problem:
@@ -296,7 +298,8 @@ class Polygon2DOMjudge:
             logger.info(line)
 
         with open(ini_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(ini_content) + '\n')
+            f.write('\n'.join(ini_content))
+            f.write('\n')
 
         return self
 
@@ -403,6 +406,7 @@ class Polygon2DOMjudge:
                 logger.info(f'{test.__str__()}')
                 with open(desc_dst, 'w', encoding='utf-8') as f:
                     f.write(test.__str__())
+                    f.write('\n')
 
         return self
 
@@ -488,7 +492,11 @@ class Polygon2DOMjudge:
             ._archive()
 
 
-def _confirm(package_dir, temp_dir, output_file, skip_confirmation=False):
+def _confirm(
+    package_dir: StrPath,
+    output_file: StrPath,
+    skip_confirmation: bool = False
+) -> None:
     logger.info('This is Polygon2DOMjudge by cubercsl.')
     logger.info('Process Polygon Package to DOMjudge Package.')
     logger.info("Version: {}".format(__version__))
@@ -497,10 +505,11 @@ def _confirm(package_dir, temp_dir, output_file, skip_confirmation=False):
         logger.warning('It is not recommended running on windows.')
 
     logger.info(f'Package directory: {package_dir}')
-    logger.info(f'Temp directory: {temp_dir}')
     logger.info(f'Output file: {output_file}.zip')
     if not skip_confirmation:
-        input("Press enter to continue...")
+        if input('Are you sure to continue? [y/N]').lower() == 'y':
+            return
+        sys.exit(0)
 
 
 class Options(TypedDict, total=False):
@@ -516,7 +525,7 @@ class Options(TypedDict, total=False):
     code: str  # alias of short_name
 
 
-def convert_polygon_to_domjudge(
+def convert(
     package: StrPath, /,
     output: Optional[StrPath] = None, *,
     short_name: str = DEFAULT_CODE,
@@ -581,7 +590,7 @@ def convert_polygon_to_domjudge(
         if Path(output_file.name + '.zip').resolve().exists():
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
 
-        _confirm(package_dir, domjudge_temp_dir, output_file, skip_confirmation=skip_confirmation)
+        _confirm(package_dir, output_file, skip_confirmation=skip_confirmation)
 
         p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color, **_kwargs)
 
@@ -593,7 +602,7 @@ def convert_polygon_to_domjudge(
 
 
 __all__ = [
-    'convert_polygon_to_domjudge',
+    'convert',
     'DEFAULT_CODE',
     'DEFAULT_COLOR',
     'DEFAULT_CONFIG_FILE',

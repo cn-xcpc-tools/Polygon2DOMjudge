@@ -1,4 +1,5 @@
 import shutil
+import sys
 import zipfile
 from pathlib import Path
 
@@ -21,6 +22,18 @@ def test_cli_version(capsys):
     assert captured.out.strip() == __version__
 
 
+@pytest.mark.parametrize('skip_confirmation', [True, False], ids=['skip', 'confirm'])
+def test_confirm(capsys, monkeypatch, skip_confirmation):
+    if not skip_confirmation:
+        import io
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('y\n'))
+    from p2d.p2d import _confirm
+    _confirm('example-polygon-dir', 'example-domjudge', skip_confirmation=skip_confirmation)
+    captured = capsys.readouterr()
+    if not skip_confirmation:
+        assert "Are you sure to continue? [y/N]" in captured.out
+
+
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_api_test_data())
 def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expectation):
@@ -39,13 +52,13 @@ def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expe
             with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
                 zip_ref.extractall(polygon_package_dir)
 
-    from p2d import convert_polygon_to_domjudge
+    from p2d import convert
 
     package = polygon_package_dir if extract else polygon_package
 
     with expectation:
         # Skip confirmation for testing
-        convert_polygon_to_domjudge(package, domjudge_package, skip_confirmation=True, **args)
+        convert(package, domjudge_package, skip_confirmation=True, **args)
 
         assert domjudge_package.is_file()
 

@@ -57,10 +57,9 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 
 ```python
 import yaml
-
 from pathlib import Path
 
-from p2d import convert_polygon_to_domjudge
+from p2d import convert
 
 polygon = Path('/path/to/polygon-packages')
 domjudge = Path('/path/to/domjudge-packages')
@@ -70,14 +69,13 @@ with open(domjudge / 'problems.yaml') as f:
 
 for problem in problems:
     prob_id = problem['id']
-    convert_polygon_to_domjudge(
+    convert(
         polygon / f'{prob_id}.zip',
         domjudge / f'{prob_id}.zip',
         code=problem['label'],
         color=problem['rgb'],
     )
 ```
-
 
 ## 开发
 

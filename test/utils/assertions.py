@@ -23,6 +23,19 @@ def assert_problem_yaml(package_dir, expect):
         assert actual == expect, f'actual: {actual}, expect: {expect}'
 
 
+def assert_file(package_dir, file, expect=None):
+    assert (package_dir / file).is_file()
+    if expect is None:
+        return
+    with open(package_dir / file, 'r') as f:
+        actual = f.read()
+        assert actual == expect, f'actual: {actual}, expect: {expect}'
+
+
+def assert_no_file(package_dir, file):
+    assert not (package_dir / file).is_file()
+
+
 def assert_sample_data(package_dir, expect=('01.in', '01.ans')):
     assert (package_dir / 'data' / 'sample').is_dir()
     for file in expect:
