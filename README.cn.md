@@ -9,17 +9,25 @@
 
 ## 安装
 
+### 从 PyPI（稳定版本, 已经在一些比赛中使用过）
+
 ```bash
-pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pipx install p2d
+```
+
+### 从源码（最新版本，正在开发中，有新的特性）
+
+```bash
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@branch-name
 ```
 
 ## 命令行使用示例
 
 ```bash
 # 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
-$ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package
 # 或者也可以不解压，直接使用 /path/to/polygon-package.zip
-$ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package.zip
+$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package.zip
 ```
 
 运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
@@ -52,6 +60,9 @@ $ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygo
 - `EXTENSION_FOR_DESC`
 
 ## API 使用示例
+
+> [!WARNING]
+> API 不是稳定的，可能会在未来的版本中发生变化。
 
 这是一个将 [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) 中定义的比赛中的所有题目转换为 DOMjudge 题目包的示例。
 

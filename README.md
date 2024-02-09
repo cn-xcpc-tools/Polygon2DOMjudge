@@ -11,8 +11,16 @@ It is a simple python script converting polygon package to DOMjudge (kattis) pac
 
 ## Install
 
+### From PyPI (stable release, has been used in some contests)
+
 ```bash
-pip install p2d
+pipx install p2d
+```
+
+### From source (latest version, under development with new features)
+
+```bash
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@branch-name
 ```
 
 ## CLI Example
@@ -54,6 +62,9 @@ Don't change them unless you know what you are doing.
 - `EXTENSION_FOR_DESC`
 
 ## API Example
+
+> [!WARNING]
+> The API is not stable and may change in the future.
 
 This is an example to convert all problems in a contest defined in [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) to DOMjudge package.
 
