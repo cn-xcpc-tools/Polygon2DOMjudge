@@ -28,8 +28,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='add some flags to the output validator, only works when "--default" is set.')
     parser.add_argument('--auto', action='store_true',
                         help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
-    parser.add_argument('--memory-limit', type=int,
-                        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')  # default use polygon default
+    parser.add_argument('--memory-limit', type=int,  # default use polygon default
+                        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')
     parser.add_argument('--output-limit', type=int, default=-1,
                         help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
     parser.add_argument('--replace-sample', action='store_true',
