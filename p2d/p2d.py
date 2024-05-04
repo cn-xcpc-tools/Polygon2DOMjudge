@@ -11,7 +11,7 @@ import xml.etree.ElementTree
 import zipfile
 from pathlib import Path
 from typing import cast, Any, Dict, Optional, Sequence, Tuple, Type, TypedDict, TYPE_CHECKING
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, ElementTree
 
 import yaml
 
@@ -46,6 +46,7 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     validator_flags: ValidatorFlags
     replace_sample: bool
     hide_sample: bool
+    testset_name: Optional[str]
     config: Config
     problem_cls: Type[Problem]
     test_cls: Type[Test]
@@ -53,6 +54,7 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
 
 class _ProblemArgs(TypedDict, total=False):
     language_preference: Sequence[str]
+    testset_name: Optional[str]
     test_cls: Type[Test]
 
 
@@ -105,15 +107,13 @@ class Problem:
         """
 
         language_preference = kwargs.get('language_preference', self._LANGUAGE_PREFERENCE)
+        testset_name = kwargs.get('testset_name', None)
         _Test = kwargs.get('test_cls', Test)
 
         root = xml.etree.ElementTree.parse(problem_xml)
         name, language = self._get_preference_name(root.find('names'), language_preference)
 
-        testset = root.find('judging/testset')
-        if testset is None:
-            logger.error('Can not find testset in problem.xml.')
-            raise ProcessError('Can not find testset in problem.xml.')
+        testset = self._get_testset(root, testset_name)
 
         timelimit = testset.find('time-limit')
         memorylimit = testset.find('memory-limit')
@@ -188,6 +188,24 @@ class Problem:
         logger.error('Name is invalid in problem.xml.')
         raise ProcessError('Name is invalid in problem.xml.')
 
+    def _get_testset(self, root: ElementTree, testset_name: Optional[str]) -> Element:
+        # if testset_name is not specified, use the only testset if there is only one testset
+        if testset_name is None:
+            if t := root.findall('judging/testset'):
+                if len(t) == 1:
+                    return t[0]
+                logger.error('Multiple testsets found in problem.xml.')
+                logger.error('Please specify the testset name in the command line.')
+                raise ProcessError('Multiple testsets found in problem.xml.')
+            logger.error(f'Can not find any testset in problem.xml.')
+            raise ProcessError(f'Can not find any testset in problem.xml.')
+
+        # find testset by name
+        if (ele := root.find(f'judging/testset[@name="{testset_name}"]')) is None:
+            logger.error(f'Can not find testset {testset_name} in problem.xml.')
+            raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
+        return ele
+
     @property
     def has_interactor(self):
         return self.interactor is not None
@@ -252,6 +270,7 @@ class Polygon2DOMjudge:
         validator_flags = kwargs.get('validator_flags', cast(ValidatorFlags, ()))
         replace_sample = kwargs.get('replace_sample', False)
         hide_sample = kwargs.get('hide_sample', False)
+        testset_name = kwargs.get('testset_name', None)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
 
         _Problem = kwargs.get('problem_cls', Problem)
@@ -266,9 +285,12 @@ class Polygon2DOMjudge:
         self._config = config
 
         logger.debug('Parse \'problem.xml\':')
+        if testset_name:
+            logger.debug(f'With testset_name: {testset_name}')
         self._problem = _Problem(
             self.package_dir / 'problem.xml',
             language_preference=self._config['language_preference'],
+            testset_name=testset_name,
             test_cls=_Test
         )
 
@@ -522,6 +544,7 @@ class Options(TypedDict, total=False):
     memory_limit: int
     output_limit: int
     skip_confirmation: bool
+    testset_name: Optional[str]
     code: str  # alias of short_name
 
 
@@ -555,6 +578,7 @@ def convert(
         'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
         'force_default_validator': kwargs.get('force_default_validator', False),
         'validator_flags': kwargs.get('validator_flags', []),
+        'testset_name': kwargs.get('testset_name', None),
         'config': load_config(DEFAULT_CONFIG_FILE),
     }
 

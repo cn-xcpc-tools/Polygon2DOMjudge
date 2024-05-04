@@ -158,6 +158,7 @@ api:
     args: &base-api-args
       short_name: A
       color: "#FF0000"
+      testset_name: tests
   normal:
     args:
       <<: *base-api-args
@@ -218,6 +219,15 @@ api:
         language_preference: ["russian", "chinese", "english"]
     assertions: *chinese-assertions
 
+  invalid_testset:
+    input: *normal-package
+    args:
+      <<: *base-api-args
+      testset_name: not-exist
+    raise:
+      type: Exception
+      match: Can not find testset not-exist in problem.xml.
+
 # cli test data
 cli:
   normal:
@@ -230,6 +240,20 @@ cli:
       - -o
       - example-domjudge.zip
       - -y
+    assertions: *normal-assertions
+
+  testset_specified:
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge.zip
+      - -y
+      - --testset
+      - tests
     assertions: *normal-assertions
 
   auto_validation:
@@ -396,3 +420,19 @@ cli:
     raise:
       type: SystemExit
       match: "2"
+
+  testset_not_found:
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge.zip
+      - -y
+      - --testset
+      - not-exist
+    raise:
+      type: SystemExit
+      match: "1"
