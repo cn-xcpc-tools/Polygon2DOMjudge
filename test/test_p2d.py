@@ -8,12 +8,14 @@ import pytest
 
 from .utils.dataloader import load_cli_test_data, load_api_test_data
 
+
 @pytest.fixture(scope='function')
 def temp_dir(tmp_path):
     old_cwd = Path.cwd()
     chdir(tmp_path)
     yield tmp_path
     chdir(old_cwd)
+
 
 def test_version():
     from p2d import __version__
