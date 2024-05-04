@@ -43,6 +43,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/pol
 - `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
 - `--replace-sample`: 替换样例输入输出，如果样例输入输出与题面中的样例输入输出不同，则使用题面中的样例输入输出替换（例如防止样例输出与正确解答的输出不同）。
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
+- `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
 
 ## 配置
 
