@@ -17,7 +17,7 @@ pip install p2d -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 ```bash
 # 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
-$ ./bin/p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+$ ./bin/p2d --code A --color '#FF0000' -o /path/to/domjudge-package /path/to/polygon-package
 ```
 
 运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
