@@ -1,11 +1,20 @@
 import shutil
 import sys
 import zipfile
+from os import chdir
 from pathlib import Path
 
 import pytest
 
 from .utils.dataloader import load_cli_test_data, load_api_test_data
+
+
+@pytest.fixture(scope='function')
+def temp_dir(tmp_path):
+    old_cwd = Path.cwd()
+    chdir(tmp_path)
+    yield tmp_path
+    chdir(old_cwd)
 
 
 def test_version():
@@ -36,13 +45,12 @@ def test_confirm(capsys, monkeypatch, skip_confirmation):
 
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_api_test_data())
-def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expectation):
-    monkeypatch.chdir(tmp_path)
+def test_api(temp_dir, package_name, extract, args, assertion, expectation):
     test_data_dir = Path(__file__).parent / 'test_data'
-    polygon_package_dir = tmp_path / 'example-polygon-dir'
-    domjudge_package_dir = tmp_path / 'example-domjudge-dir'
-    polygon_package = tmp_path / 'example-polygon.zip'
-    domjudge_package = tmp_path / 'example-domjudge.zip'
+    polygon_package_dir = temp_dir / 'example-polygon-dir'
+    domjudge_package_dir = temp_dir / 'example-domjudge-dir'
+    polygon_package = temp_dir / 'example-polygon.zip'
+    domjudge_package = temp_dir / 'example-domjudge.zip'
 
     if (test_data_dir / package_name).exists():
         # there are some test cases that tests the package is not found
@@ -71,13 +79,12 @@ def test_api(tmp_path, monkeypatch, package_name, extract, args, assertion, expe
 
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
 @pytest.mark.parametrize('package_name, args, assertion, expectation', load_cli_test_data())
-def test_cli(tmp_path, monkeypatch, package_name, args, extract, assertion, expectation):
-    monkeypatch.chdir(tmp_path)
+def test_cli(temp_dir, package_name, args, extract, assertion, expectation):
     test_data_dir = Path(__file__).parent / 'test_data'
-    polygon_package_dir = tmp_path / 'example-polygon-dir'
-    domjudge_package_dir = tmp_path / 'example-domjudge-dir'
-    polygon_package = tmp_path / 'example-polygon.zip'
-    domjudge_package = tmp_path / 'example-domjudge.zip'
+    polygon_package_dir = temp_dir / 'example-polygon-dir'
+    domjudge_package_dir = temp_dir / 'example-domjudge-dir'
+    polygon_package = temp_dir / 'example-polygon.zip'
+    domjudge_package = temp_dir / 'example-domjudge.zip'
 
     if (test_data_dir / package_name).exists():
         # there are some test cases that tests the package is not found

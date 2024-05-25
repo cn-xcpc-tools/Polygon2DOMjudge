@@ -36,6 +36,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
     parser.add_argument('--hide-sample', action='store_true',
                         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
+    parser.add_argument('--testset', type=str,
+                        help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')
     parser.add_argument('--config', type=Path, default='config.toml',
                         help='path of the config file to override the default config, default is using "config.toml" in current directory')
     args = parser.parse_args(argv)
@@ -68,6 +70,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             'memory_limit': args.memory_limit,
             'output_limit': args.output_limit,
             'skip_confirmation': args.yes,
+            'testset_name': args.testset,
             'config': config,
         }
 
