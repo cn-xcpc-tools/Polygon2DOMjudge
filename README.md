@@ -11,15 +11,25 @@ It is a simple python script converting polygon package to DOMjudge (kattis) pac
 
 ## Install
 
+### From PyPI (stable release, has been used in some contests)
+
 ```bash
-pip install p2d
+pipx install p2d
+```
+
+### From source (latest version, under development with new features)
+
+```bash
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@dev
 ```
 
 ## CLI Example
 
 ```bash
 # Unzip your polygon-package to /path/to/polygon-package first
-$ p2d --code A --color FF0000 -o /path/to/domjudge-package /path/to/polygon-package
+$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package
+# Or you can use /path/to/polygon-package.zip directly
+$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package.zip
 ```
 
 Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `code` and `color`.
@@ -34,10 +44,15 @@ All available parameters are:
 - `--memory-limit`: override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package.
 - `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
 - `--replace-sample`: replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).
+- `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
+- `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
 ## Config
 
-In [config.json](config.json), you can change some special checker's validator's flag or add some checker configs manually.
+In [config.toml](./p2d/asset/config.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.
+
+> [!NOTE]
+> You should not edit this file directly, instead, you should create a new file named `config.toml` or something else and pass it to the script with `--config` parameter. The script will merge the default config with your config.
 
 ## Environment Variable
 
@@ -49,20 +64,31 @@ Don't change them unless you know what you are doing.
 
 ## API Example
 
+> [!WARNING]
+> The API is not stable and may change in the future.
+
+This is an example to convert all problems in a contest defined in [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) to DOMjudge package.
+
 ```python
-import tempfile
+import yaml
+from pathlib import Path
 
-from p2d import Polygon2DOMjudge
+from p2d import convert
 
-package_dir = '/path/to/polygon-package'
-output_file = '/path/to/domjudge-package' # without '.zip' suffix
+polygon = Path('/path/to/polygon-packages')
+domjudge = Path('/path/to/domjudge-packages')
 
-with tempfile.TemporaryDirectory() as temp_dir:
-    try:
-        Polygon2DOMjudge(package_dir, temp_dir, output_file).process()
-    except Exception as e:
-        # do something
-        pass
+with open(domjudge / 'problems.yaml') as f:
+    problems = yaml.safe_load(f)
+
+for problem in problems:
+    prob_id = problem['id']
+    convert(
+        polygon / f'{prob_id}.zip',
+        domjudge / f'{prob_id}.zip',
+        code=problem['label'],
+        color=problem['rgb'],
+    )
 ```
 
 ## Development

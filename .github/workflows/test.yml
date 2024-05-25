@@ -3,26 +3,46 @@ name: Test
 
 on:
   push:
+    paths:
+      - "poetry.lock"
+      - "pyproject.toml"
+      - "p2d/**"
+      - "test/**"
+      - ".github/workflows/**"
   pull_request:
+    types: [ opened, synchronize, reopened, ready_for_review ]
+    paths:
+      - "poetry.lock"
+      - "pyproject.toml"
+      - "p2d/**"
+      - "test/**"
+      - ".github/workflows/**"
   workflow_dispatch:
-
-env:
-  python_version: "3.10"
 
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+      fail-fast: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python runtime
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python ${{ matrix.python-version }} runtime
         uses: actions/setup-python@v4
         with:
-          python-version: "${{ env.python_version }}"
+          python-version: ${{ matrix.python-version }}
+          cache: poetry
 
-      - uses: Gr1N/setup-poetry@v8
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
 
       - name: Install Dependencies
         run: |
@@ -39,4 +59,4 @@ jobs:
 
       - name: Unit Test
         run: |
-          poetry run pytest
+          poetry run pytest -v
