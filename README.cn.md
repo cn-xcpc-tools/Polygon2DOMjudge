@@ -18,7 +18,7 @@ pipx install p2d
 ### 从源码（最新版本，正在开发中，有新的特性）
 
 ```bash
-pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@branch-name
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@dev
 ```
 
 ## 命令行使用示例
