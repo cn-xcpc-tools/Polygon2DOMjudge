@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Sequence, TypedDict
+from typing import Dict, List, Literal, Sequence, TypedDict, Union
 
 
 Result = Literal[
@@ -13,7 +13,7 @@ Result = Literal[
 
 Results = Sequence[Result]
 
-TagMapping = Dict[str, Result | Results]
+TagMapping = Dict[str, Union[Result,Results]]
 
 FlagMapping = Dict[str, List[str]]
 
