@@ -34,6 +34,11 @@ assertions:
         result: accepted
         name: std.cpp
     - checker_and_testlib
+    - type: magic_string
+      args:
+        result: multiple
+        name: wrong.cpp
+        magic_string: "@EXPECTED_RESULTS@: WRONG-ANSWER,TIMELIMIT,RUN-ERROR"
 
   # validate converted DOMjudge package with auto detected checker
   auto_validation: &auto-validation-assertions
