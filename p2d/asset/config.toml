@@ -12,17 +12,17 @@ language_preference = ["english", "russian", "chinese"]
 "fcmp.cpp" = ["case_sensitive", "space_change_sensitive"]
 
 [tag]
-main = "accepted"
-accepted = "accepted"
-wrong-answer = "wrong_answer"
-presentation-error = "wrong_answer"
-time-limit-exceeded = "time_limit_exceeded"
+main = ["accepted"]
+accepted = ["accepted"]
+wrong-answer = ["wrong_answer"]
+presentation-error = ["wrong_answer"]
+time-limit-exceeded = ["time_limit_exceeded"]
 time-limit-exceeded-or-accepted = ["time_limit_exceeded", "accepted"]
 time-limit-exceeded-or-memory-limit-exceeded = [
     "time_limit_exceeded",
     "run_time_error",
 ]
-memory-limit-exceeded = "run_time_error"
+memory-limit-exceeded = ["run_time_error"]
 rejected = ["wrong_answer", "time_limit_exceeded", "run_time_error"]
 failed = ["wrong_answer", "time_limit_exceeded", "run_time_error"]
 

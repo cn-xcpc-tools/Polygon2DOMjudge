@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Sequence, TypedDict, Union
+from typing import Dict, List, Literal, Sequence, TypedDict
 
 
 Result = Literal[
@@ -7,13 +7,10 @@ Result = Literal[
     'time_limit_exceeded',
     # 'memory_limit_exceeded',   # not used in domjudge
     'output_limit_exceeded',
-    'runtime_error',
-    'check_manually'
+    'runtime_error'
 ]
 
-Results = Sequence[Result]
-
-TagMapping = Dict[str, Union[Result, Results]]
+TagMapping = Dict[str, List[Result]]
 
 FlagMapping = Dict[str, List[str]]
 
