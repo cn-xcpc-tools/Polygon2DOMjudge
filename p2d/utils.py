@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import shutil
+import string
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -46,3 +47,7 @@ def update_dict(orig, update, add_keys=True):
             update_dict(orig[key], value)
         elif add_keys or key in orig:
             orig[key] = value
+
+
+def get_normalized_lang(lang: str) -> str:
+    return lang.split('.')[0].rstrip(string.digits)

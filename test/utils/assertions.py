@@ -68,3 +68,9 @@ def assert_checker_and_testlib(package_dir):
 def assert_interactor_and_testlib(package_dir):
     assert (package_dir / 'output_validators' / 'interactor' / 'testlib.h').is_file()
     assert (package_dir / 'output_validators' / 'interactor' / 'interactor.cpp').is_file()
+
+
+def assert_magic_string(package_dir, result, name, magic_string):
+    assert_submission(package_dir, result, name)
+    with open(package_dir / 'submissions' / result / name, 'r') as f:
+        assert magic_string in f.read()
