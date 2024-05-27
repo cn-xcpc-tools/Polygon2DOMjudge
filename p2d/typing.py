@@ -13,7 +13,7 @@ Result = Literal[
 
 Results = Sequence[Result]
 
-TagMapping = Dict[str, Union[Result,Results]]
+TagMapping = Dict[str, Union[Result, Results]]
 
 FlagMapping = Dict[str, List[str]]
 
