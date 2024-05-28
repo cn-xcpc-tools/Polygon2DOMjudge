@@ -60,7 +60,6 @@ Don't change them unless you know what you are doing.
 
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
-- `EXTENSION_FOR_DESC`
 
 ## API Example
 

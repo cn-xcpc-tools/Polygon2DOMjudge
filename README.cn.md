@@ -58,7 +58,6 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/pol
 
 - `CONFIG_PATH`
 - `TESTLIB_PATH`
-- `EXTENSION_FOR_DESC`
 
 ## API 使用示例
 
