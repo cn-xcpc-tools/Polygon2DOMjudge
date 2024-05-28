@@ -18,7 +18,7 @@ pipx install p2d
 ### 从源码（最新版本，正在开发中，有新的特性）
 
 ```bash
-pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@dev
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 
 ## 命令行使用示例
@@ -41,8 +41,8 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/pol
 - `--auto`: 自动使用 DOMjudge 默认的输出校验器，即如果 checker 在配置文件中被定义，则使用默认的输出校验器与合适的命令行参数替代。
 - `--memory-limit`: 覆盖 DOMjudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
 - `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
-- `--replace-sample`: 替换样例输入输出，如果样例输入输出与题面中的样例输入输出不同，则使用题面中的样例输入输出替换（例如防止样例输出与正确解答的输出不同）。
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
+    当此参数不设置为 True 且样例输出与标程的输出不同时，样例输出将会被替换为题面中提供的样例输出。
 - `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
 
 ## 配置

@@ -32,8 +32,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')
     parser.add_argument('--output-limit', type=int, default=-1,
                         help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
-    parser.add_argument('--replace-sample', action='store_true',
-                        help='replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).')
     parser.add_argument('--hide-sample', action='store_true',
                         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
     parser.add_argument('--testset', type=str,
@@ -62,7 +60,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         _kwargs = {
             'short_name': args.code,
             'color': args.color,
-            'replace_sample': args.replace_sample,
             'hide_sample': args.hide_sample,
             'auto_detect_std_checker': args.auto,
             'force_default_validator': args.default,

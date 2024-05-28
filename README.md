@@ -20,7 +20,7 @@ pipx install p2d
 ### From source (latest version, under development with new features)
 
 ```bash
-pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge@dev
+pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 
 ## CLI Example
@@ -43,8 +43,8 @@ All available parameters are:
 - `--auto`: use the default output validator if the checker is defined in config and can be replaced by the default one.
 - `--memory-limit`: override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package.
 - `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
-- `--replace-sample`: replace the sample input and output with the one shipped with problem statement (e.g. prevent the sample output is different from the main and correct solution).
 - `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
+    When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
 - `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
 ## Config

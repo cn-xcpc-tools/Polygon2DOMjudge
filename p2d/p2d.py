@@ -42,7 +42,6 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     force_default_validator: bool
     auto_detect_std_checker: bool
     validator_flags: ValidatorFlags
-    replace_sample: bool
     hide_sample: bool
     testset_name: Optional[str]
     config: Config
@@ -267,7 +266,6 @@ class Polygon2DOMjudge:
         force_default_validator = kwargs.get('force_default_validator', False)
         auto_detect_std_checker = kwargs.get('auto_detect_std_checker', False)
         validator_flags = kwargs.get('validator_flags', cast(ValidatorFlags, ()))
-        replace_sample = kwargs.get('replace_sample', False)
         hide_sample = kwargs.get('hide_sample', False)
         testset_name = kwargs.get('testset_name', None)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
@@ -297,7 +295,7 @@ class Polygon2DOMjudge:
             logger.error('Can not use auto_detect_std_checker and force_default_validator at the same time.')
             raise ValueError('Can not use auto_detect_std_checker and force_default_validator at the same time.')
 
-        self._replace_sample = replace_sample
+        self._replace_sample = not hide_sample  # always replace sample with the sample in statements when hide_sample is False
         self._hide_sample = hide_sample or self._problem.has_interactor
         self._use_std_checker = auto_detect_std_checker and self._problem.has_std_checker or force_default_validator
         self._validator_flags: ValidatorFlags = ()
@@ -553,7 +551,6 @@ class Options(TypedDict, total=False):
     force_default_validator: bool
     auto_detect_std_checker: bool
     validator_flags: ValidatorFlags
-    replace_sample: bool
     hide_sample: bool
     config: Optional[Config]
     memory_limit: int
@@ -588,7 +585,6 @@ def convert(
         short_name = cast(str, kwargs['code'])
 
     _kwargs: _Polygon2DOMjudgeArgs = {
-        'replace_sample': kwargs.get('replace_sample', False),
         'hide_sample': kwargs.get('hide_sample', False),
         'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
         'force_default_validator': kwargs.get('force_default_validator', False),
