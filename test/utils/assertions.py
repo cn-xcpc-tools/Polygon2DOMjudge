@@ -54,20 +54,14 @@ def assert_submission(package_dir, result, name):
     assert (package_dir / 'submissions' / result / name).is_file()
 
 
-def assert_no_checker_and_testlib(package_dir):
-    assert not (package_dir / 'output_validators' / 'checker / testlib.h').is_file()
-    assert not (package_dir / 'output_validators' / 'checker / checker.cpp').is_file()
+def assert_no_testlib(package_dir, dir='checker', name='check.cpp'):
+    assert not (package_dir / 'output_validators' / dir / 'testlib.h').is_file()
+    assert not (package_dir / 'output_validators' / dir / name).is_file()
 
 
-def assert_checker_and_testlib(package_dir):
-
-    assert (package_dir / 'output_validators' / 'checker' / 'testlib.h').is_file()
-    assert (package_dir / 'output_validators' / 'checker' / 'checker.cpp').is_file()
-
-
-def assert_interactor_and_testlib(package_dir):
-    assert (package_dir / 'output_validators' / 'interactor' / 'testlib.h').is_file()
-    assert (package_dir / 'output_validators' / 'interactor' / 'interactor.cpp').is_file()
+def assert_testlib(package_dir, dir='checker', name='check.cpp'):
+    assert (package_dir / 'output_validators' / dir / 'testlib.h').is_file()
+    assert (package_dir / 'output_validators' / dir / name).is_file()
 
 
 def assert_magic_string(package_dir, result, name, magic_string):

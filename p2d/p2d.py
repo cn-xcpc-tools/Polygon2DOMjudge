@@ -45,199 +45,176 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     hide_sample: bool
     testset_name: Optional[str]
     config: Config
-    problem_cls: Type[Problem]
-    test_cls: Type[Test]
 
 
 class _ProblemArgs(TypedDict, total=False):
     language_preference: Sequence[str]
     testset_name: Optional[str]
-    test_cls: Type[Test]
 
 
 class ProcessError(RuntimeError):
     pass
 
 
-class Test:
-    def __init__(
-        self,
-        method: str,
-        description: Optional[str] = None,
-        cmd: Optional[str] = None,
-        sample: bool = False
-    ) -> None:
-        self.method = method
-        self.description = description
-        self.cmd = cmd
-        self.sample = sample
+class Polygon2DOMjudge:
 
-    def __str__(self):
-        description = self.description if self.description else ''
-        cmd = f'[GEN] {self.cmd}' if self.cmd else ''
-        return f'{description} {cmd}'.strip()
-
-
-class Problem:
-    """
-    The problem class.
-    """
-
-    _LANGUAGE_PREFERENCE = (
-        'english',
-        'russian',
-        'chinese',
-    )
-
-    def __init__(
-        self,
-        problem_xml: StrPath, /,
-        **kwargs: Unpack[_ProblemArgs]
-    ) -> None:
-        """Initialize the problem class from problem.xml.
-
-        Args:
-            problem_xml (StrPath): Path to problem.xml.
-
-        Raises:
-            ProcessError: If some mandatory fields are missing or invalid.
+    class Problem:
+        """
+        The problem class.
         """
 
-        language_preference = kwargs.get('language_preference', self._LANGUAGE_PREFERENCE)
-        testset_name = kwargs.get('testset_name', None)
-        _Test = kwargs.get('test_cls', Test)
-
-        root = xml.etree.ElementTree.parse(problem_xml)
-        name, language = self._get_preference_name(root.find('names'), language_preference)
-
-        testset = self._get_testset(root, testset_name)
-
-        timelimit = testset.find('time-limit')
-        memorylimit = testset.find('memory-limit')
-        input_path_pattern = testset.find('input-path-pattern')
-        answer_path_pattern = testset.find('answer-path-pattern')
-
-        if timelimit is None or timelimit.text is None or not timelimit.text.isdigit():
-            logger.error('Time limit is invalid in problem.xml.')
-            raise ProcessError('Time limit is invalid in problem.xml.')
-
-        if memorylimit is None or memorylimit.text is None or not memorylimit.text.isdigit():
-            logger.error('Memory limit is invalid in problem.xml.')
-            raise ProcessError('Memory limit is invalid in problem.xml.')
-
-        if input_path_pattern is None or input_path_pattern.text is None:
-            logger.error('Input path pattern is invalid in problem.xml.')
-            raise ProcessError('Input path pattern is invalid in problem.xml.')
-
-        if answer_path_pattern is None or answer_path_pattern.text is None:
-            logger.error('Answer path pattern is invalid in problem.xml.')
-            raise ProcessError('Answer path pattern is invalid in problem.xml.')
-
-        self.name = name
-        self.language = language
-        self.timelimit = int(timelimit.text) / 1000.0
-        self.memorylimit = int(memorylimit.text) // 1048576
-        self.outputlimit = -1
-        self.input_path_pattern = input_path_pattern.text
-        self.answer_path_pattern = answer_path_pattern.text
-        self.checker = root.find('assets/checker')
-        self.interactor = root.find('assets/interactor')
-        self.tests = tuple(
-            _Test(
-                method=test.attrib['method'],
-                description=test.attrib.get('description', None),
-                cmd=test.attrib.get('cmd', None),
-                sample=bool(test.attrib.get('sample', False))
-            ) for test in testset.findall('tests/test')
+        _LANGUAGE_PREFERENCE = (
+            'english',
+            'russian',
+            'chinese',
         )
-        self.solutions = tuple(root.findall('assets/solutions/solution[@tag]'))
 
-    @staticmethod
-    def _get_preference_name(
-        names: Optional[Element],
-        language_preference: Sequence[str] = _LANGUAGE_PREFERENCE
-    ) -> Tuple[str, str]:
-        """Get the preference name.
+        class Test:
+            def __init__(
+                self,
+                method: str,
+                description: Optional[str] = None,
+                cmd: Optional[str] = None,
+                sample: bool = False
+            ) -> None:
+                self.method = method
+                self.description = description
+                self.cmd = cmd
+                self.sample = sample
 
-        Args:
-            names (Optional[Element]): names element in problem.xml.
-            language_preference (Sequence[str], optional): language preference.
+            def __str__(self) -> str:
+                description = self.description if self.description else ''
+                cmd = f'[GEN] {self.cmd}' if self.cmd else ''
+                return f'{description} {cmd}'.strip()
 
-        Raises:
-            ProcessError: If it can not find a valid name.
+        class Executable:
+            def __init__(self, path: str, name: str = UNKNOWN, **kwargs) -> None:
+                self.path = path
+                self.name = name
 
-        Returns:
-            Tuple[str, str]: The name and language.
-        """
-        if names is None:
-            logger.error('Can not find names in problem.xml.')
-            raise ProcessError('Can not find names in problem.xml.')
+            @staticmethod
+            def from_element(ele: Optional[Element]) -> Optional[Polygon2DOMjudge.Problem.Executable]:
+                if ele is not None and (source := ele.find('source')) is not None:
+                    return Polygon2DOMjudge.Problem.Executable(
+                        source.attrib['path'],
+                        ele.attrib.get('name', UNKNOWN)
+                    )
+                return None
 
-        for lang in language_preference:
-            name = names.find(f'name[@language="{lang}"]')
+        def __init__(
+            self,
+            problem_xml: StrPath, /,
+            **kwargs: Unpack[_ProblemArgs]
+        ) -> None:
+            """Initialize the problem class from problem.xml.
+
+            Args:
+                problem_xml (StrPath): Path to problem.xml.
+
+            Raises:
+                ProcessError: If some mandatory fields are missing or invalid.
+            """
+
+            language_preference = kwargs.get('language_preference', self._LANGUAGE_PREFERENCE)
+            testset_name = kwargs.get('testset_name', None)
+
+            root = xml.etree.ElementTree.parse(problem_xml)
+            name, language = self._get_preference_name(root.find('names'), language_preference)
+
+            testset = self._get_testset(root, testset_name)
+
+            timelimit = testset.find('time-limit')
+            memorylimit = testset.find('memory-limit')
+            input_path_pattern = testset.find('input-path-pattern')
+            answer_path_pattern = testset.find('answer-path-pattern')
+
+            if timelimit is None or timelimit.text is None or not timelimit.text.isdigit():
+                logger.error('Time limit is invalid in problem.xml.')
+                raise ProcessError('Time limit is invalid in problem.xml.')
+
+            if memorylimit is None or memorylimit.text is None or not memorylimit.text.isdigit():
+                logger.error('Memory limit is invalid in problem.xml.')
+                raise ProcessError('Memory limit is invalid in problem.xml.')
+
+            if input_path_pattern is None or input_path_pattern.text is None:
+                logger.error('Input path pattern is invalid in problem.xml.')
+                raise ProcessError('Input path pattern is invalid in problem.xml.')
+
+            if answer_path_pattern is None or answer_path_pattern.text is None:
+                logger.error('Answer path pattern is invalid in problem.xml.')
+                raise ProcessError('Answer path pattern is invalid in problem.xml.')
+
+            self.name = name
+            self.language = language
+            self.timelimit = int(timelimit.text) / 1000.0
+            self.memorylimit = int(memorylimit.text) // 1048576
+            self.outputlimit = -1
+            self.input_path_pattern = input_path_pattern.text
+            self.answer_path_pattern = answer_path_pattern.text
+            self.checker = self.Executable.from_element(root.find('assets/checker[source]'))
+            self.interactor = self.Executable.from_element(root.find('assets/interactor[source]'))
+            self.tests = tuple(
+                self.Test(
+                    method=test.attrib['method'],
+                    description=test.attrib.get('description', None),
+                    cmd=test.attrib.get('cmd', None),
+                    sample=bool(test.attrib.get('sample', False))
+                ) for test in testset.findall('tests/test')
+            )
+            self.solutions = tuple(root.findall('assets/solutions/solution[@tag]'))
+
+        @staticmethod
+        def _get_preference_name(
+            names: Optional[Element],
+            language_preference: Sequence[str] = _LANGUAGE_PREFERENCE
+        ) -> Tuple[str, str]:
+            """Get the preference name.
+
+            Args:
+                names (Optional[Element]): names element in problem.xml.
+                language_preference (Sequence[str], optional): language preference.
+
+            Raises:
+                ProcessError: If it can not find a valid name.
+
+            Returns:
+                Tuple[str, str]: The name and language.
+            """
+            if names is None:
+                logger.error('Can not find names in problem.xml.')
+                raise ProcessError('Can not find names in problem.xml.')
+
+            for lang in language_preference:
+                name = names.find(f'name[@language="{lang}"]')
+                if name is not None and 'value' in name.attrib and 'language' in name.attrib:
+                    return name.attrib['value'], name.attrib['language']
+
+            # if no preference language found, return the first name
+            name = names.find('name')
             if name is not None and 'value' in name.attrib and 'language' in name.attrib:
                 return name.attrib['value'], name.attrib['language']
 
-        # if no preference language found, return the first name
-        name = names.find('name')
-        if name is not None and 'value' in name.attrib and 'language' in name.attrib:
-            return name.attrib['value'], name.attrib['language']
+            logger.error('Name is invalid in problem.xml.')
+            raise ProcessError('Name is invalid in problem.xml.')
 
-        logger.error('Name is invalid in problem.xml.')
-        raise ProcessError('Name is invalid in problem.xml.')
+        def _get_testset(self, root: ElementTree, testset_name: Optional[str]) -> Element:
+            # if testset_name is not specified, use the only testset if there is only one testset
+            if testset_name is None:
+                if t := root.findall('judging/testset'):
+                    if len(t) == 1:
+                        return t[0]
+                    logger.error('Multiple testsets found in problem.xml.')
+                    logger.error('Please specify the testset name in the command line.')
+                    raise ProcessError('Multiple testsets found in problem.xml.')
+                logger.error(f'Can not find any testset in problem.xml.')
+                raise ProcessError(f'Can not find any testset in problem.xml.')
 
-    def _get_testset(self, root: ElementTree, testset_name: Optional[str]) -> Element:
-        # if testset_name is not specified, use the only testset if there is only one testset
-        if testset_name is None:
-            if t := root.findall('judging/testset'):
-                if len(t) == 1:
-                    return t[0]
-                logger.error('Multiple testsets found in problem.xml.')
-                logger.error('Please specify the testset name in the command line.')
-                raise ProcessError('Multiple testsets found in problem.xml.')
-            logger.error(f'Can not find any testset in problem.xml.')
-            raise ProcessError(f'Can not find any testset in problem.xml.')
+            # find testset by name
+            if (ele := root.find(f'judging/testset[@name="{testset_name}"]')) is None:
+                logger.error(f'Can not find testset {testset_name} in problem.xml.')
+                raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
+            return ele
 
-        # find testset by name
-        if (ele := root.find(f'judging/testset[@name="{testset_name}"]')) is None:
-            logger.error(f'Can not find testset {testset_name} in problem.xml.')
-            raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
-        return ele
-
-    @property
-    def has_interactor(self):
-        return self.interactor is not None
-
-    @property
-    def has_checker(self):
-        return self.checker is not None
-
-    @property
-    def has_std_checker(self):
-        return self.checker_name.startswith('std::')
-
-    @property
-    def checker_name(self):
-        if self.checker is None:
-            return UNKNOWN
-        return self.checker.attrib.get('name', UNKNOWN)
-
-    @property
-    def interactor_name(self):
-        if self.interactor is None:
-            return UNKNOWN
-        return self.interactor.attrib.get('name', UNKNOWN)
-
-    @property
-    def checker_path(self):
-        return self.checker.find('source').attrib['path']
-
-    @property
-    def interactor_path(self):
-        return self.interactor.find('source').attrib['path']
-
-
-class Polygon2DOMjudge:
     """Polygon to DOMjudge package.
     """
 
@@ -270,9 +247,6 @@ class Polygon2DOMjudge:
         testset_name = kwargs.get('testset_name', None)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
 
-        _Problem = kwargs.get('problem_cls', Problem)
-        _Test = kwargs.get('test_cls', Test)
-
         self.package_dir = Path(package_dir)
         self.short_name = short_name
         self.color = color
@@ -284,11 +258,10 @@ class Polygon2DOMjudge:
         logger.debug('Parse \'problem.xml\':')
         if testset_name:
             logger.debug(f'With testset_name: {testset_name}')
-        self._problem = _Problem(
+        self._problem = self.Problem(
             self.package_dir / 'problem.xml',
             language_preference=self._config['language_preference'],
             testset_name=testset_name,
-            test_cls=_Test
         )
 
         if force_default_validator and auto_detect_std_checker:
@@ -296,16 +269,20 @@ class Polygon2DOMjudge:
             raise ValueError('Can not use auto_detect_std_checker and force_default_validator at the same time.')
 
         self._replace_sample = not hide_sample  # always replace sample with the sample in statements when hide_sample is False
-        self._hide_sample = hide_sample or self._problem.has_interactor
-        self._use_std_checker = auto_detect_std_checker and self._problem.has_std_checker or force_default_validator
+        self._hide_sample = hide_sample or self._problem.interactor is not None
+        self._use_std_checker = auto_detect_std_checker and \
+            self._problem.checker is not None and self._problem.checker.name.startswith('std::') or \
+            force_default_validator
         self._validator_flags: ValidatorFlags = ()
 
         if self._use_std_checker:
             if force_default_validator:
                 self._validator_flags = validator_flags
-            else:
+            elif self._problem.checker is not None and self._problem.checker.name.startswith('std::'):
                 self._validator_flags = cast(ValidatorFlags,
-                                             self._config['flag'].get(self._problem.checker_name[5:], ()))
+                                             self._config['flag'].get(self._problem.checker.name[5:], ()))
+            else:
+                raise ProcessError('Logic error in auto_detect_std_checker.')
 
     def _write_ini(self) -> Polygon2DOMjudge:
         logger.debug('Add \'domjudge-problem.ini\':')
@@ -337,10 +314,10 @@ class Polygon2DOMjudge:
         output_validators_dir = self.temp_dir / 'output_validators'
         checker_dir = output_validators_dir / 'checker'
         interactor_dir = output_validators_dir / 'interactor'
-        checker_name = self._problem.checker_name
 
-        if not self._problem.has_interactor and self._use_std_checker:
+        if not self._problem.interactor is not None and self._use_std_checker:
             # can not support both interactor and checker
+            checker_name = self._problem.checker.name if self._problem.checker is not None else UNKNOWN
             logger.info(f'Use std checker: {checker_name}')
             yaml_content['validation'] = 'default'
             if self._validator_flags:
@@ -348,20 +325,24 @@ class Polygon2DOMjudge:
                 yaml_content['validator_flags'] = ' '.join(self._validator_flags)
         else:
             ensure_dir(output_validators_dir)
-            if self._problem.has_interactor:
+            if self._problem.interactor is not None:
                 logger.info('Use custom interactor.')
                 yaml_content['validation'] = 'custom interactive'
-                interactor_file = self.package_dir / self._problem.interactor_path
+                interactor_file = self.package_dir / self._problem.interactor.path
                 ensure_dir(interactor_dir)
-                shutil.copyfile(TESTLIB_PATH, interactor_dir / 'testlib.h')
-                shutil.copyfile(interactor_file, interactor_dir / 'interactor.cpp')
-            elif self._problem.has_checker:
+                if interactor_file.suffix == '.cpp':
+                    # only copy testlib.h when the interactor is written in C++
+                    shutil.copyfile(TESTLIB_PATH, interactor_dir / 'testlib.h')
+                shutil.copyfile(interactor_file, interactor_dir / interactor_file.name)
+            elif self._problem.checker is not None:
                 logger.info('Use custom checker.')
                 yaml_content['validation'] = 'custom'
-                checker_file = self.package_dir / self._problem.checker_path
+                checker_file = self.package_dir / self._problem.checker.path
                 ensure_dir(checker_dir)
-                shutil.copyfile(TESTLIB_PATH, checker_dir / 'testlib.h')
-                shutil.copyfile(checker_file, checker_dir / 'checker.cpp')
+                if checker_file.suffix == '.cpp':
+                    # only copy testlib.h when the checker is written in C++
+                    shutil.copyfile(TESTLIB_PATH, checker_dir / 'testlib.h')
+                shutil.copyfile(checker_file, checker_dir / checker_file.name)
             else:
                 logger.error('No checker found.')
                 raise ProcessError('No checker found.')
@@ -438,11 +419,11 @@ class Polygon2DOMjudge:
             results = self._config['tag'].get(tag)
 
             if results is None:
-                result_dir = self.temp_dir / 'submissions' / 'check_manually'
+                result_dir = self.temp_dir / 'submissions' / 'rejected'
             elif len(results) == 1:
                 result_dir = self.temp_dir / 'submissions' / results[0]
             else:
-                result_dir = self.temp_dir / 'submissions' / 'multiple'
+                result_dir = self.temp_dir / 'submissions' / 'mixed'
 
             if (source := solution.find('source[@path][@type]')) is not None:
                 ensure_dir(self.temp_dir / 'submissions' / result_dir)
@@ -484,7 +465,7 @@ class Polygon2DOMjudge:
             shutil.copyfile(src, dst)
         else:
             logger.info(
-                f'- {src.name}: Expected result: {",".join(map(lambda x: PROBLEM_RESULT_REMAP[x.upper()].lower(), results))}')
+                f'- {src.name}: Expected result: {", ".join(map(lambda x: PROBLEM_RESULT_REMAP[x.upper()].lower(), results))}')
             with open(dst, 'w') as f:
                 f.write(content)
                 f.write('\n')
@@ -492,7 +473,7 @@ class Polygon2DOMjudge:
                 if comment_str := self._config['comment_str'].get(lang, None):
                     f.write(f'{comment_str} AUTO GENERATED BY POLYGON2DOMJUDGE\n')
                     f.write(
-                        f'{comment_str} @EXPECTED_RESULTS@: {",".join(map(lambda x: PROBLEM_RESULT_REMAP.get(x.upper(), x.upper()), results))}\n')
+                        f'{comment_str} @EXPECTED_RESULTS@: {", ".join(map(lambda x: PROBLEM_RESULT_REMAP.get(x.upper(), x.upper()), results))}\n')
                 else:
                     logger.warning(f'comment_str not found for type {lang}, skip adding expected result.')
 
@@ -644,6 +625,4 @@ __all__ = [
     'Options',
     'Polygon2DOMjudge',
     'ProcessError',
-    'Problem',
-    'Test',
 ]

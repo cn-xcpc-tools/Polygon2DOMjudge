@@ -33,12 +33,12 @@ assertions:
       args:
         result: accepted
         name: std.cpp
-    - checker_and_testlib
+    - testlib
     - type: magic_string
       args:
-        result: multiple
+        result: mixed
         name: wrong.cpp
-        magic_string: "@EXPECTED_RESULTS@: WRONG-ANSWER,TIMELIMIT,RUN-ERROR"
+        magic_string: "@EXPECTED_RESULTS@: WRONG-ANSWER, TIMELIMIT, RUN-ERROR"
 
   # validate converted DOMjudge package with auto detected checker
   auto_validation: &auto-validation-assertions
@@ -61,7 +61,7 @@ assertions:
         expect: |+
           File "01"
     - *std_cpp_submission
-    - no_checker_and_testlib
+    - no_testlib
 
   # validate converted DOMjudge package with custom validator_flags
   custom_validator_flags: &custom-validator-flags-assertions
@@ -84,7 +84,7 @@ assertions:
         expect: |+
           File "01"
     - *std_cpp_submission
-    - no_checker_and_testlib
+    - no_testlib
 
   # validate converted DOMjudge package with hide sample data
   hide_sample_data: &hide-sample-data-assertions
@@ -99,7 +99,7 @@ assertions:
     - no_sample_data
     - secret_data
     - *std_cpp_submission
-    - checker_and_testlib
+    - testlib
 
   # validate converted DOMjudge package with interaction problem
   interaction: &interaction-assertions
@@ -129,7 +129,10 @@ assertions:
         expect: |+
           [GEN] random_gen -n 10 1
     - *std_cpp_submission
-    - interactor_and_testlib
+    - type: testlib
+      args:
+        dir: interactor
+        name: interactor.cpp
 
   # override memory limit and output limit
   override: &override-assertions
