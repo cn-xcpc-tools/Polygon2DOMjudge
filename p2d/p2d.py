@@ -478,7 +478,7 @@ class Polygon2DOMjudge:
                     logger.warning(f'comment_str not found for type {lang}, skip adding expected result.')
 
     def _archive(self):
-        shutil.make_archive(self.output_file.name, 'zip', self.temp_dir, logger=logger)
+        shutil.make_archive(self.output_file.as_posix(), 'zip', self.temp_dir, logger=logger)
         logger.info(f'Make package {self.output_file.name}.zip success.')
         return self
 
@@ -594,6 +594,7 @@ def convert(
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), package_dir.name)
 
         if output:
+            print(Path(output).is_dir())
             if Path(output).is_dir():
                 output_file = Path(output).resolve() / short_name
             elif Path(output).name.endswith('.zip'):
@@ -603,7 +604,7 @@ def convert(
         else:
             output_file = Path.cwd() / short_name
 
-        if Path(output_file.name + '.zip').resolve().exists():
+        if Path(f'{output_file.as_posix()}.zip').resolve().exists():
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
 
         _confirm(package_dir, output_file, skip_confirmation=skip_confirmation)
