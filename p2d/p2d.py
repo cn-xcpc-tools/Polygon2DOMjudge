@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_ASSET_PATH = Path(__file__).resolve().parent / 'asset'
 DEFAULT_TESTLIB_PATH = Path(__file__).resolve().parent / 'testlib'
 DEFAULT_CONFIG_FILE = Path(os.getenv('CONFIG_PATH', DEFAULT_ASSET_PATH)) / 'config.toml'
-DEFAULT_CODE = 'PROB1'
 DEFAULT_COLOR = '#000000'
 UNKNOWN = 'unknown'
 
@@ -222,8 +221,8 @@ class Polygon2DOMjudge:
         self,
         package_dir: StrPath,
         temp_dir: StrPath,
-        output_file: StrPath, /,
-        short_name: str = DEFAULT_CODE,
+        output_file: StrPath,
+        short_name: str, /,
         color: str = DEFAULT_COLOR,
         **kwargs: Unpack[_Polygon2DOMjudgeArgs]
     ) -> None:
@@ -542,9 +541,9 @@ class Options(TypedDict, total=False):
 
 
 def convert(
-    package: StrPath, /,
+    package: StrPath,
     output: Optional[StrPath] = None, *,
-    short_name: str = DEFAULT_CODE,
+    short_name: Optional[str] = None,
     color: str = DEFAULT_COLOR,
     **kwargs: Unpack[Options]
 ) -> None:
@@ -553,7 +552,7 @@ def convert(
     Args:
         package (StrPath): The path to the polygon package directory.
         output (Optional[StrPath], optional): The path to the output DOMjudge package.
-        short_name (str, optional): The short name of the problem.
+        short_name (Optional[Str], optional): The short name of the problem.
         color (str, optional): The color of the problem.
 
     Raises:
@@ -573,6 +572,9 @@ def convert(
         'testset_name': kwargs.get('testset_name', None),
         'config': load_config(DEFAULT_CONFIG_FILE),
     }
+
+    if short_name is None:
+        raise ValueError('short_name is required.')
 
     # config override
     if kwargs.get('config') is not None:
@@ -598,7 +600,7 @@ def convert(
             if Path(output).is_dir():
                 output_file = Path(output).resolve() / short_name
             elif Path(output).name.endswith('.zip'):
-                output_file = Path(Path(output).name[:-4]).resolve()
+                output_file = Path(Path(output).as_posix()[:-4]).resolve()
             else:
                 output_file = Path(output).resolve()
         else:
@@ -620,7 +622,6 @@ def convert(
 
 __all__ = [
     'convert',
-    'DEFAULT_CODE',
     'DEFAULT_COLOR',
     'DEFAULT_CONFIG_FILE',
     'Options',

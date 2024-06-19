@@ -6,7 +6,7 @@ from typing import cast, List, Optional
 import betterlogging as logging  # type: ignore
 
 from . import __version__
-from .p2d import convert, DEFAULT_CODE, DEFAULT_COLOR
+from .p2d import convert, DEFAULT_COLOR
 from .utils import load_config
 from .typing import Config
 
@@ -15,7 +15,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     parser = ArgumentParser(description='Process Polygon Package to Domjudge Package.')
     parser.add_argument('package', type=Path, help='path of the polygon package directory')
-    parser.add_argument('--code', type=str, default=DEFAULT_CODE, help='problem short name in domjudge')
+    parser.add_argument('--code', type=str, help='problem short name in domjudge', required=True)
     parser.add_argument('--color', type=str, default=DEFAULT_COLOR,
                         help='problem color in domjudge (in #RRGGBB format)')
     parser.add_argument('-l', '--log-level', default='info',
