@@ -596,18 +596,15 @@ def convert(
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), package_dir.name)
 
         if output:
-            print(Path(output).is_dir())
-            if Path(output).is_dir():
-                output_file = Path(output).resolve() / short_name
-            elif Path(output).name.endswith('.zip'):
-                output_file = Path(Path(output).as_posix()[:-4]).resolve()
+            if Path(output).name.endswith('.zip'):
+                output_file = Path(output).with_suffix('').resolve()
             else:
-                output_file = Path(output).resolve()
+                output_file = Path(output).resolve() / short_name
         else:
             output_file = Path.cwd() / short_name
 
-        if Path(f'{output_file.as_posix()}.zip').resolve().exists():
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.name}.zip')
+        if output_file.with_suffix('.zip').resolve().exists():
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.with_suffix('.zip')}')
 
         _confirm(package_dir, output_file, skip_confirmation=skip_confirmation)
 

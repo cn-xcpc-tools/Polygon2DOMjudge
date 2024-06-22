@@ -272,7 +272,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --auto
       - -y
     assertions: *auto-validation-assertions
@@ -285,7 +285,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --default
       - --validator-flags
       - float_tolerance
@@ -301,7 +301,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --default
       - -y
       - --validator-flags
@@ -320,7 +320,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --default
       - -y
       - --validator-flags
@@ -337,7 +337,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --hide-sample
       - -y
     assertions: *hide-sample-data-assertions
@@ -350,7 +350,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --auto
       - -y
     assertions: *interaction-assertions
@@ -363,7 +363,7 @@ cli:
       - --code
       - A
       - -o
-      - example-domjudge
+      - example-domjudge.zip
       - --memory-limit
       - "-1"
       - --output-limit
@@ -379,7 +379,7 @@ cli:
       - --code
       - A
       - -o
-      - example-polygon
+      - example-polygon.zip
       - -y
     raise:
       type: SystemExit
