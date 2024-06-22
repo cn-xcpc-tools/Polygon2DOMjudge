@@ -604,7 +604,7 @@ def convert(
             output_file = Path.cwd() / short_name
 
         if output_file.with_suffix('.zip').resolve().exists():
-            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.with_suffix('.zip')}')
+            raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.with_suffix(".zip")}')
 
         _confirm(package_dir, output_file, skip_confirmation=skip_confirmation)
 
