@@ -47,6 +47,16 @@ All available parameters are:
     When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
 - `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
+### Convert the whole contest
+
+You can use `p2d-contest` to get a script to convert all problems in a contest.
+
+```bash
+# Download the contest.xml from Polygon first
+$ p2d-contest /path/to/contest.xml > convert.sh
+```
+
+
 ## Config
 
 In [config.toml](./p2d/asset/config.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.

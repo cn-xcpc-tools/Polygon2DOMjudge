@@ -45,6 +45,15 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/pol
     当此参数不设置为 True 且样例输出与标程的输出不同时，样例输出将会被替换为题面中提供的样例输出。
 - `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
 
+### 转换整个比赛
+
+你可以使用 `p2d-contest` 来获取一个脚本来转换整个比赛中的题目。
+
+```bash
+# 首先从 Polygon 下载 contest.xml
+$ ./bin/p2d-contest /path/to/contest.xml > convert.sh
+```
+
 ## 配置
 
 在 [config.toml](./p2d/asset/config.toml) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，这会在 `--auto` 参数被设置时用来将 checker 替换为默认的输出校验器。
