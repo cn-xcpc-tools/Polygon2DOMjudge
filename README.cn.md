@@ -25,9 +25,9 @@ pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 
 ```bash
 # 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
-$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package
+$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package
 # 或者也可以不解压，直接使用 /path/to/polygon-package.zip
-$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package /path/to/polygon-package.zip
+$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
 ```
 
 运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
