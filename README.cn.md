@@ -34,7 +34,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 
 所有可用的命令行参数如下：
 
-- `--code`: 题目在 DOMjudge 中的 short name。
+- `--code`: 题目在 DOMjudge 比赛中的 short name。
 - `--color`: 题目在 DOMjudge 中的颜色。
 - `--default`: 强制使用 DOMjudge 默认的输出校验器。
 - `--validator-flags`: 为输出校验器添加一些命令行参数，仅在 `--default` 被设置时生效。
@@ -43,6 +43,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 - `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
     当此参数不设置为 True 且样例输出与标程的输出不同时，样例输出将会被替换为题面中提供的样例输出。
+- `--external-id`: 指定题目在 DOMjudge 中的 external id，如果不设置，则使用 Polygon 中的题目 short-name。
 - `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
 
 ### 转换整个比赛

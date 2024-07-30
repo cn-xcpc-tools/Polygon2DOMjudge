@@ -36,7 +36,7 @@ Run this command to make a package from `/path/to/polygon-package` to `/path/to/
 
 All available parameters are:
 
-- `--code`: problem short name in DOMjudge.
+- `--code`: problem short name in DOMjudge contest.
 - `--color`: problem color in DOMjudge.
 - `--default`: force use the default output validator.
 - `--validator-flags`: add some flags to the output validator, only works when `--default` is set.
@@ -45,6 +45,7 @@ All available parameters are:
 - `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
 - `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
     When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
+- `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
 - `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
 ### Convert the whole contest

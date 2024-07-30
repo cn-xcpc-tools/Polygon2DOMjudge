@@ -1,6 +1,5 @@
-import sys
 import re
-
+import sys
 from argparse import ArgumentParser, ArgumentError, ArgumentTypeError
 from pathlib import Path
 from typing import cast, List, Optional
