@@ -1,5 +1,7 @@
 import sys
-from argparse import ArgumentParser, ArgumentError
+import re
+
+from argparse import ArgumentParser, ArgumentError, ArgumentTypeError
 from pathlib import Path
 from typing import cast, List, Optional
 
@@ -14,6 +16,13 @@ from .typing import Config
 def main(argv: Optional[List[str]] = None) -> int:
 
     parser = ArgumentParser(description='Process Polygon Package to Domjudge Package.')
+
+    def validate_external_id(value):
+        if re.match(r'^[a-zA-Z0-9-_]+$', value):
+            return value
+        else:
+            raise ArgumentTypeError("external-id must contain only letters, numbers, hyphens and underscores")
+
     parser.add_argument('package', type=Path, help='path of the polygon package directory')
     parser.add_argument('--code', type=str, help='problem short name in domjudge', required=True)
     parser.add_argument('--color', type=str, default=DEFAULT_COLOR,
@@ -36,6 +45,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
     parser.add_argument('--testset', type=str,
                         help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')
+    parser.add_argument('--external-id', type=validate_external_id,
+                        help='problem external id in domjudge, default is problem id in polygon')
     parser.add_argument('--config', type=Path, default='config.toml',
                         help='path of the config file to override the default config, default is using "config.toml" in current directory')
     args = parser.parse_args(argv)
@@ -68,6 +79,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             'output_limit': args.output_limit,
             'skip_confirmation': args.yes,
             'testset_name': args.testset,
+            'external_id': args.external_id,
             'config': config,
         }
 

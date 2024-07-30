@@ -3,14 +3,15 @@ from __future__ import annotations
 import errno
 import logging
 import os
+import re
 import shutil
 import sys
 import tempfile
 import xml.etree.ElementTree
 import zipfile
 from pathlib import Path
-from typing import cast, Any, Dict, List, Optional, Sequence, Tuple, Type, TypedDict, TYPE_CHECKING
-from xml.etree.ElementTree import Element, ElementTree
+from typing import cast, Any, Dict, List, Optional, Sequence, Tuple, TypedDict, TYPE_CHECKING
+from xml.etree.ElementTree import Element
 
 import yaml
 
@@ -43,6 +44,7 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     validator_flags: ValidatorFlags
     hide_sample: bool
     testset_name: Optional[str]
+    external_id: Optional[str]
     config: Config
 
 
@@ -67,6 +69,8 @@ class Polygon2DOMjudge:
             'russian',
             'chinese',
         )
+
+        _SHORT_NAME_FILTER = re.compile(r'[^a-zA-Z0-9-_]')
 
         class Test:
             def __init__(
@@ -117,15 +121,20 @@ class Polygon2DOMjudge:
             language_preference = kwargs.get('language_preference', self._LANGUAGE_PREFERENCE)
             testset_name = kwargs.get('testset_name', None)
 
-            root = xml.etree.ElementTree.parse(problem_xml)
-            name, language = self._get_preference_name(root.find('names'), language_preference)
+            problem = xml.etree.ElementTree.parse(problem_xml).getroot()
+            short_name = self._SHORT_NAME_FILTER.sub('', problem.attrib.get('short-name', ''))
+            name, language = self._get_preference_name(problem.find('names'), language_preference)
 
-            testset = self._get_testset(root, testset_name)
+            testset = self._get_testset(problem, testset_name)
 
             timelimit = testset.find('time-limit')
             memorylimit = testset.find('memory-limit')
             input_path_pattern = testset.find('input-path-pattern')
             answer_path_pattern = testset.find('answer-path-pattern')
+
+            if not short_name:
+                logger.error('Short name is invalid in problem.xml.')
+                raise ProcessError('Short name is invalid in problem.xml.')
 
             if timelimit is None or timelimit.text is None or not timelimit.text.isdigit():
                 logger.error('Time limit is invalid in problem.xml.')
@@ -143,6 +152,7 @@ class Polygon2DOMjudge:
                 logger.error('Answer path pattern is invalid in problem.xml.')
                 raise ProcessError('Answer path pattern is invalid in problem.xml.')
 
+            self.short_name = short_name
             self.name = name
             self.language = language
             self.timelimit = int(timelimit.text) / 1000.0
@@ -150,8 +160,8 @@ class Polygon2DOMjudge:
             self.outputlimit = -1
             self.input_path_pattern = input_path_pattern.text
             self.answer_path_pattern = answer_path_pattern.text
-            self.checker = self.Executable.from_element(root.find('assets/checker[source]'))
-            self.interactor = self.Executable.from_element(root.find('assets/interactor[source]'))
+            self.checker = self.Executable.from_element(problem.find('assets/checker[source]'))
+            self.interactor = self.Executable.from_element(problem.find('assets/interactor[source]'))
             self.tests = tuple(
                 self.Test(
                     method=test.attrib['method'],
@@ -160,7 +170,7 @@ class Polygon2DOMjudge:
                     sample=bool(test.attrib.get('sample', False))
                 ) for test in testset.findall('tests/test')
             )
-            self.solutions = tuple(root.findall('assets/solutions/solution[@tag]'))
+            self.solutions = tuple(problem.findall('assets/solutions/solution[@tag]'))
 
         @staticmethod
         def _get_preference_name(
@@ -196,10 +206,10 @@ class Polygon2DOMjudge:
             logger.error('Name is invalid in problem.xml.')
             raise ProcessError('Name is invalid in problem.xml.')
 
-        def _get_testset(self, root: ElementTree, testset_name: Optional[str]) -> Element:
+        def _get_testset(self, problem: Element, testset_name: Optional[str]) -> Element:
             # if testset_name is not specified, use the only testset if there is only one testset
             if testset_name is None:
-                if t := root.findall('judging/testset'):
+                if t := problem.findall('judging/testset'):
                     if len(t) == 1:
                         return t[0]
                     logger.error('Multiple testsets found in problem.xml.')
@@ -209,7 +219,7 @@ class Polygon2DOMjudge:
                 raise ProcessError(f'Can not find any testset in problem.xml.')
 
             # find testset by name
-            if (ele := root.find(f'judging/testset[@name="{testset_name}"]')) is None:
+            if (ele := problem.find(f'judging/testset[@name="{testset_name}"]')) is None:
                 logger.error(f'Can not find testset {testset_name} in problem.xml.')
                 raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
             return ele
@@ -244,6 +254,7 @@ class Polygon2DOMjudge:
         validator_flags = kwargs.get('validator_flags', cast(ValidatorFlags, ()))
         hide_sample = kwargs.get('hide_sample', False)
         testset_name = kwargs.get('testset_name', None)
+        external_id = kwargs.get('external_id', None)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
 
         self.package_dir = Path(package_dir)
@@ -262,6 +273,7 @@ class Polygon2DOMjudge:
             language_preference=self._config['language_preference'],
             testset_name=testset_name,
         )
+        self.external_id = external_id if external_id else self._problem.short_name
 
         if force_default_validator and auto_detect_std_checker:
             logger.error('Can not use auto_detect_std_checker and force_default_validator at the same time.')
@@ -288,7 +300,8 @@ class Polygon2DOMjudge:
         ini_file = f'{self.temp_dir}/domjudge-problem.ini'
         ini_content = (f'short-name = {self.short_name}',
                        f'timelimit = {self._problem.timelimit}',
-                       f'color = {self.color}')
+                       f'color = {self.color}',
+                       f'externalid = {self.external_id}')
         for line in ini_content:
             logger.info(line)
 
@@ -537,6 +550,7 @@ class Options(TypedDict, total=False):
     output_limit: int
     skip_confirmation: bool
     testset_name: Optional[str]
+    external_id: Optional[str]
     code: str  # alias of short_name
 
 
@@ -570,6 +584,7 @@ def convert(
         'force_default_validator': kwargs.get('force_default_validator', False),
         'validator_flags': kwargs.get('validator_flags', []),
         'testset_name': kwargs.get('testset_name', None),
+        'external_id': kwargs.get('external_id', None),
         'config': load_config(DEFAULT_CONFIG_FILE),
     }
 

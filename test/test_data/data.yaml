@@ -14,6 +14,7 @@ assertions:
           short-name = A
           timelimit = 5.0
           color = #FF0000
+          externalid = little-h-reboot
     - type: problem_yaml
       args:
         expect: &normal-yaml
@@ -111,6 +112,7 @@ assertions:
           short-name = A
           timelimit = 1.0
           color = #FF0000
+          externalid = guess-array
     - type: problem_yaml
       args:
         expect:
