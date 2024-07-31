@@ -32,7 +32,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('-o', '--output', type=Path, help='path of the output package')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--auto', action='store_true',
-                        help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
+                       help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
     group.add_argument('--default', action='store_true', help='force use the default output validator.')
     parser.add_argument('--validator-flags', nargs='*',
                         help='add some flags to the output validator, only works when "--default" is set.')
