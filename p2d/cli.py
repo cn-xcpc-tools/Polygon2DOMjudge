@@ -22,7 +22,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             raise ArgumentTypeError("external-id must contain only letters, numbers, hyphens and underscores")
 
-    parser.add_argument('package', type=Path, help='path of the polygon package directory')
     parser.add_argument('--code', type=str, help='problem short name in domjudge', required=True)
     parser.add_argument('--color', type=str, default=DEFAULT_COLOR,
                         help='problem color in domjudge (in #RRGGBB format)')
@@ -31,11 +30,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('-v', '--version', action='version', version=__version__)
     parser.add_argument('-y', '--yes', action='store_true', help='skip confirmation')
     parser.add_argument('-o', '--output', type=Path, help='path of the output package')
-    parser.add_argument('--default', action='store_true', help='force use the default output validator.')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--auto', action='store_true',
+                        help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
+    group.add_argument('--default', action='store_true', help='force use the default output validator.')
     parser.add_argument('--validator-flags', nargs='*',
                         help='add some flags to the output validator, only works when "--default" is set.')
-    parser.add_argument('--auto', action='store_true',
-                        help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
     parser.add_argument('--memory-limit', type=int,  # default use polygon default
                         help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')
     parser.add_argument('--output-limit', type=int, default=-1,
@@ -48,6 +48,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='problem external id in domjudge, default is problem id in polygon')
     parser.add_argument('--config', type=Path, default='config.toml',
                         help='path of the config file to override the default config, default is using "config.toml" in current directory')
+    parser.add_argument('package', type=Path, help='path of the polygon package directory or zip file')
+
     args = parser.parse_args(argv)
 
     logging.basic_colorized_config(level=args.log_level.upper())
@@ -60,9 +62,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             config = cast(Config, load_config(config_file))
         else:
             config = None
-
-        if args.auto and args.default:
-            raise ArgumentError(None, 'You cannot use both "--auto" and "--default" at the same time.')
 
         if not args.default and args.validator_flags:
             logger.warning('You are not using default validation, validator flags will be ignored.')
@@ -97,7 +96,3 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.exception(e)
         sys.exit(1)
     return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main())
