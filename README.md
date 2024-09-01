@@ -25,14 +25,20 @@ pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 
 ## CLI Example
 
+First, you should build **full** package from Polygon and download the **Linux** package to your local.
+
+> [!WARNING]
+> If you download the standard package and then run `doall.sh` to build the full package by yourself, the linebreaks will be CRLF.
+> Make sure you convert the linebreaks to LF before running the script because DOMjudge is running on Linux.
+
 ```bash
-# Unzip your polygon-package to /path/to/polygon-package first
-$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package
-# Or you can use /path/to/polygon-package.zip directly
+# Download the full package from Polygon to /path/to/polygon-package.zip
 $ p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
 ```
 
-Run this command to make a package from `/path/to/polygon-package` to `/path/to/domjudge-package.zip` and set `code` and `color`.
+Run this command to make a package from `/path/to/polygon-package.zip` to `/path/to/domjudge-package.zip` and set `code` and `color`.
+
+You can omit the output path, and the default output path will be in the current working directory and named as `{{ code }}.zip`.
 
 All available parameters are:
 
@@ -46,6 +52,7 @@ All available parameters are:
 - `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
     When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
 - `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
+- `--without-statement`: do not include the pdf statement in the DOMjudge package.
 - `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
 ### Convert the whole contest
@@ -56,7 +63,6 @@ You can use `p2d-contest` to get a script to convert all problems in a contest.
 # Download the contest.xml from Polygon first
 $ p2d-contest /path/to/contest.xml > convert.sh
 ```
-
 
 ## Config
 

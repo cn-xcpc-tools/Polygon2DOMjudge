@@ -42,10 +42,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
     parser.add_argument('--hide-sample', action='store_true',
                         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
-    parser.add_argument('--testset', type=str,
-                        help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')
     parser.add_argument('--external-id', type=validate_external_id,
                         help='problem external id in domjudge, default is problem id in polygon')
+    parser.add_argument('--without-statement', action='store_true',
+                        help='do not include pdf statement in the package')
+    parser.add_argument('--testset', type=str,
+                        help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')
     parser.add_argument('--config', type=Path, default='config.toml',
                         help='path of the config file to override the default config, default is using "config.toml" in current directory')
     parser.add_argument('package', type=Path, help='path of the polygon package directory or zip file')
@@ -78,6 +80,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             'skip_confirmation': args.yes,
             'testset_name': args.testset,
             'external_id': args.external_id,
+            'without_statement': args.without_statement,
             'config': config,
         }
 

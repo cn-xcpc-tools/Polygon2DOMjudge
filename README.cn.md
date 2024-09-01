@@ -23,14 +23,20 @@ pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 
 ## 命令行使用示例
 
+首先，你需要从 Polygon 构建 **完整的** 题目包并将 **Linux** 题目包下载到本地。
+
+> [!WARNING]
+> 如果你下载了标准的题目包并且运行 `doall.sh` 来构建完整的题目包，那么换行符将会是 CRLF。
+> 在运行脚本之前，请确保将换行符转换为 LF，因为 DOMjudge 是在 Linux 上运行的。
+
 ```bash
-# 首先把你的 polygon-package 解压到 /path/to/polygon-package 位置
-$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package
-# 或者也可以不解压，直接使用 /path/to/polygon-package.zip
+# 首先从 Polygon 下载完整的 Linux 题目包到本地
 $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
 ```
 
-运行此命令可以从 `/path/to/polygon-package` 处的转换题目包为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
+运行此命令可以从 `/path/to/polygon-package.zip` 处题目包转换为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
+
+你可以省略输出路径，输出路径将会在当前工作目录中，并命名为 `{{ code }}.zip`。
 
 所有可用的命令行参数如下：
 
@@ -44,6 +50,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
     当此参数不设置为 True 且样例输出与标程的输出不同时，样例输出将会被替换为题面中提供的样例输出。
 - `--external-id`: 指定题目在 DOMjudge 中的 external id，如果不设置，则使用 Polygon 中的题目 short-name。
+- `--without-statement`: 不要在 DOMjudge 题目包中包含 pdf 题面。
 - `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
 
 ### 转换整个比赛

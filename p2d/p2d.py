@@ -45,6 +45,7 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     hide_sample: bool
     testset_name: Optional[str]
     external_id: Optional[str]
+    without_statement: bool
     config: Config
 
 
@@ -124,6 +125,7 @@ class Polygon2DOMjudge:
             problem = xml.etree.ElementTree.parse(problem_xml).getroot()
             short_name = self._SHORT_NAME_FILTER.sub('', problem.attrib.get('short-name', ''))
             name, language = self._get_preference_name(problem.find('names'), language_preference)
+            statement = self._get_statement(problem.find('statements'), language)
 
             testset = self._get_testset(problem, testset_name)
 
@@ -171,6 +173,7 @@ class Polygon2DOMjudge:
                 ) for test in testset.findall('tests/test')
             )
             self.solutions = tuple(problem.findall('assets/solutions/solution[@tag]'))
+            self.statement = statement
 
         @staticmethod
         def _get_preference_name(
@@ -206,7 +209,8 @@ class Polygon2DOMjudge:
             logger.error('Name is invalid in problem.xml.')
             raise ProcessError('Name is invalid in problem.xml.')
 
-        def _get_testset(self, problem: Element, testset_name: Optional[str]) -> Element:
+        @staticmethod
+        def _get_testset(problem: Element, testset_name: Optional[str]) -> Element:
             # if testset_name is not specified, use the only testset if there is only one testset
             if testset_name is None:
                 if t := problem.findall('judging/testset'):
@@ -223,6 +227,17 @@ class Polygon2DOMjudge:
                 logger.error(f'Can not find testset {testset_name} in problem.xml.')
                 raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
             return ele
+
+        @staticmethod
+        def _get_statement(statements: Optional[Element], language: str) -> Optional[StrPath]:
+            if statements is None:
+                return None
+
+            if (statement := statements.find(f'statement[@language="{language}"][@type="application/pdf"][@path]')) is None:
+                logger.warning(f'Can not find statement in {language} in problem.xml, this will skip adding statement.')
+                return None
+
+            return statement.attrib['path']
 
     """Polygon to DOMjudge package.
     """
@@ -255,6 +270,7 @@ class Polygon2DOMjudge:
         hide_sample = kwargs.get('hide_sample', False)
         testset_name = kwargs.get('testset_name', None)
         external_id = kwargs.get('external_id', None)
+        without_statement = kwargs.get('without_statement', False)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
 
         self.package_dir = Path(package_dir)
@@ -262,6 +278,7 @@ class Polygon2DOMjudge:
         self.color = color
         self.temp_dir = Path(temp_dir)
         self.output_file = Path(output_file)
+        self.without_statement = without_statement
 
         self._config = config
 
@@ -489,6 +506,21 @@ class Polygon2DOMjudge:
                 else:
                     logger.warning(f'comment_str not found for type {lang}, skip adding expected result.')
 
+    def _add_statement(self) -> Polygon2DOMjudge:
+        if self._problem.statement is None:
+            logger.warning('No statement found in problem.xml, skip adding statement.')
+            return self
+
+        if self.without_statement:
+            logger.info('Skip adding statement due to --without-statement flag.')
+            return self
+
+        ensure_dir(self.temp_dir / 'problem_statement')
+        logger.debug('Add statement:')
+        logger.info(f'* {self._problem.statement}')
+        shutil.copyfile(self.package_dir / self._problem.statement, self.temp_dir / 'problem_statement' / 'problem.pdf')
+        return self
+
     def _archive(self):
         shutil.make_archive(self.output_file.as_posix(), 'zip', self.temp_dir, logger=logger)
         logger.info(f'Make package {self.output_file.name}.zip success.')
@@ -517,12 +549,14 @@ class Polygon2DOMjudge:
             ._write_yaml() \
             ._add_tests() \
             ._add_jury_solutions() \
+            ._add_statement() \
             ._archive()
 
 
 def _confirm(
     package_dir: StrPath,
     output_file: StrPath,
+    argv: List[str] = sys.argv,
     skip_confirmation: bool = False
 ) -> None:
     logger.info('This is Polygon2DOMjudge by cubercsl.')
@@ -532,6 +566,7 @@ def _confirm(
     if sys.platform.startswith('win'):
         logger.warning('It is not recommended running on windows.')
 
+    logger.info(f'Arguments: {" ".join(argv[1:])}')
     logger.info(f'Package directory: {package_dir}')
     logger.info(f'Output file: {output_file}.zip')
     if not skip_confirmation:
@@ -551,6 +586,7 @@ class Options(TypedDict, total=False):
     skip_confirmation: bool
     testset_name: Optional[str]
     external_id: Optional[str]
+    without_statement: bool
     code: str  # alias of short_name
 
 
@@ -585,6 +621,7 @@ def convert(
         'validator_flags': kwargs.get('validator_flags', []),
         'testset_name': kwargs.get('testset_name', None),
         'external_id': kwargs.get('external_id', None),
+        'without_statement': kwargs.get('without_statement', False),
         'config': load_config(DEFAULT_CONFIG_FILE),
     }
 
@@ -621,7 +658,7 @@ def convert(
         if output_file.with_suffix('.zip').resolve().exists():
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.with_suffix(".zip")}')
 
-        _confirm(package_dir, output_file, skip_confirmation=skip_confirmation)
+        _confirm(package_dir, output_file, sys.argv, skip_confirmation=skip_confirmation)
 
         p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color, **_kwargs)
 
