@@ -10,13 +10,13 @@ import tempfile
 import xml.etree.ElementTree
 import zipfile
 from pathlib import Path
-from typing import cast, Any, Dict, List, Optional, Sequence, Tuple, TypedDict, TYPE_CHECKING
+from typing import cast, Any, Callable, Dict, List, Optional, Sequence, Tuple, TypedDict, TYPE_CHECKING
 from xml.etree.ElementTree import Element
 
 import yaml
 
 from . import __version__
-from .typing import Config, ValidatorFlags, Result
+from .typing import Config, Result
 from .utils import ensure_dir, load_config, update_dict, get_normalized_lang
 
 if sys.version_info < (3, 11):
@@ -41,7 +41,7 @@ TESTLIB_PATH = (Path(os.getenv('TESTLIB_PATH', DEFAULT_TESTLIB_PATH)) / 'testlib
 class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     force_default_validator: bool
     auto_detect_std_checker: bool
-    validator_flags: ValidatorFlags
+    validator_flags: Optional[str]
     hide_sample: bool
     testset_name: Optional[str]
     external_id: Optional[str]
@@ -266,7 +266,7 @@ class Polygon2DOMjudge:
 
         force_default_validator = kwargs.get('force_default_validator', False)
         auto_detect_std_checker = kwargs.get('auto_detect_std_checker', False)
-        validator_flags = kwargs.get('validator_flags', cast(ValidatorFlags, ()))
+        validator_flags = kwargs.get('validator_flags', None)
         hide_sample = kwargs.get('hide_sample', False)
         testset_name = kwargs.get('testset_name', None)
         external_id = kwargs.get('external_id', None)
@@ -301,14 +301,13 @@ class Polygon2DOMjudge:
         self._use_std_checker = auto_detect_std_checker and \
             self._problem.checker is not None and self._problem.checker.name.startswith('std::') or \
             force_default_validator
-        self._validator_flags: ValidatorFlags = ()
+        self._validator_flags = None
 
         if self._use_std_checker:
             if force_default_validator:
                 self._validator_flags = validator_flags
             elif self._problem.checker is not None and self._problem.checker.name.startswith('std::'):
-                self._validator_flags = cast(ValidatorFlags,
-                                             self._config['flag'].get(self._problem.checker.name[5:], ()))
+                self._validator_flags = self._config['flag'].get(self._problem.checker.name[5:], None)
             else:
                 raise ProcessError('Logic error in auto_detect_std_checker.')
 
@@ -350,8 +349,8 @@ class Polygon2DOMjudge:
             logger.info(f'Use std checker: {checker_name}')
             yaml_content['validation'] = 'default'
             if self._validator_flags:
-                logger.info(f'Validator flags: {" ".join(self._validator_flags)}')
-                yaml_content['validator_flags'] = ' '.join(self._validator_flags)
+                logger.info(f'Validator flags: {self._validator_flags}')
+                yaml_content['validator_flags'] = self._validator_flags
         else:
             ensure_dir(output_validators_dir)
             if self._problem.interactor is not None:
@@ -553,40 +552,18 @@ class Polygon2DOMjudge:
             ._archive()
 
 
-def _confirm(
-    package_dir: StrPath,
-    output_file: StrPath,
-    argv: List[str] = sys.argv,
-    skip_confirmation: bool = False
-) -> None:
-    logger.info('This is Polygon2DOMjudge by cubercsl.')
-    logger.info('Process Polygon Package to DOMjudge Package.')
-    logger.info("Version: {}".format(__version__))
-
-    if sys.platform.startswith('win'):
-        logger.warning('It is not recommended running on windows.')
-
-    logger.info(f'Arguments: {" ".join(argv[1:])}')
-    logger.info(f'Package directory: {package_dir}')
-    logger.info(f'Output file: {output_file}.zip')
-    if not skip_confirmation:
-        if input('Are you sure to continue? [y/N]').lower() == 'y':
-            return
-        sys.exit(0)
-
-
 class Options(TypedDict, total=False):
     force_default_validator: bool
     auto_detect_std_checker: bool
-    validator_flags: ValidatorFlags
+    validator_flags: Optional[str]
     hide_sample: bool
     config: Optional[Config]
-    memory_limit: int
-    output_limit: int
-    skip_confirmation: bool
+    memory_limit: Optional[int]
+    output_limit: Optional[int]
     testset_name: Optional[str]
     external_id: Optional[str]
     without_statement: bool
+    test_set: Optional[str]
     code: str  # alias of short_name
 
 
@@ -595,6 +572,7 @@ def convert(
     output: Optional[StrPath] = None, *,
     short_name: Optional[str] = None,
     color: str = DEFAULT_COLOR,
+    confirm_callback: Callable[[], None] = lambda: None,
     **kwargs: Unpack[Options]
 ) -> None:
     """Convert a Polygon package to a DOMjudge package.
@@ -614,25 +592,14 @@ def convert(
     if kwargs.get('code'):  # code is alias of short_name
         short_name = cast(str, kwargs['code'])
 
-    _kwargs: _Polygon2DOMjudgeArgs = {
-        'hide_sample': kwargs.get('hide_sample', False),
-        'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
-        'force_default_validator': kwargs.get('force_default_validator', False),
-        'validator_flags': kwargs.get('validator_flags', []),
-        'testset_name': kwargs.get('testset_name', None),
-        'external_id': kwargs.get('external_id', None),
-        'without_statement': kwargs.get('without_statement', False),
-        'config': load_config(DEFAULT_CONFIG_FILE),
-    }
+    config = cast(Config, load_config(DEFAULT_CONFIG_FILE))
 
     if short_name is None:
         raise ValueError('short_name is required.')
 
     # config override
     if kwargs.get('config') is not None:
-        update_dict(_kwargs['config'], cast(Config, kwargs['config']))
-
-    skip_confirmation = kwargs.get('skip_confirmation', False)
+        update_dict(config, cast(Config, kwargs['config']))
 
     with tempfile.TemporaryDirectory(prefix='p2d-polygon-') as polygon_temp_dir, \
             tempfile.TemporaryDirectory(prefix='p2d-domjudge-') as domjudge_temp_dir:
@@ -658,7 +625,28 @@ def convert(
         if output_file.with_suffix('.zip').resolve().exists():
             raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), f'{output_file.with_suffix(".zip")}')
 
-        _confirm(package_dir, output_file, sys.argv, skip_confirmation=skip_confirmation)
+        logger.info('This is Polygon2DOMjudge by cubercsl.')
+        logger.info('Process Polygon Package to DOMjudge Package.')
+        logger.info("Version: {}".format(__version__))
+
+        if sys.platform.startswith('win'):
+            logger.warning('It is not recommended running on windows.')
+
+        logger.info(f'Package directory: {package_dir}')
+        logger.info(f'Output file: {output_file}.zip')
+
+        confirm_callback()
+
+        _kwargs: _Polygon2DOMjudgeArgs = {
+            'hide_sample': kwargs.get('hide_sample', False),
+            'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
+            'force_default_validator': kwargs.get('force_default_validator', False),
+            'validator_flags': kwargs.get('validator_flags', None),
+            'testset_name': kwargs.get('testset_name', None),
+            'external_id': kwargs.get('external_id', None),
+            'without_statement': kwargs.get('without_statement', False),
+            'config': config,
+        }
 
         p = Polygon2DOMjudge(package_dir, domjudge_temp_dir, output_file, short_name, color, **_kwargs)
 

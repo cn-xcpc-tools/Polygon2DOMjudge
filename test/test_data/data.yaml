@@ -187,7 +187,7 @@ api:
     args:
       <<: *base-api-args
       force_default_validator: true
-      validator_flags: [float_tolerance, "1e-6"]
+      validator_flags: float_tolerance 1e-6
     assertions: *custom-validator-flags-assertions
 
   hide_sample_data:
@@ -290,45 +290,8 @@ cli:
       - example-domjudge.zip
       - --default
       - --validator-flags
-      - float_tolerance
-      - "1e-6"
+      - float_tolerance 1e-6
       - -y
-    assertions: *custom-validator-flags-assertions
-
-  custom_validator_flags_at_last_args_failed:
-    input: *normal-package
-    args:
-      - --color
-      - "#FF0000"
-      - --code
-      - A
-      - -o
-      - example-domjudge.zip
-      - --default
-      - -y
-      - --validator-flags
-      - float_tolerance
-      - "1e-6"
-    raise:
-      type: SystemExit
-      match: "2"
-    assertions: *custom-validator-flags-assertions
-
-  custom_validator_flags_at_last_args_ok:
-    input: *normal-package
-    args:
-      - --color
-      - "#FF0000"
-      - --code
-      - A
-      - -o
-      - example-domjudge.zip
-      - --default
-      - -y
-      - --validator-flags
-      - float_tolerance
-      - "1e-6"
-      - --
     assertions: *custom-validator-flags-assertions
 
   hide_sample_data:
@@ -383,9 +346,7 @@ cli:
       - -o
       - example-polygon.zip
       - -y
-    raise:
-      type: SystemExit
-      match: "1"
+    exitcode: 1
 
   invalid_cli_args:
     input: *normal-package
@@ -399,9 +360,7 @@ cli:
       - -o
       - example-domjudge.zip
       - -y
-    raise:
-      type: SystemExit
-      match: "2"
+    exitcode: 2
 
   file_not_found:
     input: not-exist.zip
@@ -414,22 +373,18 @@ cli:
       - example-domjudge.zip
       - -y
     package: not-exist.zip
-    raise:
-      type: SystemExit
-      match: "1"
+    exitcode: 1
 
   missing_args:
     input: *normal-package
     args:
-      - --color
       - --code
       - A
-      - o
+      - -o
       - example-domjudge.zip
       - -y
-    raise:
-      type: SystemExit
-      match: "2"
+      - --color
+    exitcode: 2
 
   testset_not_found:
     input: *normal-package
@@ -443,6 +398,4 @@ cli:
       - -y
       - --testset
       - not-exist
-    raise:
-      type: SystemExit
-      match: "1"
+    exitcode: 1

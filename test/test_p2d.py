@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from typer.testing import CliRunner
+
 from .utils.dataloader import load_cli_test_data, load_api_test_data
+
+runner = CliRunner()
 
 
 @pytest.fixture(scope='function')
@@ -22,25 +26,12 @@ def test_version():
     assert len(__version__) > 0
 
 
-def test_cli_version(capsys):
+def test_cli_version():
     from p2d import __version__
-    from p2d.cli import main
-    with pytest.raises(SystemExit):
-        main(['--version'])
-    captured = capsys.readouterr()
-    assert captured.out.strip() == __version__
-
-
-@pytest.mark.parametrize('skip_confirmation', [True, False], ids=['skip', 'confirm'])
-def test_confirm(capsys, monkeypatch, skip_confirmation):
-    if not skip_confirmation:
-        import io
-        monkeypatch.setattr(sys, 'stdin', io.StringIO('y\n'))
-    from p2d.p2d import _confirm
-    _confirm('example-polygon-dir', 'example-domjudge', skip_confirmation=skip_confirmation)
-    captured = capsys.readouterr()
-    if not skip_confirmation:
-        assert "Are you sure to continue? [y/N]" in captured.out
+    from p2d.cli import app
+    result = runner.invoke(app, ['--version'])
+    assert result.exit_code == 0
+    assert __version__ in result.stdout
 
 
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
@@ -66,7 +57,7 @@ def test_api(temp_dir, package_name, extract, args, assertion, expectation):
 
     with expectation:
         # Skip confirmation for testing
-        convert(package, domjudge_package, skip_confirmation=True, **args)
+        convert(package, domjudge_package, **args)
 
         assert domjudge_package.is_file()
 
@@ -78,8 +69,8 @@ def test_api(temp_dir, package_name, extract, args, assertion, expectation):
 
 
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
-@pytest.mark.parametrize('package_name, args, assertion, expectation', load_cli_test_data())
-def test_cli(temp_dir, package_name, args, extract, assertion, expectation):
+@pytest.mark.parametrize('package_name, args, assertion, exitcode', load_cli_test_data())
+def test_cli(temp_dir, package_name, args, extract, assertion, exitcode):
     test_data_dir = Path(__file__).parent / 'test_data'
     polygon_package_dir = temp_dir / 'example-polygon-dir'
     domjudge_package_dir = temp_dir / 'example-domjudge-dir'
@@ -94,13 +85,15 @@ def test_cli(temp_dir, package_name, args, extract, assertion, expectation):
             with zipfile.ZipFile(polygon_package, 'r') as zip_ref:
                 zip_ref.extractall(polygon_package_dir)
 
-    from p2d.cli import main
+    from p2d.cli import app
 
     package = polygon_package_dir if extract else polygon_package
 
-    with expectation:
-        assert main(args + [package.name]) == 0
+    result = runner.invoke(app, [str(package), *args])
 
+    assert result.exit_code == exitcode
+
+    if exitcode == 0:
         assert domjudge_package.is_file()
 
         # Extract the output zip file for further assertion

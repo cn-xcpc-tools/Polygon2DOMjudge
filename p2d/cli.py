@@ -1,10 +1,11 @@
 import re
-import sys
-from argparse import ArgumentParser, ArgumentError, ArgumentTypeError
+
 from pathlib import Path
-from typing import cast, List, Optional
+from typing import cast, Optional
+from typing_extensions import Annotated
 
 import betterlogging as logging  # type: ignore
+import typer
 
 from . import __version__
 from .p2d import convert, DEFAULT_COLOR
@@ -12,90 +13,96 @@ from .utils import load_config
 from .typing import Config
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+app = typer.Typer(pretty_exceptions_show_locals=False)
 
-    parser = ArgumentParser(description='Process Polygon Package to Domjudge Package.')
 
-    def validate_external_id(value):
-        if re.match(r'^[a-zA-Z0-9-_]+$', value):
-            return value
-        else:
-            raise ArgumentTypeError("external-id must contain only letters, numbers, hyphens and underscores")
+def version_callback(value: Optional[bool]) -> None:
+    if value:
+        typer.echo(f'Polygon Package to Domjudge Package v{__version__}')
+        raise typer.Exit()
 
-    parser.add_argument('--code', type=str, help='problem short name in domjudge', required=True)
-    parser.add_argument('--color', type=str, default=DEFAULT_COLOR,
-                        help='problem color in domjudge (in #RRGGBB format)')
-    parser.add_argument('-l', '--log-level', default='info',
-                        help='set log level (debug, info, warning, error, critical)')
-    parser.add_argument('-v', '--version', action='version', version=__version__)
-    parser.add_argument('-y', '--yes', action='store_true', help='skip confirmation')
-    parser.add_argument('-o', '--output', type=Path, help='path of the output package')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--auto', action='store_true',
-                       help='use the default output validator if the checker is defined in config and can be replaced by the default one.')
-    group.add_argument('--default', action='store_true', help='force use the default output validator.')
-    parser.add_argument('--validator-flags', nargs='*',
-                        help='add some flags to the output validator, only works when "--default" is set.')
-    parser.add_argument('--memory-limit', type=int,  # default use polygon default
-                        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')
-    parser.add_argument('--output-limit', type=int, default=-1,
-                        help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')
-    parser.add_argument('--hide-sample', action='store_true',
-                        help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')
-    parser.add_argument('--external-id', type=validate_external_id,
-                        help='problem external id in domjudge, default is problem id in polygon')
-    parser.add_argument('--without-statement', action='store_true',
-                        help='do not include pdf statement in the package')
-    parser.add_argument('--testset', type=str,
-                        help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')
-    parser.add_argument('--config', type=Path, default='config.toml',
-                        help='path of the config file to override the default config, default is using "config.toml" in current directory')
-    parser.add_argument('package', type=Path, help='path of the polygon package directory or zip file')
 
-    args = parser.parse_args(argv)
+def validate_external_id(value: Optional[str]) -> Optional[str]:
+    if value is None or re.match(r'^[a-zA-Z0-9-_]+$', value):
+        return value
+    raise typer.BadParameter("external-id must contain only letters, numbers, hyphens and underscores")
 
-    logging.basic_colorized_config(level=args.log_level.upper())
+
+@app.command(no_args_is_help=True, help='Process Polygon Package to Domjudge Package.')
+def convert_problem(
+    package: Annotated[Path, typer.Argument(help='path of the polygon package directory or zip file')],
+    code: Annotated[str, typer.Option(help='problem short name in domjudge', prompt=True)],
+    color: Annotated[str, typer.Option(help='problem color in domjudge (in #RRGGBB format)')] = DEFAULT_COLOR,
+    log_level: Annotated[str, typer.Option(
+        "-l", "--log-level", help='set log level (debug, info, warning, error, critical)')] = 'info',
+    version: Annotated[Optional[bool], typer.Option(
+        "-v", "--version", help='show version information', callback=version_callback, is_eager=True)] = None,
+    skip_confirmation: Annotated[bool, typer.Option("-y", "--yes", help='skip confirmation')] = False,
+    output: Annotated[Optional[Path], typer.Option("-o", "--output", help='path of the output package')] = None,
+    auto_detect_std_checker: Annotated[bool, typer.Option(
+        '--auto', help='use the default output validator if the checker is defined in config and can be replaced by the default one.')] = False,
+    force_default_validator: Annotated[bool, typer.Option(
+        '--default', help='force use the default output validator.')] = False,
+    validator_flags: Annotated[Optional[str], typer.Option(
+        help='add some flags to the output validator, only works when "--default" is set.')] = None,
+    memory_limit: Annotated[Optional[int], typer.Option(
+        help='override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default')] = None,
+    output_limit: Annotated[int, typer.Option(
+        help='override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default')] = -1,
+    hide_sample: Annotated[bool, typer.Option(
+        help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')] = False,
+    external_id: Annotated[Optional[str], typer.Option(
+        help='problem external id in domjudge, default is problem id in polygon', callback=validate_external_id)] = None,
+    without_statement: Annotated[bool, typer.Option(
+        '--without-statement/--with-statement', help='do not include pdf statement in the package')] = False,
+    testset_name: Annotated[Optional[str], typer.Option(
+        '--testset', help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')] = None,
+    config_file: Annotated[Path, typer.Option(
+        '--config', help='path of the config file to override the default config, default is using "config.toml" in current directory')] = Path('config.toml')
+) -> None:
+
+    logging.basic_colorized_config(level=log_level.upper())
     logger = logging.getLogger(__name__)
 
+    if config_file.is_file():
+        logger.info(f'Using config file: {config_file}')
+        config = cast(Config, load_config(config_file))
+    else:
+        config = None
+
+    if not force_default_validator and validator_flags:
+        logger.warning('You are not using default validation, validator flags will be ignored.')
+
+    if force_default_validator and auto_detect_std_checker:
+        raise typer.BadParameter('Cannot use "--default" and "--auto" at the same time.')
+
+    if not skip_confirmation:
+        def confirm_callback(): return typer.confirm('Are you sure to convert the package?', abort=True, default=True)
+    else:
+        def confirm_callback(): return True
+
     try:
-        config_file = Path(args.config)
-        if config_file.is_file():
-            logger.info(f'Using config file: {config_file}')
-            config = cast(Config, load_config(config_file))
-        else:
-            config = None
-
-        if not args.default and args.validator_flags:
-            logger.warning('You are not using default validation, validator flags will be ignored.')
-
-        _kwargs = {
-            'short_name': args.code,
-            'color': args.color,
-            'hide_sample': args.hide_sample,
-            'auto_detect_std_checker': args.auto,
-            'force_default_validator': args.default,
-            'validator_flags': args.validator_flags,
-            'memory_limit': args.memory_limit,
-            'output_limit': args.output_limit,
-            'skip_confirmation': args.yes,
-            'testset_name': args.testset,
-            'external_id': args.external_id,
-            'without_statement': args.without_statement,
-            'config': config,
-        }
-
         convert(
-            args.package,
-            args.output,
-            **_kwargs,
+            package=package,
+            code=code,
+            color=color,
+            confirm_callback=confirm_callback,
+            output=output,
+            auto_detect_std_checker=auto_detect_std_checker,
+            force_default_validator=force_default_validator,
+            validator_flags=validator_flags,
+            memory_limit=memory_limit,
+            output_limit=output_limit,
+            hide_sample=hide_sample,
+            external_id=external_id,
+            without_statement=without_statement,
+            testset_name=testset_name,
+            config=config
         )
-    except ArgumentError as e:
-        logger.error(e)
-        sys.exit(2)
-    except (FileNotFoundError, FileExistsError) as e:
-        logger.error(e)
-        sys.exit(1)
     except Exception as e:
-        logger.exception(e)
-        sys.exit(1)
-    return 0
+        logger.error(e)
+        raise
+
+
+def main():
+    app()

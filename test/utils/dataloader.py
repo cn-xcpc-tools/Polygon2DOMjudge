@@ -55,7 +55,7 @@ def load_cli_test_data():
             test_case['input'],                                 # package_name
             test_case['args'],                                  # args
             _get_asserts(test_case.get('assertions', None)),    # asserts
-            _get_raises(test_case.get('raise', None)),          # expectation
+            test_case.get('exitcode', 0),                       # exitcode
             id=name,
         )
 

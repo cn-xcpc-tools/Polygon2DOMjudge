@@ -12,9 +12,7 @@ Result = Literal[
 
 TagMapping = Dict[str, List[Result]]
 
-FlagMapping = Dict[str, List[str]]
-
-ValidatorFlags = Sequence[str]
+FlagMapping = Dict[str, str]
 
 
 class ExamplePathPattern(TypedDict):
