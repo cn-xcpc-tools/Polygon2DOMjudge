@@ -1492,21 +1492,22 @@ files = [
 ]
 
 [[package]]
-name = "typer"
+name = "typer-slim"
 version = "0.12.5"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "typer-0.12.5-py3-none-any.whl", hash = "sha256:62fe4e471711b147e3365034133904df3e235698399bc4de2b36c8579298d52b"},
-    {file = "typer-0.12.5.tar.gz", hash = "sha256:f592f089bedcc8ec1b974125d64851029c3b1af145f04aca64d69410f0c9b722"},
+    {file = "typer_slim-0.12.5-py3-none-any.whl", hash = "sha256:9a994f721b828783dbf144e17461b1c720bb4598e0d5eff7c1b3f08ee58cb062"},
+    {file = "typer_slim-0.12.5.tar.gz", hash = "sha256:c8e3fcf93cc7dd584036df8755d2e2363f85f8a4dd028c7911eed3f00cf0ebb1"},
 ]
 
 [package.dependencies]
 click = ">=8.0.0"
-rich = ">=10.11.0"
-shellingham = ">=1.3.0"
 typing-extensions = ">=3.7.4.3"
+
+[package.extras]
+standard = ["rich (>=10.11.0)", "shellingham (>=1.3.0)"]
 
 [[package]]
 name = "types-pyyaml"
@@ -1662,4 +1663,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "c7c76d2e9bb900c98e7dec4ac5846d3dc685d651dedb84df8314fc7b0df4fe18"
+content-hash = "dbf35bd8c580df49aff741c4b60f098a63f94fa6ba026cf1cdd013b883309373"
