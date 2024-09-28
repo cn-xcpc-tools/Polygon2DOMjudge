@@ -96,8 +96,8 @@ class Polygon2DOMjudge:
                 self.path = path
                 self.name = name
 
-            @staticmethod
-            def from_element(ele: Optional[Element]) -> Optional[Polygon2DOMjudge.Problem.Executable]:
+            @classmethod
+            def from_element(cls, ele: Optional[Element]) -> Optional[Polygon2DOMjudge.Problem.Executable]:
                 if ele is not None and (source := ele.find('source')) is not None:
                     return Polygon2DOMjudge.Problem.Executable(
                         source.attrib['path'],
@@ -272,6 +272,9 @@ class Polygon2DOMjudge:
         external_id = kwargs.get('external_id', None)
         without_statement = kwargs.get('without_statement', False)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
+
+        if not force_default_validator and validator_flags:
+            logger.warning('You are not using default validation, validator flags will be ignored.')
 
         self.package_dir = Path(package_dir)
         self.short_name = short_name
@@ -564,7 +567,6 @@ class Options(TypedDict, total=False):
     external_id: Optional[str]
     without_statement: bool
     test_set: Optional[str]
-    code: str  # alias of short_name
 
 
 def convert(
@@ -572,7 +574,7 @@ def convert(
     output: Optional[StrPath] = None, *,
     short_name: Optional[str] = None,
     color: str = DEFAULT_COLOR,
-    confirm_callback: Callable[[], None] = lambda: None,
+    confirm: Callable[[], bool] = lambda: True,
     **kwargs: Unpack[Options]
 ) -> None:
     """Convert a Polygon package to a DOMjudge package.
@@ -588,9 +590,6 @@ def convert(
         FileNotFoundError: If the package is not found.
         FileExistsError: If the output file already exists.
     """
-
-    if kwargs.get('code'):  # code is alias of short_name
-        short_name = cast(str, kwargs['code'])
 
     config = cast(Config, load_config(DEFAULT_CONFIG_FILE))
 
@@ -635,8 +634,6 @@ def convert(
         logger.info(f'Package directory: {package_dir}')
         logger.info(f'Output file: {output_file}.zip')
 
-        confirm_callback()
-
         _kwargs: _Polygon2DOMjudgeArgs = {
             'hide_sample': kwargs.get('hide_sample', False),
             'auto_detect_std_checker': kwargs.get('auto_detect_std_checker', False),
@@ -654,7 +651,8 @@ def convert(
             p.override_memory_limit(cast(int, kwargs['memory_limit']))
         if kwargs.get('output_limit'):
             p.override_output_limit(cast(int, kwargs['output_limit']))
-        p.process()
+        if confirm():
+            p.process()
 
 
 __all__ = [

@@ -28,10 +28,10 @@ def validate_external_id(value: Optional[str]) -> Optional[str]:
     raise typer.BadParameter("external-id must contain only letters, numbers, hyphens and underscores")
 
 
-@app.command(no_args_is_help=True, help='Process Polygon Package to Domjudge Package.')
+@app.command(no_args_is_help=True, help='Process Polygon Package to Domjudge Package.', name='problem')
 def convert_problem(
     package: Annotated[Path, typer.Argument(help='path of the polygon package directory or zip file')],
-    code: Annotated[str, typer.Option(help='problem short name in domjudge', prompt=True)],
+    short_name: Annotated[str, typer.Option('--code', '--short-name', help='problem short name in domjudge', prompt=True)],
     color: Annotated[str, typer.Option(help='problem color in domjudge (in #RRGGBB format)')] = DEFAULT_COLOR,
     log_level: Annotated[str, typer.Option(
         "-l", "--log-level", help='set log level (debug, info, warning, error, critical)')] = 'info',
@@ -70,23 +70,20 @@ def convert_problem(
     else:
         config = None
 
-    if not force_default_validator and validator_flags:
-        logger.warning('You are not using default validation, validator flags will be ignored.')
-
     if force_default_validator and auto_detect_std_checker:
         raise typer.BadParameter('Cannot use "--default" and "--auto" at the same time.')
 
-    if not skip_confirmation:
-        def confirm_callback(): return typer.confirm('Are you sure to convert the package?', abort=True, default=True)
-    else:
+    if skip_confirmation:
         def confirm_callback(): return True
+    else:
+        def confirm_callback(): return typer.confirm('Are you sure to convert the package?', abort=True, default=True)
 
     try:
         convert(
             package=package,
-            code=code,
+            short_name=short_name,
             color=color,
-            confirm_callback=confirm_callback,
+            confirm=confirm_callback,
             output=output,
             auto_detect_std_checker=auto_detect_std_checker,
             force_default_validator=force_default_validator,

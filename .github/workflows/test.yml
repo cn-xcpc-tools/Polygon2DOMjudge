@@ -61,4 +61,4 @@ jobs:
 
       - name: Unit Test
         run: |
-          poetry run pytest -v
+          poetry run pytest -v --cov=p2d
