@@ -20,6 +20,10 @@ def temp_dir(tmp_path):
     chdir(old_cwd)
 
 
+def test_import():
+    from p2d import __main__
+
+
 def test_version():
     from p2d import __version__
     assert len(__version__) > 0
@@ -68,8 +72,8 @@ def test_api(temp_dir, package_name, extract, args, assertion, expectation):
 
 
 @pytest.mark.parametrize('extract', [True, False], ids=['dir', 'zip'])
-@pytest.mark.parametrize('package_name, args, assertion, exitcode', load_cli_test_data())
-def test_cli(temp_dir, package_name, args, extract, assertion, exitcode):
+@pytest.mark.parametrize('package_name, args, user_input, assertion, exitcode', load_cli_test_data())
+def test_cli(temp_dir, package_name, args, user_input, extract, assertion, exitcode):
     test_data_dir = Path(__file__).parent / 'test_data'
     polygon_package_dir = temp_dir / 'example-polygon-dir'
     domjudge_package_dir = temp_dir / 'example-domjudge-dir'
@@ -88,7 +92,7 @@ def test_cli(temp_dir, package_name, args, extract, assertion, exitcode):
 
     package = polygon_package_dir if extract else polygon_package
 
-    result = runner.invoke(app, [str(package), *args])
+    result = runner.invoke(app, [str(package), *args], input=user_input)
 
     assert result.exit_code == exitcode
 

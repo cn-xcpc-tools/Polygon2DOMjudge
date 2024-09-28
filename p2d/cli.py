@@ -102,4 +102,4 @@ def convert_problem(
 
 
 def main():
-    app()
+    app()  # pragma: no cover

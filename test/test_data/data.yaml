@@ -249,7 +249,7 @@ cli:
       - A
       - -o
       - example-domjudge.zip
-      - -y
+    user_input: "y\n"
     assertions: *normal-assertions
 
   testset_specified:
@@ -261,10 +261,10 @@ cli:
       - A
       - -o
       - example-domjudge.zip
-      - -y
       - --testset
       - tests
     assertions: *normal-assertions
+    user_input: "\n"
 
   auto_validation:
     input: *normal-package
@@ -398,4 +398,16 @@ cli:
       - -y
       - --testset
       - not-exist
+    exitcode: 1
+
+  abort:
+    input: *normal-package
+    args:
+      - --color
+      - "#FF0000"
+      - --code
+      - A
+      - -o
+      - example-domjudge.zip
+    user_input: "n\n"
     exitcode: 1

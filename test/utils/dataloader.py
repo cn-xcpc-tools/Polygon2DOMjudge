@@ -54,6 +54,7 @@ def load_cli_test_data():
         yield pytest.param(
             test_case['input'],                                 # package_name
             test_case['args'],                                  # args
+            test_case.get('user_input', None),                  # user_input
             _get_asserts(test_case.get('assertions', None)),    # asserts
             test_case.get('exitcode', 0),                       # exitcode
             id=name,
