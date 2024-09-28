@@ -1,5 +1,4 @@
 import shutil
-import sys
 import zipfile
 from os import chdir
 from pathlib import Path

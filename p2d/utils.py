@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import shutil
 import string
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,17 +8,12 @@ from typing import TYPE_CHECKING
 import tomli
 
 if TYPE_CHECKING:
-    from _typeshed import StrPath
+    from _typeshed import StrPath  # pragma: no cover
 
 
 def ensure_dir(s: Path):
     if not s.exists():
         s.mkdir(parents=True)
-
-
-def ensure_no_dir(s: Path):
-    if s.exists():
-        shutil.rmtree(s)
 
 
 def load_config(config_file: StrPath):

@@ -102,7 +102,7 @@ for problem in problems:
     convert(
         polygon / f'{prob_id}.zip',
         domjudge / f'{prob_id}.zip',
-        code=problem['label'],
+        short_name=problem['label'],
         color=problem['rgb'],
     )
 ```

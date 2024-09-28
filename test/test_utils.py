@@ -50,4 +50,4 @@ def test_load_broken_config(config_file):
     from p2d.utils import load_config
 
     with pytest.raises(ImportError):
-        load_config(Path(__file__).parent.parent / 'test_data' / config_file)
+        load_config(Path(__file__).parent / 'test_data' / config_file)

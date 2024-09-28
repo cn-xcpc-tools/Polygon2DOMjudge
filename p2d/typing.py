@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Sequence, TypedDict
+from typing import Dict, List, Literal, TypedDict
 
 
 Result = Literal[

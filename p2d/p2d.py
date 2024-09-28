@@ -19,9 +19,9 @@ from . import __version__
 from .typing import Config, Result
 from .utils import ensure_dir, load_config, update_dict, get_normalized_lang
 
-if sys.version_info < (3, 11):
+if sys.version_info < (3, 11):  # pragma: no cover
     from typing_extensions import Unpack
-else:
+else:   # pragma: no cover
     from typing import Unpack
 
 if TYPE_CHECKING:
