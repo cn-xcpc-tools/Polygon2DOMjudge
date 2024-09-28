@@ -1,8 +1,7 @@
 import xml.etree.ElementTree
 
 from pathlib import Path
-from typing import Optional
-from typing_extensions import Annotated
+from typing import Annotated, Optional
 
 import betterlogging as logging  # type: ignore
 import typer

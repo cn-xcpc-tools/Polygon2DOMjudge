@@ -1,8 +1,7 @@
 import re
 
 from pathlib import Path
-from typing import cast, Optional
-from typing_extensions import Annotated
+from typing import cast, Annotated, Optional
 
 import betterlogging as logging  # type: ignore
 import typer
