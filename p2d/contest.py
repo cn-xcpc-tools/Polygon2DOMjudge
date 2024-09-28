@@ -1,5 +1,3 @@
-import errno
-import os
 import xml.etree.ElementTree
 
 from pathlib import Path
@@ -62,7 +60,7 @@ p2d --yes --code {index} --color "#FF0000" \\
         raise
 
 
-def main():
+def main():  # pragma: no cover
     app()
 
 

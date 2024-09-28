@@ -101,5 +101,5 @@ def convert_problem(
         raise
 
 
-def main():
-    app()  # pragma: no cover
+def main():  # pragma: no cover
+    app()
