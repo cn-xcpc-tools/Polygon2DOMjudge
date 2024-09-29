@@ -107,6 +107,11 @@ for problem in problems:
     )
 ```
 
+## Known Issues
+
+- For interactive problems, you must validate the output in the interactors, because DOMjudge cannot handle `tout` stream like Polygon.
+- For multi-pass problems, you may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` to get the next pass input file when there exists a next pass.
+
 ## Development
 
 ```bash

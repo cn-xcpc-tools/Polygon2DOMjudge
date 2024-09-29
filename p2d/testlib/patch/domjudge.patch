@@ -1,7 +1,14 @@
-diff --git a/testlib.h b/testlib.h
-index c45e320..17e39f2 100644
---- a/testlib.h
-+++ b/testlib.h
+--- testlib.h.orig	2024-09-29 20:18:40.595715278 +0800
++++ testlib.h	2024-09-29 20:16:57.253616724 +0800
+@@ -25,7 +25,7 @@
+  * Copyright (c) 2005-2023
+  */
+ 
+-#define VERSION "0.9.41"
++#define VERSION "0.9.41-DOMJUDGE"
+ 
+ /*
+  * Mike Mirzayanov
 @@ -60,6 +60,8 @@
   *   Reads test from inf (mapped to args[1]), writes result to tout (mapped to argv[2],
   *   can be judged by checker later), reads program output from ouf (mapped to stdin),
@@ -56,7 +63,7 @@ index c45e320..17e39f2 100644
  #endif
  
  #ifndef PC_BASE_EXIT_CODE
-@@ -3081,7 +3083,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
+@@ -3081,7 +3083,7 @@ NORETURN void InStream::quit(TResult res
      }
  
      quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
@@ -65,7 +72,7 @@ index c45e320..17e39f2 100644
  
      inf.close();
      ouf.close();
-@@ -3090,10 +3092,10 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
+@@ -3090,10 +3092,10 @@ NORETURN void InStream::quit(TResult res
          tout.close();
  
      textColor(LightGray);
@@ -78,7 +85,7 @@ index c45e320..17e39f2 100644
      halt(resultExitCode(result));
  }
  
-@@ -4496,6 +4498,11 @@ void setAppesModeEncoding(std::string appesModeEncoding) {
+@@ -4496,6 +4498,11 @@ void setAppesModeEncoding(std::string ap
      ::appesModeEncoding = appesModeEncoding;
  }
  
@@ -90,7 +97,7 @@ index c45e320..17e39f2 100644
  void registerInteraction(int argc, char *argv[]) {
      __testlib_ensuresPreconditions();
      __testlib_set_testset_and_group(argc, argv);
-@@ -4506,24 +4513,23 @@ void registerInteraction(int argc, char *argv[]) {
+@@ -4506,24 +4513,20 @@ void registerInteraction(int argc, char
  
      if (argc > 1 && !strcmp("--help", argv[1]))
          __testlib_help();
@@ -107,9 +114,6 @@ index c45e320..17e39f2 100644
 +*/
 +    if (argc == 4) {
 +        resultName = make_new_file_in_a_dir(argv[3]);
-+        tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out);
-+        if (tout.fail() || !tout.is_open())
-+            quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
          appesMode = false;
      }
  
@@ -123,7 +127,7 @@ index c45e320..17e39f2 100644
      if (argc == 6) {
          if (strcmp("-APPES", argv[5]) && strcmp("-appes", argv[5])) {
              quit(_fail, std::string("Program must be run with the following arguments: ") +
-@@ -4533,18 +4539,19 @@ void registerInteraction(int argc, char *argv[]) {
+@@ -4533,18 +4536,19 @@ void registerInteraction(int argc, char
              appesMode = true;
          }
      }
@@ -147,7 +151,7 @@ index c45e320..17e39f2 100644
      else
          ans.name = "unopened answer stream";
  }
-@@ -4699,19 +4706,20 @@ void registerTestlibCmd(int argc, char *argv[]) {
+@@ -4699,19 +4703,20 @@ void registerTestlibCmd(int argc, char *
      argc = int(args.size());
      if (argc > 1 && "--help" == args[1])
          __testlib_help();
@@ -171,7 +175,7 @@ index c45e320..17e39f2 100644
      if (argc == 5) {
          resultName = args[4];
          appesMode = false;
-@@ -4726,12 +4734,13 @@ void registerTestlibCmd(int argc, char *argv[]) {
+@@ -4726,12 +4731,13 @@ void registerTestlibCmd(int argc, char *
              appesMode = true;
          }
      }

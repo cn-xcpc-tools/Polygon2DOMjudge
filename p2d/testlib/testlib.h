@@ -4522,9 +4522,6 @@ void registerInteraction(int argc, char *argv[]) {
 */
     if (argc == 4) {
         resultName = make_new_file_in_a_dir(argv[3]);
-        tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out);
-        if (tout.fail() || !tout.is_open())
-            quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
         appesMode = false;
     }
 
