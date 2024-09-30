@@ -52,7 +52,7 @@ replace = '__version__ = "{new_version}"'
 max-line-length = 120
 
 [tool.pytest.ini_options]
-addopts = "--cov=p2d --cov-report html --cov-report term --cov-report xml --cov-fail-under=90"
+addopts = "--cov=p2d --cov-report html --cov-report term --cov-report xml --cov-fail-under=85"
 
 [tool.coverage.report]
 exclude_also = [

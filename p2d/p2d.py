@@ -45,7 +45,8 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     hide_sample: bool
     testset_name: Optional[str]
     external_id: Optional[str]
-    without_statement: bool
+    with_statement: bool
+    with_attachments: bool
     config: Config
 
 
@@ -123,6 +124,10 @@ class Polygon2DOMjudge:
             testset_name = kwargs.get('testset_name', None)
 
             problem = xml.etree.ElementTree.parse(problem_xml).getroot()
+
+            if not isinstance(problem, Element):
+                raise ProcessError("Invalid problem.xml")
+
             short_name = self._SHORT_NAME_FILTER.sub('', problem.attrib.get('short-name', ''))
             name, language = self._get_preference_name(problem.find('names'), language_preference)
             statement = self._get_statement(problem.find('statements'), language)
@@ -174,6 +179,7 @@ class Polygon2DOMjudge:
             )
             self.solutions = tuple(problem.findall('assets/solutions/solution[@tag]'))
             self.statement = statement
+            self.attachments = tuple(Path(ele.attrib['path']) for ele in problem.findall('files/attachments/file[@path]'))
 
         @staticmethod
         def _get_preference_name(
@@ -270,7 +276,8 @@ class Polygon2DOMjudge:
         hide_sample = kwargs.get('hide_sample', False)
         testset_name = kwargs.get('testset_name', None)
         external_id = kwargs.get('external_id', None)
-        without_statement = kwargs.get('without_statement', False)
+        with_statement = kwargs.get('with_statement', False)
+        with_attachments = kwargs.get('with_attachments', False)
         config = kwargs.get('config', cast(Config, load_config(DEFAULT_CONFIG_FILE)))
 
         if not force_default_validator and validator_flags:
@@ -281,8 +288,9 @@ class Polygon2DOMjudge:
         self.color = color
         self.temp_dir = Path(temp_dir)
         self.output_file = Path(output_file)
-        self.without_statement = without_statement
 
+        self._with_statement = with_statement
+        self._with_attachments = with_attachments
         self._config = config
 
         logger.debug('Parse \'problem.xml\':')
@@ -513,15 +521,24 @@ class Polygon2DOMjudge:
             logger.warning('No statement found in problem.xml, skip adding statement.')
             return self
 
-        if self.without_statement:
-            logger.info('Skip adding statement due to --without-statement flag.')
-            return self
-
         ensure_dir(self.temp_dir / 'problem_statement')
         logger.debug('Add statement:')
         logger.info(f'* {self._problem.statement}')
         shutil.copyfile(self.package_dir / self._problem.statement, self.temp_dir / 'problem_statement' / 'problem.pdf')
         return self
+
+    def _add_attachments(self) -> Polygon2DOMjudge:
+        if not self._problem.attachments:
+            logger.warning('No attachments found in problem.xml, skip adding attachments.')
+            return self
+
+        ensure_dir(self.temp_dir / 'attachments')
+        logger.debug('Add attachments:')
+        for attachment in self._problem.attachments:
+            logger.info(f'* {attachment}')
+            shutil.copyfile(self.package_dir / attachment, self.temp_dir / 'attachment' / attachment.name)
+        return self
+
 
     def _archive(self):
         shutil.make_archive(self.output_file.as_posix(), 'zip', self.temp_dir, logger=logger)
@@ -546,13 +563,16 @@ class Polygon2DOMjudge:
         self._problem.outputlimit = output_limit
         return self
 
-    def process(self) -> Polygon2DOMjudge:
-        return self._write_ini() \
+    def process(self) -> None:
+        self._write_ini() \
             ._write_yaml() \
             ._add_tests() \
-            ._add_jury_solutions() \
-            ._add_statement() \
-            ._archive()
+            ._add_jury_solutions()
+        if self._with_statement:
+            self._add_statement()
+        if self._with_attachments:
+            self._add_attachments()
+        self._archive()
 
 
 class Options(TypedDict, total=False):
@@ -565,7 +585,8 @@ class Options(TypedDict, total=False):
     output_limit: Optional[int]
     testset_name: Optional[str]
     external_id: Optional[str]
-    without_statement: bool
+    with_statement: bool
+    with_attachments: bool
     test_set: Optional[str]
 
 
@@ -641,7 +662,8 @@ def convert(
             'validator_flags': kwargs.get('validator_flags', None),
             'testset_name': kwargs.get('testset_name', None),
             'external_id': kwargs.get('external_id', None),
-            'without_statement': kwargs.get('without_statement', False),
+            'with_statement': kwargs.get('with_statement', False),
+            'with_attachments': kwargs.get('with_attachments', False),
             'config': config,
         }
 
@@ -651,6 +673,7 @@ def convert(
             p.override_memory_limit(cast(int, kwargs['memory_limit']))
         if kwargs.get('output_limit'):
             p.override_output_limit(cast(int, kwargs['output_limit']))
+
         if confirm():
             p.process()
 

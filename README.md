@@ -52,7 +52,8 @@ All available parameters are:
 - `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
     When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
 - `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
-- `--without-statement`: do not include the pdf statement in the DOMjudge package.
+- `--with-statement`: include the pdf statement in the DOMjudge package.
+- `--with-attachments`: include attachments (e.g. local testing tools for interactive problem) in the DOMjudge package.
 - `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
 
 ### Convert the whole contest

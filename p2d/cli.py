@@ -52,8 +52,10 @@ def convert_problem(
         help='hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).')] = False,
     external_id: Annotated[Optional[str], typer.Option(
         help='problem external id in domjudge, default is problem id in polygon', callback=validate_external_id)] = None,
-    without_statement: Annotated[bool, typer.Option(
-        '--without-statement/--with-statement', help='do not include pdf statement in the package')] = False,
+    with_statement: Annotated[bool, typer.Option(
+        '--with-statement/--without-statement', help='include pdf statement in the package')] = False,
+    with_attachments: Annotated[bool, typer.Option(
+        '--with-attachments/--without-attachments', help='include attachments in the package')] = False,
     testset_name: Annotated[Optional[str], typer.Option(
         '--testset', help='specify the testset to convert, must specify the testset name if the problem has multiple testsets.')] = None,
     config_file: Annotated[Path, typer.Option(
@@ -91,7 +93,8 @@ def convert_problem(
             output_limit=output_limit,
             hide_sample=hide_sample,
             external_id=external_id,
-            without_statement=without_statement,
+            with_statement=with_statement,
+            with_attachments=with_attachments,
             testset_name=testset_name,
             config=config
         )
