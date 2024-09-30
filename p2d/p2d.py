@@ -308,7 +308,6 @@ class Polygon2DOMjudge:
             logger.error('Can not use auto_detect_std_checker and force_default_validator at the same time.')
             raise ValueError('Can not use auto_detect_std_checker and force_default_validator at the same time.')
 
-        self._replace_sample = not hide_sample  # always replace sample with the sample in statements when hide_sample is False
         self._hide_sample = hide_sample or self._problem.interactor is not None
         self._use_std_checker = auto_detect_std_checker and \
             self._problem.checker is not None and self._problem.checker.name.startswith('std::') or \
@@ -420,8 +419,10 @@ class Polygon2DOMjudge:
                 if sample_input_src.exists() and sample_output_src.exists() and (not compare(input_src, sample_input_src) or not compare(output_src, sample_output_src)):
                     logger.info(f'Add sample: {"%02d" % idx}.(in/ans) from statements.')
                     ensure_dir(self.temp_dir / 'data' / 'sample' / 'statement')
-                    shutil.copyfile(sample_input_src, self.temp_dir / 'data' / 'sample' / 'statement' / f'{"%02d" % idx}.in')
-                    shutil.copyfile(sample_output_src, self.temp_dir / 'data' / 'sample' / 'statement' / f'{"%02d" % idx}.ans')
+                    shutil.copyfile(sample_input_src, self.temp_dir / 'data' /
+                                    'sample' / 'statement' / f'{"%02d" % idx}.in')
+                    shutil.copyfile(sample_output_src, self.temp_dir / 'data' /
+                                    'sample' / 'statement' / f'{"%02d" % idx}.ans')
 
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'
