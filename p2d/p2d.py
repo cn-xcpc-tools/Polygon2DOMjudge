@@ -179,7 +179,8 @@ class Polygon2DOMjudge:
             )
             self.solutions = tuple(problem.findall('assets/solutions/solution[@tag]'))
             self.statement = statement
-            self.attachments = tuple(Path(ele.attrib['path']) for ele in problem.findall('files/attachments/file[@path]'))
+            self.attachments = tuple(Path(ele.attrib['path'])
+                                     for ele in problem.findall('files/attachments/file[@path]'))
 
         @staticmethod
         def _get_preference_name(
@@ -538,7 +539,6 @@ class Polygon2DOMjudge:
             logger.info(f'* {attachment}')
             shutil.copyfile(self.package_dir / attachment, self.temp_dir / 'attachment' / attachment.name)
         return self
-
 
     def _archive(self):
         shutil.make_archive(self.output_file.as_posix(), 'zip', self.temp_dir, logger=logger)
