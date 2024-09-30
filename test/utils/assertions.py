@@ -42,6 +42,12 @@ def assert_sample_data(package_dir, expect=('01.in', '01.ans')):
         assert (package_dir / 'data' / 'sample' / file).is_file()
 
 
+def assert_statement_data(package_dir, expect=('01.in', '01.ans')):
+    assert (package_dir / 'data' / 'sample' / 'statement').is_dir()
+    for file in expect:
+        assert (package_dir / 'data' / 'sample' / 'statement' / file).is_file()
+
+
 def assert_no_sample_data(package_dir):
     assert not any((package_dir / 'data' / 'sample').iterdir())
 

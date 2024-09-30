@@ -19,10 +19,12 @@ assertions:
       args:
         expect: &normal-yaml
           limits:
+            time_limit: 5.0
             memory: 256
           name: Little H And Reboot
           validation: custom
     - sample_data
+    - statement_data
     - secret_data
     - type: file
       args:
@@ -55,6 +57,7 @@ assertions:
           validation: default
           validator_flags: float_tolerance 1e-4
     - sample_data
+    - statement_data
     - secret_data
     - type: file
       args:
@@ -78,6 +81,7 @@ assertions:
           validation: default
           validator_flags: float_tolerance 1e-6
     - sample_data
+    - statement_data
     - secret_data
     - type: file
       args:
@@ -117,6 +121,7 @@ assertions:
       args:
         expect:
           limits:
+            time_limit: 1.0
             memory: 512
           name: Guess The Array
           validation: custom interactive
@@ -148,6 +153,7 @@ assertions:
         expect:
           <<: *normal-yaml
           limits:
+            time_limit: 5.0
             output: 64
 
   # change language to Chinese

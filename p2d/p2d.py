@@ -344,7 +344,7 @@ class Polygon2DOMjudge:
         yaml_content: Dict[str, Any] = dict(name=self._problem.name)
         memorylimit, outputlimit = self._problem.memorylimit, self._problem.outputlimit
         if memorylimit > 0 or outputlimit > 0:
-            yaml_content['limits'] = {}
+            yaml_content['limits'] = {'time_limit': self._problem.timelimit}
             if memorylimit > 0:
                 yaml_content['limits']['memory'] = memorylimit
             if outputlimit > 0:
@@ -400,13 +400,12 @@ class Polygon2DOMjudge:
         sample_input_path_pattern = self._config['example_path_pattern']['input']
         sample_output_path_pattern = self._config['example_path_pattern']['output']
 
-        def compare(src: StrPath, dst: StrPath):
+        def compare(src: StrPath, dst: StrPath) -> bool:
             s, t = Path(src).name, Path(dst).name
 
             logger.debug(f'Compare {s} and {t}')
             with open(src, 'r') as f1, open(dst, 'r') as f2:
-                if f1.read() != f2.read():
-                    logger.warning(f'{s} and {t} are not the same, use {t}.')
+                return f1.read() != f2.read()
 
         for idx, test in enumerate(self._problem.tests, 1):
             input_src = self.package_dir / (self._problem.input_path_pattern % idx)
@@ -418,12 +417,12 @@ class Polygon2DOMjudge:
                     self.package_dir / 'statements' / self._problem.language / (sample_input_path_pattern % idx))
                 sample_output_src = (
                     self.package_dir / 'statements' / self._problem.language / (sample_output_path_pattern % idx))
-                if self._replace_sample and sample_input_src.exists():
-                    compare(input_src, sample_input_src)
-                    input_src = sample_input_src
-                if self._replace_sample and sample_output_src.exists():
-                    compare(output_src, sample_output_src)
-                    output_src = sample_output_src
+                if sample_input_src.exists() and sample_output_src.exists() and (not compare(input_src, sample_input_src) or not compare(output_src, sample_output_src)):
+                    logger.info(f'Add sample: {"%02d" % idx}.(in/ans) from statements.')
+                    ensure_dir(self.temp_dir / 'data' / 'sample' / 'statement')
+                    shutil.copyfile(sample_input_src, self.temp_dir / 'data' / 'sample' / 'statement' / f'{"%02d" % idx}.in')
+                    shutil.copyfile(sample_output_src, self.temp_dir / 'data' / 'sample' / 'statement' / f'{"%02d" % idx}.ans')
+
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.desc'
