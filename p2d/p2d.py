@@ -226,12 +226,12 @@ class Polygon2DOMjudge:
                     logger.error('Multiple testsets found in problem.xml.')
                     logger.error('Please specify the testset name in the command line.')
                     raise ProcessError('Multiple testsets found in problem.xml.')
-                logger.error(f'Can not find any testset in problem.xml.')
-                raise ProcessError(f'Can not find any testset in problem.xml.')
+                logger.error('Can not find any testset in problem.xml.')
+                raise ProcessError('Can not find any testset in problem.xml.')
 
             # find testset by name
             if (ele := problem.find(f'judging/testset[@name="{testset_name}"]')) is None:
-                logger.error(f'Can not find testset {testset_name} in problem.xml.')
+                logger.error('Can not find testset %s in problem.xml.', testset_name)
                 raise ProcessError(f'Can not find testset {testset_name} in problem.xml.')
             return ele
 
@@ -241,7 +241,7 @@ class Polygon2DOMjudge:
                 return None
 
             if (statement := statements.find(f'statement[@language="{language}"][@type="application/pdf"][@path]')) is None:
-                logger.warning(f'Can not find statement in {language} in problem.xml, this will skip adding statement.')
+                logger.warning('Can not find statement in %s in problem.xml, this will skip adding statement.', language)
                 return None
 
             return statement.attrib['path']
@@ -296,7 +296,7 @@ class Polygon2DOMjudge:
 
         logger.debug('Parse \'problem.xml\':')
         if testset_name:
-            logger.debug(f'With testset_name: {testset_name}')
+            logger.debug('With testset_name: %s', testset_name)
         self._problem = self.Problem(
             self.package_dir / 'problem.xml',
             language_preference=self._config['language_preference'],
@@ -358,10 +358,10 @@ class Polygon2DOMjudge:
         if not self._problem.interactor is not None and self._use_std_checker:
             # can not support both interactor and checker
             checker_name = self._problem.checker.name if self._problem.checker is not None else UNKNOWN
-            logger.info(f'Use std checker: {checker_name}')
+            logger.info('Use std checker: %s', checker_name)
             yaml_content['validation'] = 'default'
             if self._validator_flags:
-                logger.info(f'Validator flags: {self._validator_flags}')
+                logger.info('Validator flags: %s', self._validator_flags)
                 yaml_content['validator_flags'] = self._validator_flags
         else:
             ensure_dir(output_validators_dir)
@@ -403,10 +403,10 @@ class Polygon2DOMjudge:
         def compare(src: StrPath, dst: StrPath):
             s, t = Path(src).name, Path(dst).name
 
-            logger.debug(f'Compare {s} and {t}')
+            logger.debug('Compare %s and %s', s, t)
             with open(src, 'r') as f1, open(dst, 'r') as f2:
                 if f1.read() != f2.read():
-                    logger.warning(f'{s} and {t} are not the same, use {t}.')
+                    logger.warning('%s and %s are not the same, use %s.', s, t, t)
 
         for idx, test in enumerate(self._problem.tests, 1):
             input_src = self.package_dir / (self._problem.input_path_pattern % idx)
@@ -428,22 +428,22 @@ class Polygon2DOMjudge:
                 output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.desc'
 
-                logger.info(f'* sample: {"%02d" % idx}.(in/ans) {test.method}')
+                logger.info('* sample: %02d.(in/ans) %s', idx, test.method)
             else:
                 input_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.ans'
                 desc_dst = self.temp_dir / 'data' / 'secret' / f'{"%02d" % idx}.desc'
 
-                logger.info(f'* secret: {"%02d" % idx}.(in/ans) {test.method}')
+                logger.info('* secret: %02d.(in/ans) %s', idx, test.method)
 
             if self._problem.outputlimit > 0 and output_src.stat().st_size > self._problem.outputlimit * 1048576:
-                logger.warning(f'Output file {output_src.name} is exceed the output limit.')
+                logger.warning('Output file %s is exceed the output limit.', output_src.name)
 
             shutil.copyfile(input_src, input_dst)
             shutil.copyfile(output_src, output_dst)
 
             if test.__str__():
-                logger.info(f'{test.__str__()}')
+                logger.info(test.__str__())
                 with open(desc_dst, 'w', encoding='utf-8') as f:
                     f.write(test.__str__())
                     f.write('\n')
@@ -455,7 +455,7 @@ class Polygon2DOMjudge:
 
         for solution in self._problem.solutions:
             tag = solution.attrib['tag']
-            logger.info(f'Add jury solution: {tag}')
+            logger.info('Add jury solution: %s', tag)
             results = self._config['tag'].get(tag)
 
             if results is None:
@@ -477,12 +477,12 @@ class Polygon2DOMjudge:
     def _add_solutions_with_expected_result(self, src: Path, dst: Path, lang: str,  results: Optional[List[Result]]) -> None:
         if results is None:
             logger.warning(
-                f'Find expected result with check_manually, you may add @EXPECTED_RESULTS@ in your source code for validation.')
+                'Find expected result with check_manually, you may add @EXPECTED_RESULTS@ in your source code for validation.')
             shutil.copyfile(src, dst)
             return
 
         if len(results) == 1:
-            logger.info(f'- {src.name}: Expected result: {results[0]}')
+            logger.info('- %s: Expected result: %s', src.name, results[0])
             shutil.copyfile(src, dst)
             return
 
@@ -500,12 +500,11 @@ class Polygon2DOMjudge:
             content = f.read()
 
         if '@EXPECTED_RESULTS@' in content or '@EXPECTED_SCORE@' in content:
-            logger.warning(
-                f'Find @EXPECTED_RESULTS@ or @EXPECTED_SCORE@ in {src.name}, skip adding expected result.')
+            logger.warning('Find @EXPECTED_RESULTS@ or @EXPECTED_SCORE@ in %s, skip adding expected result.', src.name)
             shutil.copyfile(src, dst)
         else:
-            logger.info(
-                f'- {src.name}: Expected result: {", ".join(map(lambda x: PROBLEM_RESULT_REMAP[x.upper()].lower(), results))}')
+            logger.info('- %s: Expected result: %s', src.name,
+                        ", ".join(map(lambda x: PROBLEM_RESULT_REMAP[x.upper()], results)))
             with open(dst, 'w') as f:
                 f.write(content)
                 f.write('\n')
@@ -515,7 +514,7 @@ class Polygon2DOMjudge:
                     f.write(
                         f'{comment_str} @EXPECTED_RESULTS@: {", ".join(map(lambda x: PROBLEM_RESULT_REMAP.get(x.upper(), x.upper()), results))}\n')
                 else:
-                    logger.warning(f'comment_str not found for type {lang}, skip adding expected result.')
+                    logger.warning('comment_str not found for type %s, skip adding expected result.', lang)
 
     def _add_statement(self) -> Polygon2DOMjudge:
         if self._problem.statement is None:
@@ -524,7 +523,7 @@ class Polygon2DOMjudge:
 
         ensure_dir(self.temp_dir / 'problem_statement')
         logger.debug('Add statement:')
-        logger.info(f'* {self._problem.statement}')
+        logger.info('* %s', self._problem.statement)
         shutil.copyfile(self.package_dir / self._problem.statement, self.temp_dir / 'problem_statement' / 'problem.pdf')
         return self
 
@@ -536,13 +535,13 @@ class Polygon2DOMjudge:
         ensure_dir(self.temp_dir / 'attachments')
         logger.debug('Add attachments:')
         for attachment in self._problem.attachments:
-            logger.info(f'* {attachment}')
+            logger.info('* %s', attachment.name)
             shutil.copyfile(self.package_dir / attachment, self.temp_dir / 'attachment' / attachment.name)
         return self
 
     def _archive(self):
         shutil.make_archive(self.output_file.as_posix(), 'zip', self.temp_dir, logger=logger)
-        logger.info(f'Make package {self.output_file.name}.zip success.')
+        logger.info('Make package %s.zip success.', self.output_file.name)
         return self
 
     def override_memory_limit(self, memory_limit: int) -> Polygon2DOMjudge:
@@ -550,7 +549,7 @@ class Polygon2DOMjudge:
             raise TypeError('memory_limit must be an integer.')
         if self._problem.memorylimit == memory_limit:
             return self
-        logger.info(f'Override memory limit: {memory_limit}')
+        logger.info('Override memory limit: %dMB', memory_limit)
         self._problem.memorylimit = memory_limit
         return self
 
@@ -559,7 +558,7 @@ class Polygon2DOMjudge:
             raise TypeError('output_limit must be an integer.')
         if self._problem.outputlimit == output_limit:
             return self
-        logger.info(f'Override output limit: {output_limit}')
+        logger.info('Override output limit: %dMB', output_limit)
         self._problem.outputlimit = output_limit
         return self
 
@@ -626,11 +625,11 @@ def convert(
         package_dir = Path(package).resolve()
         if package_dir.is_file():
             with zipfile.ZipFile(package, 'r') as zip_ref:
-                logger.info(f'Extracting {package_dir.name} to {polygon_temp_dir}')
+                logger.info('Extracting %s to %s', package_dir.name, polygon_temp_dir)
                 package_dir = Path(polygon_temp_dir)
                 zip_ref.extractall(package_dir)
         elif package_dir.is_dir():
-            logger.info(f'Using {package_dir}')
+            logger.info('Using %s', package_dir)
         else:
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), package_dir.name)
 
@@ -647,13 +646,13 @@ def convert(
 
         logger.info('This is Polygon2DOMjudge by cubercsl.')
         logger.info('Process Polygon Package to DOMjudge Package.')
-        logger.info("Version: {}".format(__version__))
+        logger.info("Version: %s", __version__)
 
         if sys.platform.startswith('win'):
             logger.warning('It is not recommended running on windows.')
 
-        logger.info(f'Package directory: {package_dir}')
-        logger.info(f'Output file: {output_file}.zip')
+        logger.info('Package directory: %s', package_dir)
+        logger.info('Output file: %s.zip', output_file)
 
         _kwargs: _Polygon2DOMjudgeArgs = {
             'hide_sample': kwargs.get('hide_sample', False),

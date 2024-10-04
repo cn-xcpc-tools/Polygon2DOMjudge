@@ -41,14 +41,14 @@ def convert_contest(
         if problems is None:
             logger.error('No problems found in contest.xml')
             raise ValueError('No problems found in contest.xml')
-        logger.info(f'Found {len(problems)} problems in {contest_xml}')
+        logger.info('Found %d problems in %s', len(problems), str(contest_xml))
         print('#!/bin/bash')
         print('POLYGON_PACKAGE_DIR=polygon      # change this to the polygon package directory')
         print('DOMJUDGE_PACKAGE_DIR=domjudge    # change this to the domjudge package directory')
         print()
         for problem in problems:
             index, name = problem_index_and_name(problem)
-            logger.info(f'Problem {index}: {name}')
+            logger.info('Problem %s: %s', index, name)
             print(f'''# Problem {index}: {name} (change the color if needed)
 p2d --yes --code {index} --color "#FF0000" \\
     --output "$DOMJUDGE_PACKAGE_DIR/{name}.zip" --auto \\

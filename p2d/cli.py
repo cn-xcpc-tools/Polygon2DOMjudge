@@ -66,7 +66,7 @@ def convert_problem(
     logger = logging.getLogger(__name__)
 
     if config_file.is_file():
-        logger.info(f'Using config file: {config_file}')
+        logger.info('Using config file: %s', str(config_file))
         config = cast(Config, load_config(config_file))
     else:
         config = None
