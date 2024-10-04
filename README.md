@@ -50,7 +50,9 @@ All available parameters are:
 - `--memory-limit`: override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package.
 - `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
 - `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
-    When this is not set to True and the sample output is different from the main and correct solution, the sample output will be replaced with the one shipped with problem statement.
+    When this is not set to True and the sample output is different from the main and correct solution (usually both are correct answers),
+    the sample output will be replaced with the one shipped with problem statement.
+    But the sample input will not be replaced because DOMjudge does not support different sample input from the one downloaded.
 - `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
 - `--with-statement`: include the pdf statement in the DOMjudge package.
 - `--with-attachments`: include attachments (e.g. local testing tools for interactive problem) in the DOMjudge package.

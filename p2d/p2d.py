@@ -308,7 +308,6 @@ class Polygon2DOMjudge:
             logger.error('Can not use auto_detect_std_checker and force_default_validator at the same time.')
             raise ValueError('Can not use auto_detect_std_checker and force_default_validator at the same time.')
 
-        self._replace_sample = not hide_sample  # always replace sample with the sample in statements when hide_sample is False
         self._hide_sample = hide_sample or self._problem.interactor is not None
         self._use_std_checker = auto_detect_std_checker and \
             self._problem.checker is not None and self._problem.checker.name.startswith('std::') or \
@@ -405,8 +404,7 @@ class Polygon2DOMjudge:
 
             logger.debug('Compare %s and %s', s, t)
             with open(src, 'r') as f1, open(dst, 'r') as f2:
-                if f1.read() != f2.read():
-                    logger.warning('%s and %s are not the same, use %s.', s, t, t)
+                return f1.read() != f2.read()
 
         for idx, test in enumerate(self._problem.tests, 1):
             input_src = self.package_dir / (self._problem.input_path_pattern % idx)
@@ -414,15 +412,18 @@ class Polygon2DOMjudge:
 
             if test.sample and not self._hide_sample:
                 # interactor can not support custom sample because DOMjudge always use sample input to test
-                sample_input_src = (
-                    self.package_dir / 'statements' / self._problem.language / (sample_input_path_pattern % idx))
+                sample_input_src = self.package_dir / 'statements' / \
+                    self._problem.language / (sample_input_path_pattern % idx)
                 sample_output_src = (
                     self.package_dir / 'statements' / self._problem.language / (sample_output_path_pattern % idx))
-                if self._replace_sample and sample_input_src.exists():
-                    compare(input_src, sample_input_src)
-                    input_src = sample_input_src
-                if self._replace_sample and sample_output_src.exists():
-                    compare(output_src, sample_output_src)
+                # DOMjudge always use sample input to test, we can not use custom sample input
+                # if the sample output is different from the output, use the sample output
+                if sample_input_src.exists() and compare(input_src, sample_input_src):
+                    logger.warning(
+                        'Input file %s is different from the sample input file, please check it manually.', input_src.name)
+                if sample_output_src.exists() and compare(output_src, sample_output_src):
+                    logger.warning(
+                        'Output file %s is different from the sample output file, use the sample output.', output_src.name)
                     output_src = sample_output_src
                 input_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.in'
                 output_dst = self.temp_dir / 'data' / 'sample' / f'{"%02d" % idx}.ans'

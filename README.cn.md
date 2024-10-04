@@ -48,7 +48,8 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 - `--memory-limit`: 覆盖 DOMjudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
 - `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
-    当此参数不设置为 True 且样例输出与标程的输出不同时，样例输出将会被替换为题面中提供的样例输出。
+    当此参数不设置为 True 且样例输出与标程的输出不同时 （通常两者都是符合要求的答案），
+    样例输出将会被替换为题面中提供的样例输出。但是样例输入不会被替换，因为 DOMjudge 不支持下载的样例输入与实际使用的不同。
 - `--external-id`: 指定题目在 DOMjudge 中的 external id，如果不设置，则使用 Polygon 中的题目 short-name。
 - `--with-statement`: 在 DOMjudge 题目包中包含 pdf 题面。
 - `--with-attachments`: 在 DOMjudge 题目包中包含附件（例如交互题的本地测试工具）。
