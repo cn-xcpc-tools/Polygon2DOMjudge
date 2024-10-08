@@ -6,10 +6,16 @@
 language_preference = ["english", "russian", "chinese"]
 
 [flag]
+"fcmp.cpp" = "case_sensitive space_change_sensitive"
+"lcmp.cpp" = "case_sensitive"
 "rcmp4.cpp" = "float_tolerance 1e-4"
 "rcmp6.cpp" = "float_tolerance 1e-6"
 "rcmp9.cpp" = "float_tolerance 1e-9"
-"fcmp.cpp" = "case_sensitive space_change_sensitive"
+"wcmp.cpp" = "case_sensitive"
+# "hcmp.cpp" = ""
+# "ncmp.cpp" = ""
+# "nyesno.cpp" = ""
+# "yesno.cpp" = ""
 
 [tag]
 main = ["accepted"]
