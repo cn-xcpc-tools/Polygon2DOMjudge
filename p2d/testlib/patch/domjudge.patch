@@ -1,12 +1,12 @@
---- testlib.h.orig	2024-09-29 20:18:40.595715278 +0800
-+++ testlib.h	2024-09-29 20:16:57.253616724 +0800
+--- testlib.h.orig	2025-03-09 16:54:35.229639930 +0800
++++ testlib.h	2025-03-09 16:58:06.756346081 +0800
 @@ -25,7 +25,7 @@
-  * Copyright (c) 2005-2023
+  * Copyright (c) 2005-2024
   */
- 
--#define VERSION "0.9.41"
-+#define VERSION "0.9.41-DOMJUDGE"
- 
+
+-#define VERSION "0.9.44"
++#define VERSION "0.9.44-DOMJUDGE"
+
  /*
   * Mike Mirzayanov
 @@ -60,6 +60,8 @@
@@ -16,9 +16,9 @@
 + *
 + *   NOTE: This file is modified to run in domjudge.
   */
- 
+
  const char *latestFeatures[] = {
-@@ -234,7 +236,7 @@ const char *latestFeatures[] = {
+@@ -235,7 +237,7 @@
  #   ifdef CONTESTER
  #       define OK_EXIT_CODE 0xAC
  #   else
@@ -26,8 +26,8 @@
 +#       define OK_EXIT_CODE 42
  #   endif
  #endif
- 
-@@ -244,7 +246,7 @@ const char *latestFeatures[] = {
+
+@@ -245,7 +247,7 @@
  #   elif defined(CONTESTER)
  #       define WA_EXIT_CODE 0xAB
  #   else
@@ -35,8 +35,8 @@
 +#       define WA_EXIT_CODE 43
  #   endif
  #endif
- 
-@@ -254,7 +256,7 @@ const char *latestFeatures[] = {
+
+@@ -255,7 +257,7 @@
  #   elif defined(CONTESTER)
  #       define PE_EXIT_CODE 0xAA
  #   else
@@ -44,8 +44,8 @@
 +#       define PE_EXIT_CODE 43
  #   endif
  #endif
- 
-@@ -272,7 +274,7 @@ const char *latestFeatures[] = {
+
+@@ -273,7 +275,7 @@
  #   ifdef EJUDGE
  #       define DIRT_EXIT_CODE 6
  #   else
@@ -53,28 +53,36 @@
 +#       define DIRT_EXIT_CODE 43
  #   endif
  #endif
- 
-@@ -281,7 +283,7 @@ const char *latestFeatures[] = {
+
+@@ -282,7 +284,7 @@
  #endif
- 
+
  #ifndef UNEXPECTED_EOF_EXIT_CODE
 -#   define UNEXPECTED_EOF_EXIT_CODE 8
 +#   define UNEXPECTED_EOF_EXIT_CODE 43
  #endif
- 
+
  #ifndef PC_BASE_EXIT_CODE
-@@ -3081,7 +3083,7 @@ NORETURN void InStream::quit(TResult res
+@@ -3156,7 +3158,7 @@
      }
- 
+
+     if (resultName != "") {
+-        resultFile = testlib_fopen_(resultName.c_str(), "w");
++        resultFile = testlib_fopen_(resultName.c_str(), "a");
+         if (resultFile == NULL) {
+             resultName = "";
+             quit(_fail, "Can not write to the result file");
+@@ -3188,7 +3190,6 @@
+     }
+
      quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
 -    std::fprintf(stderr, "\n");
-+    // std::fprintf(stderr, "\n");
- 
+
      inf.close();
      ouf.close();
-@@ -3090,10 +3092,10 @@ NORETURN void InStream::quit(TResult res
+@@ -3197,10 +3198,10 @@
          tout.close();
- 
+
      textColor(LightGray);
 -
 +/*
@@ -84,11 +92,11 @@
 +*/
      halt(resultExitCode(result));
  }
- 
-@@ -4496,6 +4498,11 @@ void setAppesModeEncoding(std::string ap
+
+@@ -4683,6 +4684,11 @@
      ::appesModeEncoding = appesModeEncoding;
  }
- 
+
 +std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemessage.txt") { // assume in linux
 +    if (dir.back() != '/') dir.push_back('/');
 +    return dir + file;
@@ -97,8 +105,8 @@
  void registerInteraction(int argc, char *argv[]) {
      __testlib_ensuresPreconditions();
      __testlib_set_testset_and_group(argc, argv);
-@@ -4506,24 +4513,20 @@ void registerInteraction(int argc, char
- 
+@@ -4693,24 +4699,20 @@
+
      if (argc > 1 && !strcmp("--help", argv[1]))
          __testlib_help();
 -
@@ -116,7 +124,7 @@
 +        resultName = make_new_file_in_a_dir(argv[3]);
          appesMode = false;
      }
- 
+
  #ifndef EJUDGE
 -    if (argc == 5) {
 -        resultName = argv[4];
@@ -127,20 +135,20 @@
      if (argc == 6) {
          if (strcmp("-APPES", argv[5]) && strcmp("-appes", argv[5])) {
              quit(_fail, std::string("Program must be run with the following arguments: ") +
-@@ -4533,18 +4536,19 @@ void registerInteraction(int argc, char
+@@ -4720,18 +4722,19 @@
              appesMode = true;
          }
      }
 +*/
  #endif
- 
+
      inf.init(argv[1], _input);
 -
 +/*
      tout.open(argv[2], std::ios_base::out);
      if (tout.fail() || !tout.is_open())
          quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
- 
+
 +*/
      ouf.init(stdin, _output);
 -
@@ -151,7 +159,7 @@
      else
          ans.name = "unopened answer stream";
  }
-@@ -4699,19 +4703,20 @@ void registerTestlibCmd(int argc, char *
+@@ -4886,19 +4889,20 @@
      argc = int(args.size());
      if (argc > 1 && "--help" == args[1])
          __testlib_help();
@@ -169,19 +177,19 @@
 +        resultName = make_new_file_in_a_dir(args[3]);
          appesMode = false;
      }
- 
+
  #ifndef EJUDGE
 +/*
      if (argc == 5) {
          resultName = args[4];
          appesMode = false;
-@@ -4726,12 +4731,13 @@ void registerTestlibCmd(int argc, char *
+@@ -4913,12 +4917,13 @@
              appesMode = true;
          }
      }
 +*/
  #endif
- 
+
      inf.init(args[1], _input);
 -    ouf.init(args[2], _output);
 +    ouf.init(stdin, _output);
@@ -189,5 +197,5 @@
 -    ans.init(args[3], _answer);
 +    ans.init(args[2], _answer);
  }
- 
+
  void registerTestlib(int argc, ...) {
