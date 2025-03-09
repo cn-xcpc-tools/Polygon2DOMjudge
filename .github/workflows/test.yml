@@ -53,7 +53,7 @@ jobs:
 
       - name: Lint
         run: |
-          poetry run autopep8 --recursive --diff --exit-code ./
+          poetry run ruff
 
       - name: Build
         run: |

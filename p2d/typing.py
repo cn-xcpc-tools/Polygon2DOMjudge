@@ -1,13 +1,12 @@
 from typing import Dict, List, Literal, TypedDict
 
-
 Result = Literal[
-    'accepted',
-    'wrong_answer',
-    'time_limit_exceeded',
+    "accepted",
+    "wrong_answer",
+    "time_limit_exceeded",
     # 'memory_limit_exceeded',   # not used in domjudge
-    'output_limit_exceeded',
-    'runtime_error'
+    "output_limit_exceeded",
+    "runtime_error",
 ]
 
 TagMapping = Dict[str, List[Result]]

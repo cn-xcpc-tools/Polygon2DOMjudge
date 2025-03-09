@@ -5,7 +5,8 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: mixed-line-ending
-  - repo: https://github.com/hhatto/autopep8
-    rev: v2.3.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
     hooks:
-      - id: autopep8
+      - id: ruff
+      - id: ruff-format
