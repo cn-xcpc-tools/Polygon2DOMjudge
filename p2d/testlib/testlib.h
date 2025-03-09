@@ -22,10 +22,10 @@
 #define _TESTLIB_H_
 
 /*
- * Copyright (c) 2005-2023
+ * Copyright (c) 2005-2024
  */
 
-#define VERSION "0.9.41-DOMJUDGE"
+#define VERSION "0.9.44-DOMJUDGE"
 
 /*
  * Mike Mirzayanov
@@ -65,6 +65,7 @@
  */
 
 const char *latestFeatures[] = {
+        "Added ConstantBoundsLog, VariablesLog to validator testOverviewLogFile",
         "Use setAppesModeEncoding to change xml encoding from windows-1251 to other",
         "rnd.any/wany use distance/advance instead of -/+: now they support sets/multisets",
         "Use syntax `int t = inf.readInt(1, 3, \"~t\");` to skip the lower bound check. Tildes can be used on either side or both: ~t, t~, ~t~",
@@ -331,6 +332,12 @@ static int __testlib_format_buffer_usage_count = 0;
             result = std::string(__testlib_format_buffer);                                 \
             __testlib_format_buffer_usage_count--;                                         \
 
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+std::string testlib_format_(const char *fmt, ...);
+std::string testlib_format_(const std::string fmt, ...);
+
 const long long __TESTLIB_LONGLONG_MAX = 9223372036854775807LL;
 const int __TESTLIB_MAX_TEST_CASE = 1073741823;
 
@@ -429,19 +436,6 @@ inline std::string lowerCase(std::string s) {
         if ('A' <= s[i] && s[i] <= 'Z')
             s[i] = char(s[i] - 'A' + 'a');
     return s;
-}
-
-#ifdef __GNUC__
-__attribute__ ((format (printf, 1, 2)))
-#endif
-std::string format(const char *fmt, ...) {
-    FMT_TO_RESULT(fmt, fmt, result);
-    return result;
-}
-
-std::string format(const std::string fmt, ...) {
-    FMT_TO_RESULT(fmt, fmt.c_str(), result);
-    return result;
 }
 
 #ifdef __GNUC__
@@ -673,6 +667,30 @@ static std::string toString(const T &t) {
 /* opts */
 void prepareOpts(int argc, char* argv[]);
 #endif
+
+FILE* testlib_fopen_(const char* path, const char* mode) {
+#ifdef _MSC_VER
+    FILE* result = NULL;
+    if (fopen_s(&result, path, mode) != 0)
+        return NULL;
+    else
+        return result;
+#else
+        return std::fopen(path, mode);
+#endif
+}
+
+FILE* testlib_freopen_(const char* path, const char* mode, FILE* file) {
+#ifdef _MSC_VER
+    FILE* result = NULL;
+    if (freopen_s(&result, path, mode, file) != 0)
+        return NULL;
+    else
+        return result;
+#else
+    return std::freopen(path, mode, file);
+#endif
+}
 
 /*
  * Very simple regex-like pattern.
@@ -1424,7 +1442,11 @@ static void __pattern_scanCounts(const std::string &s, size_t &pos, int &from, i
             if (parts[i].length() == 0)
                 __testlib_fail("pattern: Illegal pattern (or part) \"" + s + "\"");
             int number;
+#ifdef _MSC_VER
+            if (sscanf_s(parts[i].c_str(), "%d", &number) != 1)
+#else
             if (std::sscanf(parts[i].c_str(), "%d", &number) != 1)
+#endif
                 __testlib_fail("pattern: Illegal pattern (or part) \"" + s + "\"");
             numbers.push_back(number);
         }
@@ -1666,7 +1688,7 @@ public:
     virtual void setTestCase(int testCase) = 0;
 
     virtual std::vector<int> getReadChars() = 0;
-    
+
     virtual int curChar() = 0;
 
     virtual int nextChar() = 0;
@@ -1707,7 +1729,7 @@ public:
     std::vector<int> getReadChars() {
         __testlib_fail("getReadChars not implemented in StringInputStreamReader");
     }
-    
+
     int curChar() {
         if (pos >= s.length())
             return EOFC;
@@ -1806,7 +1828,7 @@ public:
 
     void setTestCase(int testCase) {
         if (testCase < 0 || testCase > __TESTLIB_MAX_TEST_CASE)
-            __testlib_fail(format("testCase expected fit in [1,%d], but %d doesn't", __TESTLIB_MAX_TEST_CASE, testCase));
+            __testlib_fail(testlib_format_("testCase expected fit in [1,%d], but %d doesn't", __TESTLIB_MAX_TEST_CASE, testCase));
         readChars.push_back(testCase + 256);
     }
 
@@ -1939,7 +1961,7 @@ public:
     std::vector<int> getReadChars() {
         __testlib_fail("getReadChars not implemented in BufferedFileInputStreamReader");
     }
-    
+
     int curChar() {
         if (!refill())
             return EOFC;
@@ -2380,6 +2402,8 @@ random_t rnd;
 TTestlibMode testlibMode = _unknown;
 double __testlib_points = std::numeric_limits<float>::infinity();
 
+const size_t VALIDATOR_MAX_VARIABLE_COUNT = 255;
+
 struct ValidatorBoundsHit {
     static const double EPS;
     bool minHit;
@@ -2394,6 +2418,36 @@ struct ValidatorBoundsHit {
                 __testlib_max(maxHit, validatorBoundsHit.maxHit) || ignoreMaxBound
         );
     }
+};
+
+struct ConstantBound {
+    std::string value;
+    bool broken;
+
+    template<typename T>
+    void adjust(T t) {
+        std::string t_string = std::to_string(t);
+        if (t_string.length() >= 32) {
+            broken = true;
+            value = "";
+        } else {
+            if (!broken && value.empty())
+                value = t_string;
+            if (!broken && value != t_string) {
+                broken = true;
+                value = "";
+            }
+        }
+    }
+
+    bool has_value() {
+        return !value.empty() && !broken && value.length() < 32;
+    }
+};
+
+struct ConstantBounds {
+    ConstantBound lowerBound;
+    ConstantBound upperBound;
 };
 
 const double ValidatorBoundsHit::EPS = 1E-12;
@@ -2414,8 +2468,10 @@ private:
     std::string _testCaseFileName;
 
     std::map<std::string, ValidatorBoundsHit> _boundsHitByVariableName;
+    std::map<std::string, ConstantBounds> _constantBoundsByVariableName;
     std::set<std::string> _features;
     std::set<std::string> _hitFeatures;
+    std::set<std::string> _variables;
 
     bool isVariableNameBoundsAnalyzable(const std::string &variableName) {
         for (size_t i = 0; i < variableName.length(); i++)
@@ -2512,10 +2568,36 @@ public:
     }
 
     void addBoundsHit(const std::string &variableName, ValidatorBoundsHit boundsHit) {
-        if (isVariableNameBoundsAnalyzable(variableName)) {
+        if (isVariableNameBoundsAnalyzable(variableName)
+                && _boundsHitByVariableName.size() < VALIDATOR_MAX_VARIABLE_COUNT) {
             std::string preparedVariableName = prepVariableName(variableName);
             _boundsHitByVariableName[preparedVariableName] = boundsHit.merge(_boundsHitByVariableName[preparedVariableName],
                 ignoreMinBound(variableName), ignoreMaxBound(variableName));
+        }
+    }
+
+    void addVariable(const std::string &variableName) {
+        if (isVariableNameBoundsAnalyzable(variableName)
+                && _variables.size() < VALIDATOR_MAX_VARIABLE_COUNT) {
+            std::string preparedVariableName = prepVariableName(variableName);
+            _variables.insert(preparedVariableName);
+        }
+    }
+
+    std::string getVariablesLog() {
+        std::string result;
+        for (const std::string &variableName: _variables)
+            result += "variable \"" + variableName + "\"\n";
+        return result;
+    }
+
+    template<typename T>
+    void adjustConstantBounds(const std::string &variableName, T lower, T upper) {
+        if (isVariableNameBoundsAnalyzable(variableName)
+                && _constantBoundsByVariableName.size() < VALIDATOR_MAX_VARIABLE_COUNT) {
+            std::string preparedVariableName = prepVariableName(variableName);
+            _constantBoundsByVariableName[preparedVariableName].lowerBound.adjust(lower);
+            _constantBoundsByVariableName[preparedVariableName].upperBound.adjust(upper);
         }
     }
 
@@ -2530,6 +2612,27 @@ public:
             if (i->second.maxHit)
                 result += " max-value-hit";
             result += "\n";
+        }
+        return result;
+    }
+
+    std::string getConstantBoundsLog() {
+        std::string result;
+        for (std::map<std::string, ConstantBounds>::iterator i = _constantBoundsByVariableName.begin();
+             i != _constantBoundsByVariableName.end();
+             i++) {
+            if (i->second.lowerBound.has_value() || i->second.upperBound.has_value()) {
+                result += "constant-bounds \"" + i->first + "\":";
+                if (i->second.lowerBound.has_value())
+                    result += " " + i->second.lowerBound.value;
+                else
+                    result += " ?";
+                if (i->second.upperBound.has_value())
+                    result += " " + i->second.upperBound.value;
+                else
+                    result += " ?";
+                result += "\n";
+            }
         }
         return result;
     }
@@ -2559,11 +2662,15 @@ public:
             else if (fileName == "stderr")
                 f = stderr, standard_file = true;
             else {
-                f = fopen(fileName.c_str(), "wb");
+                f = testlib_fopen_(fileName.c_str(), "wb");
                 if (NULL == f)
                     __testlib_fail("Validator::writeTestOverviewLog: can't write test overview log to (" + fileName + ")");
             }
-            fprintf(f, "%s%s", getBoundsHitLog().c_str(), getFeaturesLog().c_str());
+            fprintf(f, "%s%s%s%s",
+                getBoundsHitLog().c_str(),
+                getFeaturesLog().c_str(),
+                getConstantBoundsLog().c_str(),
+                getVariablesLog().c_str());
             std::fflush(f);
             if (!standard_file)
                 if (std::fclose(f))
@@ -2598,7 +2705,7 @@ public:
                 else if (_testMarkupFileName == "stderr")
                     f = stderr, standard_file = true;
                 else {
-                    f = fopen(_testMarkupFileName.c_str(), "wb");
+                    f = testlib_fopen_(_testMarkupFileName.c_str(), "wb");
                     if (NULL == f)
                         __testlib_fail("Validator::writeTestMarkup: can't write test markup to (" + _testMarkupFileName + ")");
                 }
@@ -2645,7 +2752,7 @@ public:
                     else if (_testCaseFileName == "stderr")
                         f = stderr, standard_file = true;
                     else {
-                        f = fopen(_testCaseFileName.c_str(), "wb");
+                        f = testlib_fopen_(_testCaseFileName.c_str(), "wb");
                         if (NULL == f)
                             __testlib_fail("Validator::writeTestCase: can't write test case to (" + _testCaseFileName + ")");
                     }
@@ -3043,7 +3150,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
             break;
         default:
             if (result >= _partially) {
-                errorName = format("partially correct (%d) ", pctype);
+                errorName = testlib_format_("partially correct (%d) ", pctype);
                 isPartial = true;
                 quitscrS(LightYellow, errorName);
             } else
@@ -3051,7 +3158,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
     }
 
     if (resultName != "") {
-        resultFile = std::fopen(resultName.c_str(), "w");
+        resultFile = testlib_fopen_(resultName.c_str(), "a");
         if (resultFile == NULL) {
             resultName = "";
             quit(_fail, "Can not write to the result file");
@@ -3067,7 +3174,7 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
                 else {
                     if (__testlib_points == std::numeric_limits<float>::infinity())
                         quit(_fail, "Expected points, but infinity found");
-                    std::string stringPoints = removeDoubleTrailingZeroes(format("%.10f", __testlib_points));
+                    std::string stringPoints = removeDoubleTrailingZeroes(testlib_format_("%.10f", __testlib_points));
                     std::fprintf(resultFile, "<result outcome = \"%s\" points = \"%s\">",
                                  outcomes[(int) result].c_str(), stringPoints.c_str());
                 }
@@ -3083,7 +3190,6 @@ NORETURN void InStream::quit(TResult result, const char *msg) {
     }
 
     quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
-    // std::fprintf(stderr, "\n");
 
     inf.close();
     ouf.close();
@@ -3168,7 +3274,7 @@ void InStream::reset(std::FILE *file) {
         close();
 
     if (!stdfile && NULL == file)
-        if (NULL == (file = std::fopen(name.c_str(), "rb"))) {
+        if (NULL == (file = testlib_fopen_(name.c_str(), "rb"))) {
             if (mode == _output)
                 quits(_pe, std::string("Output file not found: \"") + name + "\"");
 
@@ -3392,11 +3498,15 @@ std::string InStream::readWord(const pattern &p, const std::string &variableName
                            "\"").c_str());
         }
     }
+    if (strict && !variableName.empty())
+        validator.addVariable(variableName);
     return _tmpReadToken;
 }
 
 std::vector<std::string>
 InStream::readWords(int size, const pattern &p, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readWords, readWord(p, variablesName), std::string, true);
 }
 
@@ -3411,6 +3521,8 @@ std::string InStream::readWord(const std::string &ptrn, const std::string &varia
 std::vector<std::string>
 InStream::readWords(int size, const std::string &ptrn, const std::string &variablesName, int indexBase) {
     pattern p(ptrn);
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readWords, readWord(p, variablesName), std::string, true);
 }
 
@@ -3420,6 +3532,8 @@ std::string InStream::readToken(const pattern &p, const std::string &variableNam
 
 std::vector<std::string>
 InStream::readTokens(int size, const pattern &p, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readTokens, readToken(p, variablesName), std::string, true);
 }
 
@@ -3434,6 +3548,8 @@ std::string InStream::readToken(const std::string &ptrn, const std::string &vari
 std::vector<std::string>
 InStream::readTokens(int size, const std::string &ptrn, const std::string &variablesName, int indexBase) {
     pattern p(ptrn);
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readTokens, readWord(p, variablesName), std::string, true);
 }
 
@@ -3447,6 +3563,8 @@ void InStream::readWordTo(std::string &result, const pattern &p, const std::stri
             quit(_wa, ("Token parameter [name=" + variableName + "] equals to \"" + __testlib_part(result) +
                        "\", doesn't correspond to pattern \"" + p.src() + "\"").c_str());
     }
+    if (strict && !variableName.empty())
+        validator.addVariable(variableName);
 }
 
 void InStream::readWordTo(std::string &result, const std::string &ptrn, const std::string &variableName) {
@@ -3561,7 +3679,12 @@ static inline double stringToDouble(InStream &in, const char *buffer) {
 
     char *suffix = new char[length + 1];
     std::memset(suffix, 0, length + 1);
-    int scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
+    int scanned;
+#ifdef _MSC_VER
+    scanned = sscanf_s(buffer, "%lf%s", &result, suffix, (unsigned int)(length + 1));
+#else
+    scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
+#endif
     bool empty = strlen(suffix) == 0;
     delete[] suffix;
 
@@ -3638,7 +3761,12 @@ static inline double stringToStrictDouble(InStream &in, const char *buffer,
 
     char *suffix = new char[length + 1];
     std::memset(suffix, 0, length + 1);
-    int scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
+    int scanned;
+#ifdef _MSC_VER
+    scanned = sscanf_s(buffer, "%lf%s", &result, suffix, (unsigned int)(length + 1));
+#else
+    scanned = std::sscanf(buffer, "%lf%s", &result, suffix);
+#endif
     bool empty = strlen(suffix) == 0;
     delete[] suffix;
 
@@ -3786,14 +3914,19 @@ long long InStream::readLong(long long minv, long long maxv, const std::string &
         }
     }
 
-    if (strict && !variableName.empty())
+    if (strict && !variableName.empty()) {
         validator.addBoundsHit(variableName, ValidatorBoundsHit(minv == result, maxv == result));
+        validator.adjustConstantBounds(variableName, minv, maxv);
+        validator.addVariable(variableName);
+    }
 
     return result;
 }
 
 std::vector<long long>
 InStream::readLongs(int size, long long minv, long long maxv, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readLongs, readLong(minv, maxv, variablesName), long long, true)
 }
 
@@ -3827,14 +3960,19 @@ InStream::readUnsignedLong(unsigned long long minv, unsigned long long maxv, con
         }
     }
 
-    if (strict && !variableName.empty())
+    if (strict && !variableName.empty()) {
         validator.addBoundsHit(variableName, ValidatorBoundsHit(minv == result, maxv == result));
+        validator.adjustConstantBounds(variableName, minv, maxv);
+        validator.addVariable(variableName);
+    }
 
     return result;
 }
 
 std::vector<unsigned long long> InStream::readUnsignedLongs(int size, unsigned long long minv, unsigned long long maxv,
                                                             const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readUnsignedLongs, readUnsignedLong(minv, maxv, variablesName), unsigned long long, true)
 }
 
@@ -3873,8 +4011,11 @@ int InStream::readInt(int minv, int maxv, const std::string &variableName) {
         }
     }
 
-    if (strict && !variableName.empty())
+    if (strict && !variableName.empty()) {
         validator.addBoundsHit(variableName, ValidatorBoundsHit(minv == result, maxv == result));
+        validator.adjustConstantBounds(variableName, minv, maxv);
+        validator.addVariable(variableName);
+    }
 
     return result;
 }
@@ -3884,6 +4025,8 @@ int InStream::readInteger(int minv, int maxv, const std::string &variableName) {
 }
 
 std::vector<int> InStream::readInts(int size, int minv, int maxv, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readInts, readInt(minv, maxv, variablesName), int, true)
 }
 
@@ -3892,6 +4035,8 @@ std::vector<int> InStream::readInts(int size, int indexBase) {
 }
 
 std::vector<int> InStream::readIntegers(int size, int minv, int maxv, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readIntegers, readInt(minv, maxv, variablesName), int, true)
 }
 
@@ -3932,17 +4077,22 @@ double InStream::readReal(double minv, double maxv, const std::string &variableN
         }
     }
 
-    if (strict && !variableName.empty())
+    if (strict && !variableName.empty()) {
         validator.addBoundsHit(variableName, ValidatorBoundsHit(
                 doubleDelta(minv, result) < ValidatorBoundsHit::EPS,
                 doubleDelta(maxv, result) < ValidatorBoundsHit::EPS
         ));
+        validator.adjustConstantBounds(variableName, minv, maxv);
+        validator.addVariable(variableName);
+    }
 
     return result;
 }
 
 std::vector<double>
 InStream::readReals(int size, double minv, double maxv, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readReals, readReal(minv, maxv, variablesName), double, true)
 }
 
@@ -3956,6 +4106,8 @@ double InStream::readDouble(double minv, double maxv, const std::string &variabl
 
 std::vector<double>
 InStream::readDoubles(int size, double minv, double maxv, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readDoubles, readDouble(minv, maxv, variablesName), double, true)
 }
 
@@ -3991,11 +4143,14 @@ double InStream::readStrictReal(double minv, double maxv,
         }
     }
 
-    if (strict && !variableName.empty())
+    if (strict && !variableName.empty()) {
         validator.addBoundsHit(variableName, ValidatorBoundsHit(
                 doubleDelta(minv, result) < ValidatorBoundsHit::EPS,
                 doubleDelta(maxv, result) < ValidatorBoundsHit::EPS
         ));
+        validator.adjustConstantBounds(variableName, minv, maxv);
+        validator.addVariable(variableName);
+    }
 
     return result;
 }
@@ -4003,6 +4158,8 @@ double InStream::readStrictReal(double minv, double maxv,
 std::vector<double> InStream::readStrictReals(int size, double minv, double maxv,
                                               int minAfterPointDigitCount, int maxAfterPointDigitCount,
                                               const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readStrictReals,
                        readStrictReal(minv, maxv, minAfterPointDigitCount, maxAfterPointDigitCount, variablesName),
                        double, true)
@@ -4019,6 +4176,8 @@ double InStream::readStrictDouble(double minv, double maxv,
 std::vector<double> InStream::readStrictDoubles(int size, double minv, double maxv,
                                                 int minAfterPointDigitCount, int maxAfterPointDigitCount,
                                                 const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readStrictDoubles,
                        readStrictDouble(minv, maxv, minAfterPointDigitCount, maxAfterPointDigitCount, variablesName),
                        double, true)
@@ -4180,6 +4339,8 @@ void InStream::readStringTo(std::string &result, const pattern &p, const std::st
                       __testlib_part(result) + "\", doesn't correspond to pattern \"" + p.src() + "\"").c_str());
         }
     }
+    if (strict && !variableName.empty())
+        validator.addVariable(variableName);
 }
 
 void InStream::readStringTo(std::string &result, const std::string &ptrn, const std::string &variableName) {
@@ -4193,6 +4354,8 @@ std::string InStream::readString(const pattern &p, const std::string &variableNa
 
 std::vector<std::string>
 InStream::readStrings(int size, const pattern &p, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readStrings, readString(p, variablesName), std::string, false)
 }
 
@@ -4204,6 +4367,8 @@ std::string InStream::readString(const std::string &ptrn, const std::string &var
 std::vector<std::string>
 InStream::readStrings(int size, const std::string &ptrn, const std::string &variablesName, int indexBase) {
     pattern p(ptrn);
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readStrings, readString(p, variablesName), std::string, false)
 }
 
@@ -4233,6 +4398,8 @@ std::string InStream::readLine(const pattern &p, const std::string &variableName
 
 std::vector<std::string>
 InStream::readLines(int size, const pattern &p, const std::string &variablesName, int indexBase) {
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readLines, readString(p, variablesName), std::string, false)
 }
 
@@ -4243,6 +4410,8 @@ std::string InStream::readLine(const std::string &ptrn, const std::string &varia
 std::vector<std::string>
 InStream::readLines(int size, const std::string &ptrn, const std::string &variablesName, int indexBase) {
     pattern p(ptrn);
+    if (strict && !variablesName.empty())
+        validator.addVariable(variablesName);
     __testlib_readMany(readLines, readString(p, variablesName), std::string, false)
 }
 
@@ -4279,9 +4448,26 @@ NORETURN void quit(TResult result, const char *msg) {
     ouf.quit(result, msg);
 }
 
+double __testlib_preparePoints(double points_) {
+    volatile double points = points_;
+    if (__testlib_isNaN(points))
+        quit(_fail, "Parameter 'points' can't be nan");
+    if (__testlib_isInfinite(points))
+        quit(_fail, "Parameter 'points' can't be infinite");
+    if (points < -1E-8)
+        quit(_fail, "Parameter 'points' can't be negative");
+    if (points <= 0.0)
+        points = +0.0;
+    if (points > 1E6 + 1E-8)
+        quit(_fail, "Parameter 'points' can't be greater than 1E6");
+    if (points >= 1E6)
+        points = 1E6;
+    return points;
+}
+
 NORETURN void __testlib_quitp(double points, const char *message) {
-    __testlib_points = points;
-    std::string stringPoints = removeDoubleTrailingZeroes(format("%.10f", points));
+    __testlib_points = __testlib_preparePoints(points);
+    std::string stringPoints = removeDoubleTrailingZeroes(testlib_format_("%.10f", __testlib_points));
 
     std::string quitMessage;
     if (NULL == message || 0 == strlen(message))
@@ -4293,8 +4479,8 @@ NORETURN void __testlib_quitp(double points, const char *message) {
 }
 
 NORETURN void __testlib_quitp(int points, const char *message) {
-    __testlib_points = points;
-    std::string stringPoints = format("%d", points);
+    __testlib_points = __testlib_preparePoints(points);
+    std::string stringPoints = testlib_format_("%d", points);
 
     std::string quitMessage;
     if (NULL == message || 0 == strlen(message))
@@ -4475,17 +4661,17 @@ void registerGen(int argc, char *argv[]) {
 #endif
 
 void setAppesModeEncoding(std::string appesModeEncoding) {
-    static const char* const ENCODINGS[] = {"ascii", "utf-7", "utf-8", "utf-16", "utf-16le", "utf-16be", "utf-32", "utf-32le", "utf-32be", "iso-8859-1", 
-"iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-9", "iso-8859-10", "iso-8859-11", 
-"iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255", 
-"windows-1256", "windows-1257", "windows-1258", "gb2312", "gbk", "gb18030", "big5", "shift-jis", "euc-jp", "euc-kr", 
-"euc-cn", "euc-tw", "koi8-r", "koi8-u", "tis-620", "ibm437", "ibm850", "ibm852", "ibm855", "ibm857", 
-"ibm860", "ibm861", "ibm862", "ibm863", "ibm865", "ibm866", "ibm869", "macroman", "maccentraleurope", "maciceland", 
-"maccroatian", "macromania", "maccyrillic", "macukraine", "macgreek", "macturkish", "machebrew", "macarabic", "macthai", "hz-gb-2312", 
-"iso-2022-jp", "iso-2022-kr", "iso-2022-cn", "armscii-8", "tscii", "iscii", "viscii", "geostd8", "cp949", "cp874", 
-"cp1006", "cp775", "cp858", "cp737", "cp853", "cp856", "cp922", "cp1046", "cp1125", "cp1131", 
+    static const char* const ENCODINGS[] = {"ascii", "utf-7", "utf-8", "utf-16", "utf-16le", "utf-16be", "utf-32", "utf-32le", "utf-32be", "iso-8859-1",
+"iso-8859-2", "iso-8859-3", "iso-8859-4", "iso-8859-5", "iso-8859-6", "iso-8859-7", "iso-8859-8", "iso-8859-9", "iso-8859-10", "iso-8859-11",
+"iso-8859-13", "iso-8859-14", "iso-8859-15", "iso-8859-16", "windows-1250", "windows-1251", "windows-1252", "windows-1253", "windows-1254", "windows-1255",
+"windows-1256", "windows-1257", "windows-1258", "gb2312", "gbk", "gb18030", "big5", "shift-jis", "euc-jp", "euc-kr",
+"euc-cn", "euc-tw", "koi8-r", "koi8-u", "tis-620", "ibm437", "ibm850", "ibm852", "ibm855", "ibm857",
+"ibm860", "ibm861", "ibm862", "ibm863", "ibm865", "ibm866", "ibm869", "macroman", "maccentraleurope", "maciceland",
+"maccroatian", "macromania", "maccyrillic", "macukraine", "macgreek", "macturkish", "machebrew", "macarabic", "macthai", "hz-gb-2312",
+"iso-2022-jp", "iso-2022-kr", "iso-2022-cn", "armscii-8", "tscii", "iscii", "viscii", "geostd8", "cp949", "cp874",
+"cp1006", "cp775", "cp858", "cp737", "cp853", "cp856", "cp922", "cp1046", "cp1125", "cp1131",
 "ptcp154", "koi8-t", "koi8-ru", "mulelao-1", "cp1133", "iso-ir-166", "tcvn", "iso-ir-14", "iso-ir-87", "iso-ir-159"};
-    
+
     appesModeEncoding = lowerCase(appesModeEncoding);
     bool valid = false;
     for (size_t i = 0; i < sizeof(ENCODINGS) / sizeof(ENCODINGS[0]); i++)
@@ -4612,7 +4798,7 @@ void registerValidation(int argc, char *argv[]) {
             if (i + 1 < argc) {
                 long long testCase = stringToLongLong(inf, argv[++i]);
                 if (testCase < 1 || testCase >= __TESTLIB_MAX_TEST_CASE)
-                    quit(_fail, format("Argument testCase should be between 1 and %d, but ", __TESTLIB_MAX_TEST_CASE)
+                    quit(_fail, testlib_format_("Argument testCase should be between 1 and %d, but ", __TESTLIB_MAX_TEST_CASE)
                         + toString(testCase) + " found");
                 validator.setTestCase(int(testCase));
             } else
@@ -4772,10 +4958,10 @@ static inline void __testlib_ensure(bool cond, const char *msg) {
         quit(_fail, msg);
 }
 
-#define ensure(cond) __testlib_ensure(cond, "Condition failed: \"" #cond "\"")
-#define STRINGIZE_DETAIL(x) #x
-#define STRINGIZE(x) STRINGIZE_DETAIL(x)
-#define ensure_ext(cond) __testlib_ensure(cond, "Line " STRINGIZE(__LINE__) ": Condition failed: \"" #cond "\"")
+#define ensure(cond) __testlib_ensure((cond), "Condition failed: \"" #cond "\"")
+#define STRINGIZE_DETAIL(x) (#x)
+#define STRINGIZE(x) STRINGIZE_DETAIL((x))
+#define ensure_ext(cond) __testlib_ensure((cond), "Line " STRINGIZE(__LINE__) ": Condition failed: \"" #cond "\"")
 
 #ifdef __GNUC__
 __attribute__ ((format (printf, 2, 3)))
@@ -4863,7 +5049,7 @@ void srand(unsigned int seed) RAND_THROW_STATEMENT
 
 void startTest(int test) {
     const std::string testFileName = vtos(test);
-    if (NULL == freopen(testFileName.c_str(), "wt", stdout))
+    if (NULL == testlib_freopen_(testFileName.c_str(), "wt", stdout))
         __testlib_fail("Unable to write file '" + testFileName + "'");
 }
 
@@ -5032,17 +5218,17 @@ std::vector<std::string> tokenize(const std::string &s, const std::string &separ
 NORETURN void __testlib_expectedButFound(TResult result, std::string expected, std::string found, const char *prepend) {
     std::string message;
     if (strlen(prepend) != 0)
-        message = format("%s: expected '%s', but found '%s'",
+        message = testlib_format_("%s: expected '%s', but found '%s'",
                          compress(prepend).c_str(), compress(expected).c_str(), compress(found).c_str());
     else
-        message = format("expected '%s', but found '%s'",
+        message = testlib_format_("expected '%s', but found '%s'",
                          compress(expected).c_str(), compress(found).c_str());
     quit(result, message);
 }
 
 NORETURN void __testlib_expectedButFound(TResult result, double expected, double found, const char *prepend) {
-    std::string expectedString = removeDoubleTrailingZeroes(format("%.12f", expected));
-    std::string foundString = removeDoubleTrailingZeroes(format("%.12f", found));
+    std::string expectedString = removeDoubleTrailingZeroes(testlib_format_("%.12f", expected));
+    std::string foundString = removeDoubleTrailingZeroes(testlib_format_("%.12f", found));
     __testlib_expectedButFound(result, expectedString, foundString, prepend);
 }
 
@@ -5073,8 +5259,8 @@ __attribute__ ((format (printf, 4, 5)))
 #endif
 NORETURN void expectedButFound<double>(TResult result, double expected, double found, const char *prependFormat, ...) {
     FMT_TO_RESULT(prependFormat, prependFormat, prepend);
-    std::string expectedString = removeDoubleTrailingZeroes(format("%.12f", expected));
-    std::string foundString = removeDoubleTrailingZeroes(format("%.12f", found));
+    std::string expectedString = removeDoubleTrailingZeroes(testlib_format_("%.12f", expected));
+    std::string foundString = removeDoubleTrailingZeroes(testlib_format_("%.12f", found));
     __testlib_expectedButFound(result, expectedString, foundString, prepend.c_str());
 }
 
@@ -5305,9 +5491,9 @@ struct TestlibOpt {
 /**
  * Get the type of opt based on the number of `-` at the beginning and the
  * _validity_ of the key name.
- * 
+ *
  * A valid key name must start with an alphabetical character.
- * 
+ *
  * Returns: 1 if s has one `-` at the beginning, that is, "-keyName".
  *          2 if s has two `-` at the beginning, that is, "--keyName".
  *          0 otherwise. That is, if s has no `-` at the beginning, or has more
@@ -5331,30 +5517,30 @@ size_t getOptType(char *s) {
 
 /**
  * Parse the opt at a given index, and put it into the opts maps.
- * 
+ *
  * An opt can has the following form:
  * 1) -keyName=value or --keyName=value     (ex. -n=10 --test-count=20)
  * 2) -keyName value or --keyName value     (ex. -n 10 --test-count 20)
  * 3) -kNumval       or --kNumval           (ex. -n10  --t20)
  * 4) -boolProperty  or --boolProperty      (ex. -sorted --tree-only)
- * 
+ *
  * Only the second form consumes 2 arguments. The other consumes only 1
  * argument.
- * 
+ *
  * In the third form, the key is a single character, and after the key is the
  * value. The value _should_ be a number.
- * 
+ *
  * In the forth form, the value is true.
- * 
+ *
  * Params:
  * - argc and argv: the number of command line arguments and the command line
  *   arguments themselves.
  * - index: the starting index of the opts.
  * - opts: the map containing the resulting opt.
- *  
+ *
  * Returns: the number of consumed arguments to parse the opt.
  *          0 if there is no arguments to parse.
- * 
+ *
  * Algorithm details:
  * TODO. Please refer to the implementation to see how the code handles the 3rd and 4th forms separately.
  */
@@ -5403,7 +5589,7 @@ std::map<std::string, TestlibOpt> __testlib_opts;
 /**
  * Whether automatic no unused opts ensurement should be done. This flag will
  * be turned on when `has_opt` or `opt(key, default_value)` is called.
- * 
+ *
  * The automatic ensurement can be suppressed when
  * __testlib_ensureNoUnusedOptsSuppressed is true.
  */
@@ -5585,7 +5771,7 @@ long double optValueToLongDouble(const std::string &s_) {
 
 /**
  * Return true if there is an opt with a given key.
- * 
+ *
  * By calling this function, automatic ensurement for no unused opts will be
  * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
  * turn it off.
@@ -5596,14 +5782,14 @@ bool has_opt(const std::string &key) {
 }
 
 /* About the following part for opt with 2 and 3 arguments.
- * 
+ *
  * To parse the argv/opts correctly for a give type (integer, floating point or
  * string), some meta programming must be done to determine the type of
  * the type, and use the correct parsing function accordingly.
- * 
+ *
  * The pseudo algorithm for determining the type of T and parse it accordingly
  * is as follows:
- * 
+ *
  * if (T is integral type) {
  *   if (T is unsigned) {
  *     parse the argv/opt as an **unsigned integer** of type T.
@@ -5617,17 +5803,17 @@ bool has_opt(const std::string &key) {
  *     just the raw content of the argv/opts.
  *   }
  * }
- * 
+ *
  * To help with meta programming, some `opt` function with 2 or 3 arguments are
  * defined.
- * 
+ *
  * Opt with 3 arguments:    T opt(true/false is_integral, true/false is_unsigned, index/key)
- * 
+ *
  *   + The first argument is for determining whether the type T is an integral
  *   type. That is, the result of std::is_integral<T>() should be passed to
  *   this argument. When false, the type _should_ be either floating point or a
  *   std::string.
- *   
+ *
  *   + The second argument is for determining whether the signedness of the type
  *   T (if it is unsigned or signed). That is, the result of
  *   std::is_unsigned<T>() should be passed to this argument. This argument can
@@ -5856,9 +6042,13 @@ double deserializePoints(std::string s) {
         return std::numeric_limits<double>::quiet_NaN();
     else {
         double result;
-        ensuref(sscanf(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
+#ifdef _MSC_VER
+        ensuref(sscanf_s(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
+#else
+        ensuref(std::sscanf(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
+#endif
         return result;
-    }                                              
+    }
 }
 
 std::string escapeTestResultString(std::string s) {
@@ -5945,7 +6135,7 @@ TestResult deserializeTestResult(std::string s) {
     items.push_back(t);
 
     ensuref(items.size() == 12, "Invalid TestResult serialization: expected exactly 12 items");
-    
+
     TestResult tr;
     size_t pos = 0;
     tr.testIndex = stoi(items[pos++]);
@@ -5960,7 +6150,7 @@ TestResult deserializeTestResult(std::string s) {
     tr.answer = unescapeTestResultString(items[pos++]);
     tr.exitCode = stoi(items[pos++]);
     tr.checkerComment = unescapeTestResultString(items[pos++]);
-    
+
     return tr;
 }
 
@@ -6014,7 +6204,7 @@ void registerScorer(int argc, char *argv[], std::function<double(std::vector<Tes
 /**
  * Return the parsed opt by a given key. If no opts with the given key are
  * found, return the given default_value.
- * 
+ *
  * By calling this function, automatic ensurement for no unused opts will be
  * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
  * turn it off.
@@ -6030,7 +6220,7 @@ T opt(const std::string &key, const T &default_value) {
 /**
  * Return the raw string value of an opt by a given key. If no opts with the
  * given key are found, return the given default_value.
- * 
+ *
  * By calling this function, automatic ensurement for no unused opts will be
  * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
  * turn it off.
@@ -6042,14 +6232,14 @@ std::string opt(const std::string &key, const std::string &default_value) {
 /**
  * Check if all opts are used. If not, __testlib_fail is called.
  * Should be used after calling all opt() function calls.
- * 
+ *
  * This function is useful when opt() with default_value for checking typos
  * in the opt's key.
  */
 void ensureNoUnusedOpts() {
     for (const auto &opt: __testlib_opts) {
         if (!opt.second.used) {
-            __testlib_fail(format("Opts: unused key '%s'", compress(opt.first).c_str()));
+            __testlib_fail(testlib_format_("Opts: unused key '%s'", compress(opt.first).c_str()));
         }
     }
 }
@@ -6065,6 +6255,50 @@ void TestlibFinalizeGuard::autoEnsureNoUnusedOpts() {
 }
 
 TestlibFinalizeGuard testlibFinalizeGuard;
-
 #endif
+
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+std::string testlib_format_(const char *fmt, ...) {
+    FMT_TO_RESULT(fmt, fmt, result);
+    return result;
+}
+
+std::string testlib_format_(const std::string fmt, ...) {
+    FMT_TO_RESULT(fmt, fmt.c_str(), result);
+    return result;
+}
+
+#if (__cplusplus >= 202002L && __has_include(<format>)) || __cpp_lib_format
+template <typename... Args>
+std::string format(const char* fmt, Args&&... args) {
+    size_t size = size_t(std::snprintf(nullptr, 0, fmt, args...) + 1);
+    std::vector<char> buffer(size);
+    std::snprintf(buffer.data(), size, fmt, args...);
+    return std::string(buffer.data());
+}
+
+template <typename... Args>
+std::string format(const std::string fmt, Args&&... args) {
+    size_t size = size_t(std::snprintf(nullptr, 0, fmt.c_str(), args...) + 1);
+    std::vector<char> buffer(size);
+    std::snprintf(buffer.data(), size, fmt.c_str(), args...);
+    return std::string(buffer.data());
+}
+#else
+#ifdef __GNUC__
+__attribute__ ((format (printf, 1, 2)))
+#endif
+std::string format(const char *fmt, ...) {
+    FMT_TO_RESULT(fmt, fmt, result);
+    return result;
+}
+
+std::string format(const std::string fmt, ...) {
+    FMT_TO_RESULT(fmt, fmt.c_str(), result);
+    return result;
+}
+#endif
+
 #endif
