@@ -6,7 +6,7 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "[python]": {
-        "editor.defaultFormatter": "ms-python.autopep8"
+        "editor.defaultFormatter": "charliermarsh.ruff"
     },
     "cSpell.words": [
         "cubercsl",
@@ -26,6 +26,5 @@
     "python.testing.pytestArgs": [
         "test"
     ],
-    "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
 }

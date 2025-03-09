@@ -8,17 +8,16 @@ import yaml
 from . import assertions
 from p2d import ProcessError
 
-with open(Path(__file__).parent.parent / 'test_data' / 'data.yaml', 'r', encoding='utf-8') as f:
+with open(Path(__file__).parent.parent / "test_data" / "data.yaml", "r", encoding="utf-8") as f:
     _data = yaml.safe_load(f)
 
 
 def __get_all_assertions(data):
-
     for assertion in data:
         if isinstance(assertion, str):
-            yield getattr(assertions, f'assert_{assertion}')
+            yield getattr(assertions, f"assert_{assertion}")
         else:
-            yield partial(getattr(assertions, f'assert_{assertion["type"]}'), **assertion.get('args', {}))
+            yield partial(getattr(assertions, f"assert_{assertion['type']}"), **assertion.get("args", {}))
 
 
 def _get_asserts(data):
@@ -42,33 +41,33 @@ def _get_raises(data):
         ValueError=ValueError,
         FileExistsError=FileExistsError,
         SystemExit=SystemExit,
-    ).get(data['type'], Exception)
+    ).get(data["type"], Exception)
 
-    return pytest.raises(error_type, match=data['match'])
+    return pytest.raises(error_type, match=data["match"])
 
 
 def load_cli_test_data():
-    for name, test_case in _data['cli'].items():
-        if name.startswith('__'):
+    for name, test_case in _data["cli"].items():
+        if name.startswith("__"):
             continue
         yield pytest.param(
-            test_case['input'],                                 # package_name
-            test_case['args'],                                  # args
-            test_case.get('user_input', None),                  # user_input
-            _get_asserts(test_case.get('assertions', None)),    # asserts
-            test_case.get('exitcode', 0),                       # exitcode
+            test_case["input"],  # package_name
+            test_case["args"],  # args
+            test_case.get("user_input", None),  # user_input
+            _get_asserts(test_case.get("assertions", None)),  # asserts
+            test_case.get("exitcode", 0),  # exitcode
             id=name,
         )
 
 
 def load_api_test_data():
-    for name, test_case in _data['api'].items():
-        if name.startswith('__'):
+    for name, test_case in _data["api"].items():
+        if name.startswith("__"):
             continue
         yield pytest.param(
-            test_case['input'],                                 # package_name
-            test_case['args'],                                  # args
-            _get_asserts(test_case.get('assertions', None)),    # asserts
-            _get_raises(test_case.get('raise', None)),          # expectation
+            test_case["input"],  # package_name
+            test_case["args"],  # args
+            _get_asserts(test_case.get("assertions", None)),  # asserts
+            _get_raises(test_case.get("raise", None)),  # expectation
             id=name,
         )

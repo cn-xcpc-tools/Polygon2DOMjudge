@@ -18,12 +18,12 @@ def ensure_dir(s: Path):
 
 def load_config(config_file: StrPath):
     try:
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             return tomli.loads(f.read())
     except FileNotFoundError:
-        raise ImportError('\'config.toml\' not found!')
+        raise ImportError("'config.toml' not found!")
     except tomli.TOMLDecodeError:
-        raise ImportError('\'config.toml\' is not a valid TOML file!')
+        raise ImportError("'config.toml' is not a valid TOML file!")
 
 
 def update_dict(orig, update, add_keys=True):
@@ -34,14 +34,16 @@ def update_dict(orig, update, add_keys=True):
 
     For all other entries (k, v), orig[k] is set to v.
     """
-    for (key, value) in update.items():
-        if key in orig and \
-                isinstance(value, collections.abc.Mapping) and \
-                isinstance(orig[key], collections.abc.Mapping):
+    for key, value in update.items():
+        if (
+            key in orig
+            and isinstance(value, collections.abc.Mapping)
+            and isinstance(orig[key], collections.abc.Mapping)
+        ):
             update_dict(orig[key], value)
         elif add_keys or key in orig:
             orig[key] = value
 
 
 def get_normalized_lang(lang: str) -> str:
-    return lang.split('.')[0].rstrip(string.digits)
+    return lang.split(".")[0].rstrip(string.digits)
