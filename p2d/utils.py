@@ -35,11 +35,7 @@ def update_dict(orig, update, add_keys=True):
     For all other entries (k, v), orig[k] is set to v.
     """
     for key, value in update.items():
-        if (
-            key in orig
-            and isinstance(value, collections.abc.Mapping)
-            and isinstance(orig[key], collections.abc.Mapping)
-        ):
+        if key in orig and isinstance(value, collections.abc.Mapping) and isinstance(orig[key], collections.abc.Mapping):
             update_dict(orig[key], value)
         elif add_keys or key in orig:
             orig[key] = value

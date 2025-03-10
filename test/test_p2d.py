@@ -25,13 +25,13 @@ def test_import():
 
 
 def test_version():
-    from p2d import __version__
+    from p2d._version import __version__
 
     assert len(__version__) > 0
 
 
 def test_cli_version():
-    from p2d import __version__
+    from p2d._version import __version__
     from p2d.cli import app
 
     result = runner.invoke(app, ["--version"])

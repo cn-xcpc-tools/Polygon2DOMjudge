@@ -164,3 +164,5 @@ tmp/*
 
 !/test/test_data/*
 /test/test_output
+
+_version.py

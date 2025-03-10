@@ -1,11 +1,13 @@
+import logging
 import re
 from pathlib import Path
 from typing import Annotated, Optional, cast
 
-import betterlogging as logging  # type: ignore
-import typer
 
-from . import __version__
+import typer
+from rich.logging import RichHandler
+
+from ._version import __version__
 from .p2d import DEFAULT_COLOR, convert
 from .typing import Config
 from .utils import load_config
@@ -128,7 +130,9 @@ def convert_problem(
         ),
     ] = Path("config.toml"),
 ) -> None:
-    logging.basic_colorized_config(level=log_level.upper())
+    logging.basicConfig(
+        level=log_level.upper(), format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
+    )
     logger = logging.getLogger(__name__)
 
     if config_file.is_file():

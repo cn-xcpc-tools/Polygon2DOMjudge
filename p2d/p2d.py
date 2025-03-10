@@ -26,7 +26,7 @@ from xml.etree.ElementTree import Element
 
 import yaml
 
-from . import __version__
+from ._version import __version__
 from .typing import Config, Result
 from .utils import ensure_dir, get_normalized_lang, load_config, update_dict
 
@@ -193,9 +193,7 @@ class Polygon2DOMjudge:
             )
             self.solutions = tuple(problem.findall("assets/solutions/solution[@tag]"))
             self.statement = statement
-            self.attachments = tuple(
-                Path(ele.attrib["path"]) for ele in problem.findall("files/attachments/file[@path]")
-            )
+            self.attachments = tuple(Path(ele.attrib["path"]) for ele in problem.findall("files/attachments/file[@path]"))
             self.run_count = int(run_count)
 
         @staticmethod
@@ -256,9 +254,7 @@ class Polygon2DOMjudge:
             if statements is None:
                 return None
 
-            if (
-                statement := statements.find(f'statement[@language="{language}"][@type="application/pdf"][@path]')
-            ) is None:
+            if (statement := statements.find(f'statement[@language="{language}"][@type="application/pdf"][@path]')) is None:
                 logger.warning(
                     "Can not find statement in %s in problem.xml, this will skip adding statement.",
                     language,
@@ -467,9 +463,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
 
             if test.sample and not self._hide_sample:
                 # interactor can not support custom sample because DOMjudge always use sample input to test
-                sample_input_src = (
-                    self.package_dir / "statements" / self._problem.language / (sample_input_path_pattern % idx)
-                )
+                sample_input_src = self.package_dir / "statements" / self._problem.language / (sample_input_path_pattern % idx)
                 sample_output_src = (
                     self.package_dir / "statements" / self._problem.language / (sample_output_path_pattern % idx)
                 )
@@ -536,9 +530,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
 
         return self
 
-    def _add_solutions_with_expected_result(
-        self, src: Path, dst: Path, lang: str, results: Optional[List[Result]]
-    ) -> None:
+    def _add_solutions_with_expected_result(self, src: Path, dst: Path, lang: str, results: Optional[List[Result]]) -> None:
         if results is None:
             logger.warning(
                 "Find expected result with check_manually, you may add @EXPECTED_RESULTS@ in your source code for validation."

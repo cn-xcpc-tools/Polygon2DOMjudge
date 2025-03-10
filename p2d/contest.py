@@ -1,12 +1,13 @@
+import logging
 import xml.etree.ElementTree
 
 from pathlib import Path
 from typing import Annotated, Optional
 
-import betterlogging as logging  # type: ignore
+from rich.logging import RichHandler
 import typer
 
-from . import __version__
+from ._version import __version__
 
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -44,7 +45,9 @@ def convert_contest(
         ),
     ] = "info",
 ) -> None:
-    logging.basic_colorized_config(level=log_level.upper())
+    logging.basicConfig(
+        level=log_level.upper(), format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
+    )
     logger = logging.getLogger(__name__)
 
     try:
