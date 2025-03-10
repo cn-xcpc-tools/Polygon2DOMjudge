@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  python_version: "3.12"
+  python_version: "3.13"
 
 jobs:
   release:

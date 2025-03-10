@@ -1,14 +1,18 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
 name = "p2d"
-version = "0.3.0"
+dynamic = ["version"]
 description = "Simple python script converting polygon package to domjudge(kattis) package"
-license = "MIT"
-authors = ["cubercsl <hi@cubercsl.site>"]
-maintainers = ["cubercsl <hi@cubercsl.site>", "Dup4 <hi@dup4.com>"]
-readme = ["README.md", "README.cn.md"]
-homepage = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
-repository = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
-documentation = "https://github.com/cn-xcpc-tools/Polygon2DOMjudge"
+license = { text = "MIT" }
+authors = [{ name = "cubercsl", email = "hi@cubercsl.site" }]
+maintainers = [
+    { name = "cubercsl", email = "hi@cubercsl.site" },
+    { name = "Dup4", email = "hi@dup4.com" },
+]
+readme = "README.md"
 keywords = ["Polygon", "DOMjudge", "Kattis", "Codeforces"]
 classifiers = [
     "Topic :: Software Development :: Build Tools",
@@ -18,42 +22,38 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pyyaml>=6.0.2",
+    "rich>=13.9.4",
+    "tomli>=2.0.1",
+    "typer-slim[standard]>=0.12.5",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-pyyaml = "^6.0.2"
-betterlogging = "^1.0.0"
-tomli = "^2.0.1"
-typer-slim = { extras = ["standard"], version = "^0.12.5" }
+[project.urls]
+homepage = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
+documentation = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
+repository = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-poetry-bumpversion = "^0.3.2"
-types-pyyaml = "^6.0.12.20240917"
-mypy = "^1.11.2"
-pytest-cov = "^5.0.0"
-pre-commit = "^3.8.0"
-ruff = "^0.9.10"
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "types-pyyaml>=6.0.12.20240917",
+    "mypy>=1.11.2",
+    "pytest-cov>=5.0.0",
+]
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
+[project.scripts]
 p2d = 'p2d.cli:main'
 p2d-contest = 'p2d.contest:main'
 
-[[tool.poetry_bumpversion.replacements]]
-files = ["p2d/__init__.py"]
-search = '__version__ = "{current_version}"'
-replace = '__version__ = "{new_version}"'
-
 [tool.ruff]
-line-length = 120
+line-length = 127
 
 [tool.pytest.ini_options]
-addopts = "--cov=p2d --cov-report html --cov-report term --cov-report xml --cov-fail-under=80"
+addopts = "--cov=p2d --cov-report term-missing --cov-report xml --cov-fail-under=80"
 
 [tool.coverage.report]
 exclude_also = [
@@ -67,3 +67,19 @@ exclude_also = [
     "@(abc\\.)?abstractmethod",
     "raise ProcessError",
 ]
+
+[tool.hatch.version.raw-options]
+git_describe_command = [
+    "git",
+    "describe",
+    "--dirty",
+    "--tags",
+    "--long",
+    "--first-parent",
+]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "p2d/_version.py"
+
+[tool.hatch.version]
+source = "vcs"
