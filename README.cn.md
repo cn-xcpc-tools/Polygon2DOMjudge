@@ -116,16 +116,13 @@ for problem in problems:
 
 ```bash
 # install
-poetry install
+uv sync
 
 # build
-poetry build
+uv build
 
 # run unittest
-poetry run pytest
-
-# release
-./release.sh ${your version}
+uv run pytest
 ```
 
 [gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg
