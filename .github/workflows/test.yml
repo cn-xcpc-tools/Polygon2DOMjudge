@@ -33,32 +33,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install poetry
-        run: pipx install poetry
-
-      - name: Set up Python ${{ matrix.python-version }} runtime
-        uses: actions/setup-python@v5
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: poetry
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
-
-      - name: Install Dependencies
+      - name: Install the project
         run: |
-          poetry --version
-          poetry install
+          uv sync --all-extras --dev
 
       - name: Lint
         run: |
-          poetry run ruff
-
-      - name: Build
-        run: |
-          poetry build
+          uv tool run ruff check
 
       - name: Unit Test
         run: |
-          poetry run pytest -v
+          uv run pytest -v
