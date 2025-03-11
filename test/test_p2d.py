@@ -21,7 +21,7 @@ def temp_dir(tmp_path):
 
 
 def test_import():
-    pass
+    from p2d import __main__  # noqa: F401
 
 
 def test_version():
