@@ -4,15 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "p2d"
-dynamic = ["version"]
 description = "Simple python script converting polygon package to domjudge(kattis) package"
-license = { text = "MIT" }
 authors = [{ name = "cubercsl", email = "hi@cubercsl.site" }]
 maintainers = [
     { name = "cubercsl", email = "hi@cubercsl.site" },
     { name = "Dup4", email = "hi@dup4.com" },
 ]
 readme = "README.md"
+license = "MIT"
 keywords = ["Polygon", "DOMjudge", "Kattis", "Codeforces"]
 classifiers = [
     "Topic :: Software Development :: Build Tools",
@@ -31,11 +30,16 @@ dependencies = [
     "tomli>=2.0.1",
     "typer-slim[standard]>=0.12.5",
 ]
+dynamic = ["version"]
 
 [project.urls]
 homepage = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
 documentation = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
 repository = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
+
+[project.scripts]
+p2d = "p2d.cli:main"
+p2d-contest = "p2d.contest:main"
 
 [dependency-groups]
 dev = [
@@ -44,10 +48,6 @@ dev = [
     "mypy>=1.11.2",
     "pytest-cov>=5.0.0",
 ]
-
-[project.scripts]
-p2d = 'p2d.cli:main'
-p2d-contest = 'p2d.contest:main'
 
 [tool.ruff]
 line-length = 127
@@ -63,10 +63,19 @@ exclude_also = [
     "if 0:",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
+    'class .*\bProtocol\):',
+    '@(abc\.)?abstractmethod',
     "raise ProcessError",
 ]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "p2d/_version.py"
+
+[tool.hatch.build.targets.wheel]
+exclude = ["p2d/testlib/**/*", "!p2d/testlib/testlib.h", "!p2d/testlib/LICENSE"]
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.version.raw-options]
 git_describe_command = [
@@ -77,9 +86,3 @@ git_describe_command = [
     "--long",
     "--first-parent",
 ]
-
-[tool.hatch.build.hooks.vcs]
-version-file = "p2d/_version.py"
-
-[tool.hatch.version]
-source = "vcs"
