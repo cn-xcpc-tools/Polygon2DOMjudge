@@ -54,6 +54,7 @@ class _Polygon2DOMjudgeArgs(TypedDict, total=False):
     auto_detect_std_checker: bool
     validator_flags: Optional[str]
     hide_sample: bool
+    keep_sample: Optional[Sequence[int]]
     testset_name: Optional[str]
     external_id: Optional[str]
     with_statement: bool
@@ -293,6 +294,7 @@ class Polygon2DOMjudge:
         auto_detect_std_checker = kwargs.get("auto_detect_std_checker", False)
         validator_flags = kwargs.get("validator_flags", None)
         hide_sample = kwargs.get("hide_sample", False)
+        keep_sample = kwargs.get("keep_sample", None)
         testset_name = kwargs.get("testset_name", None)
         external_id = kwargs.get("external_id", None)
         with_statement = kwargs.get("with_statement", False)
@@ -327,6 +329,13 @@ class Polygon2DOMjudge:
             raise ValueError("Can not use auto_detect_std_checker and force_default_validator at the same time.")
 
         self._hide_sample = hide_sample or self._problem.interactor is not None
+
+        if not self._hide_sample:
+            self._keep_sample = keep_sample
+        else:
+            logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
+            self._keep_sample = None
+
         self._use_std_checker = (
             auto_detect_std_checker
             and self._problem.checker is not None
@@ -344,7 +353,7 @@ class Polygon2DOMjudge:
                 raise ProcessError("Logic error in auto_detect_std_checker.")
 
     def _write_ini(self) -> Polygon2DOMjudge:
-        logger.debug("Add 'domjudge-problem.ini':")
+        logger.info("[bold red blink]Add [italic]domjudge-problem.ini[/]:[/]", extra=dict(markup=True))
         ini_file = f"{self.temp_dir}/domjudge-problem.ini"
         ini_content = (
             f"short-name = {self.short_name}",
@@ -362,7 +371,7 @@ class Polygon2DOMjudge:
         return self
 
     def _write_yaml(self) -> Polygon2DOMjudge:
-        logger.debug("Add 'problem.yaml':")
+        logger.info("[bold red blink]Add [italic]problem.yaml[/]:[/]", extra=dict(markup=True))
         yaml_content: Dict[str, Any] = dict(name=self._problem.name)
         memorylimit, outputlimit, passlimit = (
             self._problem.memorylimit,
@@ -438,12 +447,13 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
                 raise ProcessError("No interactor found, not supported in multi-pass validation.")
 
         with open(yaml_file, "w", encoding="utf-8") as f:
+            logger.info(yaml_content)
             yaml.dump(yaml_content, f, allow_unicode=True, default_flow_style=False)
 
         return self
 
     def _add_tests(self) -> Polygon2DOMjudge:
-        logger.debug("Add tests:")
+        logger.info("[bold red blink]Add tests:[/]", extra=dict(markup=True))
 
         ensure_dir(self.temp_dir / "data" / "sample")
         ensure_dir(self.temp_dir / "data" / "secret")
@@ -479,7 +489,8 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
                         "Output file %s is different from the sample output file, use the sample output.",
                         output_src.name,
                     )
-                    output_src = sample_output_src
+                    if self._keep_sample and idx not in self._keep_sample:
+                        output_src = sample_output_src
                 input_dst = self.temp_dir / "data" / "sample" / f"{'%02d' % idx}.in"
                 output_dst = self.temp_dir / "data" / "sample" / f"{'%02d' % idx}.ans"
                 desc_dst = self.temp_dir / "data" / "sample" / f"{'%02d' % idx}.desc"
@@ -490,7 +501,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
                 output_dst = self.temp_dir / "data" / "secret" / f"{'%02d' % idx}.ans"
                 desc_dst = self.temp_dir / "data" / "secret" / f"{'%02d' % idx}.desc"
 
-                logger.info("* secret: %02d.(in/ans) %s", idx, test.method)
+                logger.debug("* secret: %02d.(in/ans) %s", idx, test.method)
 
             if self._problem.outputlimit > 0 and output_src.stat().st_size > self._problem.outputlimit * 1048576:
                 logger.warning("Output file %s is exceed the output limit.", output_src.name)
@@ -499,19 +510,18 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
             shutil.copyfile(output_src, output_dst)
 
             if test.__str__():
-                logger.info(test.__str__())
+                logger.debug(test.__str__())
                 with open(desc_dst, "w", encoding="utf-8") as f:
                     f.write(test.__str__())
                     f.write("\n")
-
+        logger.info("Total %d tests.", len(self._problem.tests))
         return self
 
     def _add_jury_solutions(self) -> Polygon2DOMjudge:
-        logger.debug("Add jury solutions:")
+        logger.info("[bold red blink]Add jury solutions:[/]", extra=dict(markup=True))
 
         for solution in self._problem.solutions:
             tag = solution.attrib["tag"]
-            logger.info("Add jury solution: %s", tag)
             results = self._config["tag"].get(tag)
 
             if results is None:
@@ -538,8 +548,15 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
             shutil.copyfile(src, dst)
             return
 
+        def colorized(result: str) -> str:
+            if result == "accepted":
+                return f"[green italic]{result}[/]"
+            if result == "wrong_answer":
+                return f"[red italic]{result}[/]"
+            return f"[yellow italic]{result}[/]"
+
         if len(results) == 1:
-            logger.info("- %s: Expected result: %s", src.name, results[0])
+            logger.info("> %s: %s", src.name, colorized(results[0]), extra=dict(markup=True))
             shutil.copyfile(src, dst)
             return
 
@@ -564,9 +581,10 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
             shutil.copyfile(src, dst)
         else:
             logger.info(
-                "- %s: Expected result: %s",
+                "> %s: %s",
                 src.name,
-                ", ".join(map(lambda x: PROBLEM_RESULT_REMAP[x.upper()], results)),
+                ", ".join(map(colorized, results)),
+                extra=dict(markup=True),
             )
             with open(dst, "w") as f:
                 f.write(content)
@@ -589,7 +607,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
             return self
 
         ensure_dir(self.temp_dir / "problem_statement")
-        logger.debug("Add statement:")
+        logger.info("[bold red blink]Add statement:[/]", extra=dict(markup=True))
         logger.info("* %s", self._problem.statement)
         shutil.copyfile(
             self.package_dir / self._problem.statement,
@@ -603,7 +621,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
             return self
 
         ensure_dir(self.temp_dir / "attachments")
-        logger.debug("Add attachments:")
+        logger.info("[bold red blink]Add attachments:[/]", extra=dict(markup=True))
         for attachment in self._problem.attachments:
             logger.info("* %s", attachment.name)
             shutil.copyfile(
@@ -613,7 +631,7 @@ g++ -Wall -DDOMJUDGE -O2 {interactor_file.name} -std=gnu++20 -o run
         return self
 
     def _archive(self):
-        shutil.make_archive(self.output_file.as_posix(), "zip", self.temp_dir, logger=logger)
+        shutil.make_archive(self.output_file.as_posix(), "zip", self.temp_dir)
         logger.info("Make package %s.zip success.", self.output_file.name)
         return self
 
@@ -649,6 +667,7 @@ class Options(TypedDict, total=False):
     auto_detect_std_checker: bool
     validator_flags: Optional[str]
     hide_sample: bool
+    keep_sample: Optional[Sequence[int]]
     config: Optional[Config]
     memory_limit: Optional[int]
     output_limit: Optional[int]
@@ -726,7 +745,7 @@ def convert(
         logger.info("Version: %s", __version__)
 
         if sys.platform.startswith("win"):
-            logger.warning("It is not recommended running on windows.")
+            logger.warning("It is not recommended running on windows.")  # pragma: no cover
 
         logger.info("Package directory: %s", package_dir)
         logger.info("Output file: %s.zip", output_file)

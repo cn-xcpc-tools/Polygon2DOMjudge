@@ -94,6 +94,14 @@ def convert_problem(
             help="hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem)."
         ),
     ] = False,
+    keep_sample: Annotated[
+        Optional[list[int]],
+        typer.Option(
+            "--keep",
+            "--keep-sample",
+            help="keep the specified numbered sample output from the main and correct solution, can be used multiple times, (e.g. --keep 1 --keep 2), default is replacing all sample output with problem statement.",
+        ),
+    ] = None,
     external_id: Annotated[
         Optional[str],
         typer.Option(
@@ -166,6 +174,7 @@ def convert_problem(
             memory_limit=memory_limit,
             output_limit=output_limit,
             hide_sample=hide_sample,
+            keep_sample=keep_sample,
             external_id=external_id,
             with_statement=with_statement,
             with_attachments=with_attachments,
