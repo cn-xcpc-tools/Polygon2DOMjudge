@@ -50,6 +50,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 - `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
     当此参数不设置为 True 且样例输出与标程的输出不同时 （通常两者都是符合要求的答案），
     样例输出将会被替换为题面中提供的样例输出。但是样例输入不会被替换，因为 DOMjudge 不支持下载的样例输入与实际使用的不同。
+- `--keep-sample`: 保持样例输出与标程的输出一致，当题面中的样例输出是一个占位符时，这个参数很有用。（默认情况下，所有的样例输出将会被替换为题面中提供的样例输出）
 - `--external-id`: 指定题目在 DOMjudge 中的 external id，如果不设置，则使用 Polygon 中的题目 short-name。
 - `--with-statement`: 在 DOMjudge 题目包中包含 pdf 题面。
 - `--with-attachments`: 在 DOMjudge 题目包中包含附件（例如交互题的本地测试工具）。
@@ -110,7 +111,9 @@ for problem in problems:
 ## 已知Issues
 
 - 对于交互题，您必须在交互器中完成对输出的验证（即，在交互器中直接返回最终的结果，略去使用checker对`tout`文件内容进行验证的步骤），因为 DOMjudge 无法像 Polygon 那样处理 `tout` 流。
-- 对于 multi-pass 问题，您可能需要调用 `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` 来获取下一次传递的输入文件。
+- 对于 multi-pass 问题
+  - 部分逻辑可能与 Polygon 不同，您可能需要调整一些逻辑来适应 DOMjudge 的要求。DOMjudge 会使用 `-DDOMJUDGE` 宏定义来区分是否为 DOMjudge 环境，您可以使用这个宏定义来调整您的代码。
+  - 您可能需要调用 `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` 来获取下一次传递的输入文件。
 
 ## 开发
 

@@ -53,6 +53,8 @@ All available parameters are:
     When this is not set to True and the sample output is different from the main and correct solution (usually both are correct answers),
     the sample output will be replaced with the one shipped with problem statement.
     But the sample input will not be replaced because DOMjudge does not support different sample input from the one downloaded.
+- `--keep-sample`: keep the sample output from the main and correct solution, this is useful when the sample output from problem statement is a placeholder.
+    (By default, all sample output will be replaced with the one shipped with problem statement)
 - `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
 - `--with-statement`: include the pdf statement in the DOMjudge package.
 - `--with-attachments`: include attachments (e.g. local testing tools for interactive problem) in the DOMjudge package.
@@ -113,7 +115,9 @@ for problem in problems:
 ## Known Issues
 
 - For interactive problems, you must validate the output in the interactors, because DOMjudge cannot handle `tout` stream like Polygon.
-- For multi-pass problems, you may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` to get the next pass input file when there exists a next pass.
+- For multi-pass problems
+  - Some logic are different from Polygon, you may need to modify it to fit the DOMjudge environment, DOMjudge will use `-DDOMJUDGE` macro to distinguish whether it is in DOMjudge environment, so you can use it to adapt your code.
+  - You may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` to get the next pass input file when there exists a next pass.
 
 ## Development
 
