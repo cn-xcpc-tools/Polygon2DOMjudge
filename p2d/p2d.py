@@ -19,7 +19,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    TypedDict,
     cast,
 )
 from xml.etree.ElementTree import Element
@@ -31,9 +30,9 @@ from .models import GlobalConfig, Result
 from .utils import ensure_dir, get_normalized_lang, merge_pydantic_models
 
 if sys.version_info < (3, 11):  # pragma: no cover
-    from typing_extensions import Unpack
+    from typing_extensions import TypedDict, Unpack
 else:  # pragma: no cover
-    from typing import Unpack
+    from typing import TypedDict, Unpack
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
