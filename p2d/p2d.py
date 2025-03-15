@@ -30,7 +30,7 @@ from .models import GlobalConfig, Result
 from .utils import ensure_dir, get_normalized_lang, merge_pydantic_models
 
 if sys.version_info < (3, 12):  # pragma: no cover
-    from typing_extensions import Unpack, TypedDict
+    from typing_extensions import TypedDict, Unpack
 else:  # pragma: no cover
     from typing import TypedDict, Unpack
 

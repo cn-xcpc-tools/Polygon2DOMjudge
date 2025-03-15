@@ -53,4 +53,4 @@ jobs:
 
       - name: Unit Test
         run: |
-          uv run pytest -v
+          uv run --frozen pytest
