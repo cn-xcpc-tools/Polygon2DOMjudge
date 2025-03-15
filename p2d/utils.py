@@ -1,44 +1,48 @@
 from __future__ import annotations
 
-import collections
 import string
+import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
-import tomli
+if sys.version_info < (3, 11):
+    import tomli as tomllib  # pragma: no cover
+else:
+    import tomllib
+from deepmerge import always_merger
+from pydantic import BaseModel
+
+from .models import GlobalConfig
+
+T = TypeVar("T", bound=BaseModel)
 
 if TYPE_CHECKING:
     from _typeshed import StrPath  # pragma: no cover
 
 
-def ensure_dir(s: Path):
+def ensure_dir(s: Path) -> None:
     if not s.exists():
         s.mkdir(parents=True)
 
 
-def load_config(config_file: StrPath):
-    try:
-        with open(config_file, "r") as f:
-            return tomli.loads(f.read())
-    except FileNotFoundError:
-        raise ImportError("'config.toml' not found!")
-    except tomli.TOMLDecodeError:
-        raise ImportError("'config.toml' is not a valid TOML file!")
+def load_config(config_file: StrPath) -> GlobalConfig:
+    return GlobalConfig.model_validate(tomllib.loads(Path(config_file).read_text()))
 
 
-def update_dict(orig, update, add_keys=True):
-    """Deep update of a dictionary
+def merge_pydantic_models(base: T, nxt: T) -> T:
+    """Merge two Pydantic model instances.
 
-    For each entry (k, v) in update such that both orig[k] and v are
-    dictionaries, orig[k] is recurisvely updated to v.
+    The attributes of 'base' and 'nxt' that weren't explicitly set are dumped into dicts
+    using '.model_dump(exclude_unset=True)', which are then merged using 'deepmerge',
+    and the merged result is turned into a model instance using '.model_validate'.
 
-    For all other entries (k, v), orig[k] is set to v.
+    For attributes set on both 'base' and 'nxt', the value from 'nxt' will be used in
+    the output result.
     """
-    for key, value in update.items():
-        if key in orig and isinstance(value, collections.abc.Mapping) and isinstance(orig[key], collections.abc.Mapping):
-            update_dict(orig[key], value)
-        elif add_keys or key in orig:
-            orig[key] = value
+    base_dict = base.model_dump(exclude_unset=True)
+    nxt_dict = nxt.model_dump(exclude_unset=True, exclude_defaults=True)
+    merged_dict = always_merger.merge(base_dict, nxt_dict)
+    return base.model_validate(merged_dict)
 
 
 def get_normalized_lang(lang: str) -> str:

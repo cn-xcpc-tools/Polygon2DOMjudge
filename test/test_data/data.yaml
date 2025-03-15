@@ -1,212 +1,214 @@
-polygon_packages:
-  - &normal-package "little-h-reboot-7$linux.zip"
-  - &interaction-package "guess-array-1$linux.zip"
+__meta__:
+  polygon_packages:
+    - &normal-package "little-h-reboot-7$linux.zip"
+    - &interaction-package "guess-array-1$linux.zip"
 
-# validate converted DOMjudge package
-assertions:
-  # validate converted DOMjudge package with testlib checker
-  normal: &normal-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: &normal-ini |+
-          short-name = A
-          timelimit = 5.0
-          color = #FF0000
-          externalid = little-h-reboot
-    - type: problem_yaml
-      args:
-        expect: &normal-yaml
-          limits:
-            memory: 256
-          name: Little H And Reboot
-          validation: custom
-    - sample_data
-    - secret_data
-    - type: file
-      args:
-        file: data/sample/01.desc
-        expect: |+
-          File "01"
-    - &std_cpp_submission
-      type: submission
-      args:
-        result: accepted
-        name: std.cpp
-    - testlib
-    - type: magic_string
-      args:
-        result: mixed
-        name: wrong.cpp
-        magic_string: "@EXPECTED_RESULTS@: WRONG-ANSWER, TIMELIMIT, RUN-ERROR"
+  # validate converted DOMjudge package
+  assertions:
+    # validate converted DOMjudge package with testlib checker
+    normal: &normal-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: &normal-ini |+
+            short-name = A
+            timelimit = 5.0
+            color = #FF0000
+            externalid = little-h-reboot
+      - type: problem_yaml
+        args:
+          expect: &normal-yaml
+            limits:
+              memory: 256
+            name: Little H And Reboot
+            validation: custom
+      - sample_data
+      - secret_data
+      - type: file
+        args:
+          file: data/sample/01.desc
+          expect: |+
+            File "01"
+      - &std_cpp_submission
+        type: submission
+        args:
+          result: accepted
+          name: std.cpp
+      - testlib
+      - type: magic_string
+        args:
+          result: mixed
+          name: wrong.cpp
+          magic_string: "@EXPECTED_RESULTS@: WRONG-ANSWER, TIMELIMIT, RUN-ERROR"
 
-  # validate converted DOMjudge package with auto detected checker
-  auto_validation: &auto-validation-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: *normal-ini
-    - type: problem_yaml
-      args:
-        expect:
-          <<: *normal-yaml
-          validation: default
-          validator_flags: float_tolerance 1e-4
-    - sample_data
-    - secret_data
-    - type: file
-      args:
-        file: data/sample/01.desc
-        expect: |+
-          File "01"
-    - *std_cpp_submission
-    - no_testlib
+    # validate converted DOMjudge package with auto detected checker
+    auto_validation: &auto-validation-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: *normal-ini
+      - type: problem_yaml
+        args:
+          expect:
+            <<: *normal-yaml
+            validation: default
+            validator_flags: float_tolerance 1e-4
+      - sample_data
+      - secret_data
+      - type: file
+        args:
+          file: data/sample/01.desc
+          expect: |+
+            File "01"
+      - *std_cpp_submission
+      - no_testlib
 
-  # validate converted DOMjudge package with custom validator_flags
-  custom_validator_flags: &custom-validator-flags-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: *normal-ini
-    - type: problem_yaml
-      args:
-        expect:
-          <<: *normal-yaml
-          validation: default
-          validator_flags: float_tolerance 1e-6
-    - sample_data
-    - secret_data
-    - type: file
-      args:
-        file: data/sample/01.desc
-        expect: |+
-          File "01"
-    - *std_cpp_submission
-    - no_testlib
+    # validate converted DOMjudge package with custom validator_flags
+    custom_validator_flags: &custom-validator-flags-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: *normal-ini
+      - type: problem_yaml
+        args:
+          expect:
+            <<: *normal-yaml
+            validation: default
+            validator_flags: float_tolerance 1e-6
+      - sample_data
+      - secret_data
+      - type: file
+        args:
+          file: data/sample/01.desc
+          expect: |+
+            File "01"
+      - *std_cpp_submission
+      - no_testlib
 
-  # validate converted DOMjudge package with hide sample data
-  hide_sample_data: &hide-sample-data-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: *normal-ini
-    - type: problem_yaml
-      args:
-        expect: *normal-yaml
-    - no_sample_data
-    - secret_data
-    - *std_cpp_submission
-    - testlib
+    # validate converted DOMjudge package with hide sample data
+    hide_sample_data: &hide-sample-data-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: *normal-ini
+      - type: problem_yaml
+        args:
+          expect: *normal-yaml
+      - no_sample_data
+      - secret_data
+      - *std_cpp_submission
+      - testlib
 
-  # validate converted DOMjudge package with interaction problem
-  interaction: &interaction-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: |+
-          short-name = A
-          timelimit = 1.0
-          color = #FF0000
-          externalid = guess-array
-    - type: problem_yaml
-      args:
-        expect:
-          limits:
-            memory: 512
-          name: Guess The Array
-          validation: custom interactive
-    - no_sample_data
-    - secret_data
-    - type: no_file
-      args:
-        file: data/secret/01.desc
-    - type: file
-      args:
-        file: data/secret/02.desc
-        expect: |+
-          [GEN] random_gen -n 10 1
-    - *std_cpp_submission
-    - type: testlib
-      args:
-        dir: interactor
-        name: interactor.cpp
+    # validate converted DOMjudge package with interaction problem
+    interaction: &interaction-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: |+
+            short-name = A
+            timelimit = 1.0
+            color = #FF0000
+            externalid = guess-array
+      - type: problem_yaml
+        args:
+          expect:
+            limits:
+              memory: 512
+            name: Guess The Array
+            validation: custom interactive
+      - no_sample_data
+      - secret_data
+      - type: no_file
+        args:
+          file: data/secret/01.desc
+      - type: file
+        args:
+          file: data/secret/02.desc
+          expect: |+
+            [GEN] random_gen -n 10 1
+      - *std_cpp_submission
+      - type: testlib
+        args:
+          dir: interactor
+          name: interactor.cpp
 
-  # override memory limit and output limit
-  override: &override-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: *normal-ini
-    - type: problem_yaml
-      args:
-        expect:
-          <<: *normal-yaml
-          limits:
-            output: 64
+    # override memory limit and output limit
+    override: &override-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: *normal-ini
+      - type: problem_yaml
+        args:
+          expect:
+            <<: *normal-yaml
+            limits:
+              output: 64
 
-  # change language to Chinese
-  chinese: &chinese-assertions
-    - data_dir
-    - submissions_dir
-    - type: domjudge_problem_ini
-      args:
-        expect: *normal-ini
-    - type: problem_yaml
-      args:
-        expect:
-          <<: *normal-yaml
-          name: "小 H 的重启"
+    # change language to Chinese
+    chinese: &chinese-assertions
+      - data_dir
+      - submissions_dir
+      - type: domjudge_problem_ini
+        args:
+          expect: *normal-ini
+      - type: problem_yaml
+        args:
+          expect:
+            <<: *normal-yaml
+            name: "小 H 的重启"
 
-api:
-  __base:
-    args: &base-api-args
+  api_base:
+    kwargs: &base-api-kwargs
       short_name: A
       color: "#FF0000"
       testset_name: tests
+
+api:
   normal:
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
     input: *normal-package
     assertions: *normal-assertions
 
   auto_validation:
     input: *normal-package
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
       auto_detect_std_checker: true
     assertions: *auto-validation-assertions
 
   custom_validator_flags:
     input: *normal-package
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
       force_default_validator: true
       validator_flags: float_tolerance 1e-6
     assertions: *custom-validator-flags-assertions
 
   hide_sample_data:
     input: *normal-package
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
       hide_sample: true
     assertions: *hide-sample-data-assertions
 
   interaction:
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
     input: *interaction-package
     assertions: *interaction-assertions
 
   wrong_args:
     input: *normal-package
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
       auto_detect_std_checker: true
       force_default_validator: true
     raise:
@@ -215,24 +217,24 @@ api:
 
   non_exist_package:
     input: not-exist.zip
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
     raise:
       type: FileNotFoundError
       match: e
 
   language_preference:
     input: *normal-package
-    args:
-      <<: *base-api-args
-      config:
-        language_preference: ["russian", "chinese", "english"]
+    kwargs:
+      <<: *base-api-kwargs
+    global_config:
+      language_preference: ["russian", "chinese", "english"]
     assertions: *chinese-assertions
 
   invalid_testset:
     input: *normal-package
-    args:
-      <<: *base-api-args
+    kwargs:
+      <<: *base-api-kwargs
       testset_name: not-exist
     raise:
       type: Exception

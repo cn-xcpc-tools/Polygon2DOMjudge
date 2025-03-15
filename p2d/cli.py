@@ -1,15 +1,15 @@
 import logging
 import re
 from pathlib import Path
-from typing import Annotated, Optional, cast
-
+from typing import Annotated, Optional
 
 import typer
+from rich.console import Console
 from rich.logging import RichHandler
 
 from ._version import __version__
+from .models import GlobalConfig
 from .p2d import DEFAULT_COLOR, convert
-from .typing import Config
 from .utils import load_config
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -61,6 +61,19 @@ def convert_problem(
     output: Annotated[
         Optional[Path],
         typer.Option("-o", "--output", help="path of the output package"),
+    ] = None,
+    global_config_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "-c",
+            "--config",
+            help='path of the config file to override the default global config, default is using "config.toml" in current directory if exists.',
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
     ] = None,
     auto_detect_std_checker: Annotated[
         bool,
@@ -130,36 +143,35 @@ def convert_problem(
             help="specify the testset to convert, must specify the testset name if the problem has multiple testsets.",
         ),
     ] = None,
-    config_file: Annotated[
-        Path,
-        typer.Option(
-            "--config",
-            help='path of the config file to override the default config, default is using "config.toml" in current directory',
-        ),
-    ] = Path("config.toml"),
 ) -> None:
     logging.basicConfig(
-        level=log_level.upper(), format="%(message)s", datefmt="[%X]", handlers=[RichHandler(rich_tracebacks=True)]
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, console=Console(stderr=True))],
     )
     logger = logging.getLogger(__name__)
 
-    if config_file.is_file():
-        logger.info("Using config file: %s", str(config_file))
-        config = cast(Config, load_config(config_file))
+    if Path("config.toml").is_file():
+        global_config_file = Path("config.toml")
+
+    if global_config_file is not None and global_config_file.is_file():
+        logger.info("Using config file: %s", str(global_config_file))
+        global_config = load_config(global_config_file)
     else:
-        config = None
+        global_config = GlobalConfig()
 
     if force_default_validator and auto_detect_std_checker:
         raise typer.BadParameter('Cannot use "--default" and "--auto" at the same time.')
 
     if skip_confirmation:
 
-        def confirm_callback():
+        def confirm_callback() -> bool:
             return True
     else:
 
-        def confirm_callback():
-            return typer.confirm("Are you sure to convert the package?", abort=True, default=True)
+        def confirm_callback() -> bool:
+            return typer.confirm("Are you sure to convert the package?", abort=True, default=True, err=True)
 
     try:
         convert(
@@ -168,6 +180,7 @@ def convert_problem(
             color=color,
             confirm=confirm_callback,
             output=output,
+            global_config=global_config,
             auto_detect_std_checker=auto_detect_std_checker,
             force_default_validator=force_default_validator,
             validator_flags=validator_flags,
@@ -179,12 +192,7 @@ def convert_problem(
             with_statement=with_statement,
             with_attachments=with_attachments,
             testset_name=testset_name,
-            config=config,
         )
     except Exception as e:
         logger.error(e)
         raise
-
-
-def main():  # pragma: no cover
-    app()

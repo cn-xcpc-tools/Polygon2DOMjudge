@@ -67,16 +67,15 @@ $ ./bin/p2d-contest /path/to/contest.xml > convert.sh
 
 ## 配置
 
-在 [config.toml](./p2d/asset/config.toml) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，这会在 `--auto` 参数被设置时用来将 checker 替换为默认的输出校验器。
+在 [config.toml](./config.example.toml) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，这会在 `--auto` 参数被设置时用来将 checker 替换为默认的输出校验器。
 
 > [!NOTE]
-> 你不应该直接编辑这个文件，而是应该创建一个新的文件，命名为 `config.toml` 或其他名称，并使用 `--config` 参数将其传递给脚本。脚本将会合并默认配置和你的配置。
+> 你应该创建一个新的文件，命名为 `config.toml` 或其他名称，并使用 `--config` 参数将其传递给脚本。脚本将会合并默认配置和你的配置。
 
 ## 环境变量
 
 某些时候可能会有用。但如果你不知道你在干啥，请不要随便修改。
 
-- `CONFIG_PATH`
 - `TESTLIB_PATH`
 
 ## API 使用示例

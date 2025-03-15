@@ -25,9 +25,11 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "deepmerge>=2.0",
+    "pydantic>=2.10.6",
     "pyyaml>=6.0.2",
     "rich>=13.9.4",
-    "tomli>=2.0.1",
+    "tomli>=2.0.1;python_version<'3.11'",
     "typer-slim[standard]>=0.12.5",
 ]
 dynamic = ["version"]
@@ -38,8 +40,8 @@ documentation = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
 repository = "https://github.com/cn-xcpc-tools/Polygon2Domjudge"
 
 [project.scripts]
-p2d = "p2d.cli:main"
-p2d-contest = "p2d.contest:main"
+p2d = "p2d.cli:app"
+p2d-contest = "p2d.contest:app"
 
 [dependency-groups]
 dev = [
@@ -53,7 +55,14 @@ dev = [
 line-length = 127
 
 [tool.pytest.ini_options]
-addopts = "--cov=p2d --cov-report term-missing --cov-report xml --cov-fail-under=80"
+addopts = [
+    "--cov=p2d",
+    "--cov-report",
+    "term-missing",
+    "--cov-report",
+    "xml",
+    "--cov-fail-under=80",
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -86,3 +95,20 @@ git_describe_command = [
     "--long",
     "--first-parent",
 ]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+# for strict mypy: (this is the tricky one :-))
+disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+warn_required_dynamic_aliases = true

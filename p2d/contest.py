@@ -1,15 +1,14 @@
 import logging
 import xml.etree.ElementTree
-
 from pathlib import Path
 from typing import Annotated, Optional
+from xml.etree.ElementTree import Element
 
-from rich.logging import RichHandler
-from rich.console import Console
 import typer
+from rich.console import Console
+from rich.logging import RichHandler
 
 from ._version import __version__
-
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -20,7 +19,7 @@ def version_callback(value: Optional[bool]) -> None:
         raise typer.Exit()
 
 
-def problem_index_and_name(problem):
+def problem_index_and_name(problem: Element) -> tuple[str, str]:
     return problem.attrib["index"], problem.attrib["url"].split("/")[-1]
 
 
@@ -86,9 +85,5 @@ p2d --yes --code {index} --color "#FF0000" \\
         raise
 
 
-def main():  # pragma: no cover
-    app()
-
-
 if __name__ == "__main__":
-    main()
+    app()

@@ -71,16 +71,15 @@ $ p2d-contest /path/to/contest.xml > convert.sh
 
 ## Config
 
-In [config.toml](./p2d/asset/config.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.
+In [config.toml](./config.example.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.
 
 > [!NOTE]
-> You should not edit this file directly, instead, you should create a new file named `config.toml` or something else and pass it to the script with `--config` parameter. The script will merge the default config with your config.
+> You should create a new file named `config.toml` or something else and pass it to the script with `--config` parameter. The script will merge the default config with your config.
 
 ## Environment Variable
 
 Don't change them unless you know what you are doing.
 
-- `CONFIG_PATH`
 - `TESTLIB_PATH`
 
 ## API Example
