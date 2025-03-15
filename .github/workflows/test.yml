@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - "poetry.lock"
+      - "uv.lock"
       - "pyproject.toml"
       - "p2d/**"
       - "test/**"
@@ -14,7 +14,7 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened, ready_for_review ]
     paths:
-      - "poetry.lock"
+      - "uv.lock"
       - "pyproject.toml"
       - "p2d/**"
       - "test/**"
