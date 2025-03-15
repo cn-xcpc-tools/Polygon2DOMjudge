@@ -26,7 +26,7 @@ def ensure_dir(s: Path) -> None:
 
 
 def load_config(config_file: StrPath) -> GlobalConfig:
-    return GlobalConfig.model_validate(tomllib.loads(Path(config_file).read_text()))
+    return GlobalConfig.model_validate(tomllib.loads(Path(config_file).read_text(encoding="utf-8")))
 
 
 def merge_pydantic_models(base: T, nxt: T) -> T:
