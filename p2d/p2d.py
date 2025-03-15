@@ -29,8 +29,8 @@ from ._version import __version__
 from .models import GlobalConfig, Result
 from .utils import ensure_dir, get_normalized_lang, merge_pydantic_models
 
-if sys.version_info < (3, 11):  # pragma: no cover
-    from typing_extensions import TypedDict, Unpack
+if sys.version_info < (3, 12):  # pragma: no cover
+    from typing_extensions import Unpack, TypedDict
 else:  # pragma: no cover
     from typing import TypedDict, Unpack
 

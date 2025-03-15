@@ -29,7 +29,7 @@ class DataLoader:
         """Load and validate test data from YAML file."""
         yaml_path = Path(__file__).parent.parent / "test_data" / "data.yaml"
         try:
-            raw_data = yaml.safe_load(yaml_path.read_text())
+            raw_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
             return TestData(**raw_data)
         except ValidationError as e:
             raise ValueError(f"Invalid test data format in {yaml_path}: {e}") from e
