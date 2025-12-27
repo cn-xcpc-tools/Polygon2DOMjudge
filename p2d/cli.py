@@ -1,7 +1,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -15,16 +15,17 @@ from .utils import load_config
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
-def version_callback(value: Optional[bool]) -> None:
+def version_callback(value: bool | None) -> None:
     if value:
         typer.echo(f"Polygon Package to Domjudge Package v{__version__}")
-        raise typer.Exit()
+        raise typer.Exit
 
 
-def validate_external_id(value: Optional[str]) -> Optional[str]:
+def validate_external_id(value: str | None) -> str | None:
     if value is None or re.match(r"^[a-zA-Z0-9-_]+$", value):
         return value
-    raise typer.BadParameter("external-id must contain only letters, numbers, hyphens and underscores")
+    msg = "external-id must contain only letters, numbers, hyphens and underscores"
+    raise typer.BadParameter(msg)
 
 
 @app.command(
@@ -48,7 +49,7 @@ def convert_problem(
         ),
     ] = "info",
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "-v",
             "--version",
@@ -59,11 +60,11 @@ def convert_problem(
     ] = None,
     skip_confirmation: Annotated[bool, typer.Option("-y", "--yes", help="skip confirmation")] = False,
     output: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("-o", "--output", help="path of the output package"),
     ] = None,
     global_config_file: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "-c",
             "--config",
@@ -83,32 +84,33 @@ def convert_problem(
         ),
     ] = False,
     force_default_validator: Annotated[
-        bool, typer.Option("--default", help="force use the default output validator.")
+        bool,
+        typer.Option("--default", help="force use the default output validator."),
     ] = False,
     validator_flags: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(help='add some flags to the output validator, only works when "--default" is set.'),
     ] = None,
     memory_limit: Annotated[
-        Optional[int],
+        int | None,
         typer.Option(
-            help="override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default"
+            help="override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package, -1 means use DOMjudge default",
         ),
     ] = None,
     output_limit: Annotated[
         int,
         typer.Option(
-            help="override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default"
+            help="override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting, -1 means use DOMjudge default",
         ),
     ] = -1,
     hide_sample: Annotated[
         bool,
         typer.Option(
-            help="hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem)."
+            help="hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).",
         ),
     ] = False,
     keep_sample: Annotated[
-        Optional[list[int]],
+        list[int] | None,
         typer.Option(
             "--keep",
             "--keep-sample",
@@ -116,7 +118,7 @@ def convert_problem(
         ),
     ] = None,
     external_id: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             help="problem external id in domjudge, default is problem id in polygon",
             callback=validate_external_id,
@@ -137,7 +139,7 @@ def convert_problem(
         ),
     ] = False,
     testset_name: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--testset",
             help="specify the testset to convert, must specify the testset name if the problem has multiple testsets.",
@@ -162,15 +164,16 @@ def convert_problem(
         global_config = GlobalConfig()
 
     if force_default_validator and auto_detect_std_checker:
-        raise typer.BadParameter('Cannot use "--default" and "--auto" at the same time.')
+        msg = 'Cannot use "--default" and "--auto" at the same time.'
+        raise typer.BadParameter(msg)
 
     if skip_confirmation:
 
-        def confirm_callback() -> bool:
+        def confirm() -> bool:
             return True
     else:
 
-        def confirm_callback() -> bool:
+        def confirm() -> bool:
             return typer.confirm("Are you sure to convert the package?", abort=True, default=True, err=True)
 
     try:
@@ -178,14 +181,14 @@ def convert_problem(
             package=package,
             short_name=short_name,
             color=color,
-            confirm=confirm_callback,
             output=output,
+            memory_limit=memory_limit,
+            output_limit=output_limit,
             global_config=global_config,
+            confirm=confirm,
             auto_detect_std_checker=auto_detect_std_checker,
             force_default_validator=force_default_validator,
             validator_flags=validator_flags,
-            memory_limit=memory_limit,
-            output_limit=output_limit,
             hide_sample=hide_sample,
             keep_sample=keep_sample,
             external_id=external_id,
@@ -194,5 +197,5 @@ def convert_problem(
             testset_name=testset_name,
         )
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)
         raise

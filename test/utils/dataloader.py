@@ -1,21 +1,20 @@
 """Test data loading utilities with type safety and validation."""
 
+from collections.abc import Callable, Generator
 from contextlib import nullcontext
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Type, TypeAlias, cast
+from typing import Any, ContextManager, cast
 
 import pytest
 import yaml
 from _pytest.mark import ParameterSet
-from _pytest.python_api import RaisesContext
 from pydantic import ValidationError
+
+from p2d import ProcessError
 
 from . import assertions
 from .models import Assertion, RaiseExpectation, TestData
-from p2d import ProcessError
-
-ExceptionContext: TypeAlias = nullcontext[None] | RaisesContext[BaseException]
 
 
 class DataLoader:
@@ -32,19 +31,23 @@ class DataLoader:
             raw_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
             return TestData(**raw_data)
         except ValidationError as e:
-            raise ValueError(f"Invalid test data format in {yaml_path}: {e}") from e
+            msg = f"Invalid test data format in {yaml_path}: {e}"
+            raise ValueError(msg) from e
         except yaml.YAMLError as e:
-            raise ValueError(f"Failed to parse YAML file {yaml_path}: {e}") from e
+            msg = f"Failed to parse YAML file {yaml_path}: {e}"
+            raise ValueError(msg) from e
 
     def get_assertion_function(self, assertion_name: str) -> Callable[..., None]:
         """Get assertion function by name with type checking."""
         try:
             func = getattr(assertions, f"assert_{assertion_name}")
             if not callable(func):
-                raise ValueError(f"Assertion {assertion_name} is not callable")
-            return cast(Callable[..., None], func)
+                msg = f"Assertion {assertion_name} is not callable"
+                raise ValueError(msg)
+            return cast("Callable[..., None]", func)
         except AttributeError as e:
-            raise ValueError(f"Assertion {assertion_name} not found in assertions module") from e
+            msg = f"Assertion {assertion_name} not found in assertions module"
+            raise ValueError(msg) from e
 
     def create_composite_assertion(self, assertions_config: list[str | Assertion]) -> Callable[..., None]:
         """Create a composite assertion function from multiple assertions."""
@@ -59,7 +62,8 @@ class DataLoader:
                 func = self.get_assertion_function(assertion.type)
                 assertion_funcs.append(partial(func, **assertion.args))
             else:
-                raise ValueError(f"Invalid assertion configuration: {assertion}")
+                msg = f"Invalid assertion configuration: {assertion}"
+                raise ValueError(msg)
 
         def composite_assertion(*args: Any, **kwargs: Any) -> None:
             for func in assertion_funcs:
@@ -67,12 +71,12 @@ class DataLoader:
 
         return composite_assertion
 
-    def get_exception_context(self, error_config: Optional[RaiseExpectation]) -> ExceptionContext:
+    def get_exception_context(self, error_config: RaiseExpectation | None) -> ContextManager[Any]:
         """Get pytest exception context for test cases."""
         if error_config is None:
             return nullcontext()
 
-        error_types: dict[str, Type[BaseException]] = {
+        error_types: dict[str, type[BaseException]] = {
             "ProcessError": ProcessError,
             "FileNotFoundError": FileNotFoundError,
             "ValueError": ValueError,
