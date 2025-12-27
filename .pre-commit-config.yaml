@@ -4,6 +4,7 @@ repos:
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
+        exclude: ^p2d/testlib/
       - id: mixed-line-ending
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.10

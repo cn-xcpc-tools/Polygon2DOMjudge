@@ -1,14 +1,5 @@
---- testlib.h.orig	2025-03-09 16:54:35.229639930 +0800
-+++ testlib.h	2025-03-09 16:58:06.756346081 +0800
-@@ -25,7 +25,7 @@
-  * Copyright (c) 2005-2024
-  */
-
--#define VERSION "0.9.44"
-+#define VERSION "0.9.44-DOMJUDGE"
-
- /*
-  * Mike Mirzayanov
+--- testlib.h.orig	2025-12-27 19:50:49.741351659 +0800
++++ testlib.h	2025-12-27 19:49:11.513546804 +0800
 @@ -60,6 +60,8 @@
   *   Reads test from inf (mapped to args[1]), writes result to tout (mapped to argv[2],
   *   can be judged by checker later), reads program output from ouf (mapped to stdin),
@@ -16,9 +7,9 @@
 + *
 + *   NOTE: This file is modified to run in domjudge.
   */
-
+ 
  const char *latestFeatures[] = {
-@@ -235,7 +237,7 @@
+@@ -236,7 +238,7 @@
  #   ifdef CONTESTER
  #       define OK_EXIT_CODE 0xAC
  #   else
@@ -26,8 +17,8 @@
 +#       define OK_EXIT_CODE 42
  #   endif
  #endif
-
-@@ -245,7 +247,7 @@
+ 
+@@ -246,7 +248,7 @@
  #   elif defined(CONTESTER)
  #       define WA_EXIT_CODE 0xAB
  #   else
@@ -35,8 +26,8 @@
 +#       define WA_EXIT_CODE 43
  #   endif
  #endif
-
-@@ -255,7 +257,7 @@
+ 
+@@ -256,7 +258,7 @@
  #   elif defined(CONTESTER)
  #       define PE_EXIT_CODE 0xAA
  #   else
@@ -44,8 +35,8 @@
 +#       define PE_EXIT_CODE 43
  #   endif
  #endif
-
-@@ -273,7 +275,7 @@
+ 
+@@ -274,7 +276,7 @@
  #   ifdef EJUDGE
  #       define DIRT_EXIT_CODE 6
  #   else
@@ -53,36 +44,36 @@
 +#       define DIRT_EXIT_CODE 43
  #   endif
  #endif
-
-@@ -282,7 +284,7 @@
+ 
+@@ -283,7 +285,7 @@
  #endif
-
+ 
  #ifndef UNEXPECTED_EOF_EXIT_CODE
 -#   define UNEXPECTED_EOF_EXIT_CODE 8
 +#   define UNEXPECTED_EOF_EXIT_CODE 43
  #endif
-
+ 
  #ifndef PC_BASE_EXIT_CODE
-@@ -3156,7 +3158,7 @@
+@@ -3142,7 +3144,7 @@
      }
-
+ 
      if (resultName != "") {
 -        resultFile = testlib_fopen_(resultName.c_str(), "w");
 +        resultFile = testlib_fopen_(resultName.c_str(), "a");
          if (resultFile == NULL) {
              resultName = "";
              quit(_fail, "Can not write to the result file");
-@@ -3188,7 +3190,6 @@
+@@ -3174,7 +3176,6 @@
      }
-
+ 
      quitscr(LightGray, __testlib_toPrintableMessage(message).c_str());
 -    std::fprintf(stderr, "\n");
-
+ 
      inf.close();
      ouf.close();
-@@ -3197,10 +3198,10 @@
+@@ -3183,10 +3184,10 @@
          tout.close();
-
+ 
      textColor(LightGray);
 -
 +/*
@@ -92,11 +83,11 @@
 +*/
      halt(resultExitCode(result));
  }
-
-@@ -4683,6 +4684,11 @@
+ 
+@@ -4666,6 +4667,11 @@
      ::appesModeEncoding = appesModeEncoding;
  }
-
+ 
 +std::string make_new_file_in_a_dir(std::string dir, std::string file = "judgemessage.txt") { // assume in linux
 +    if (dir.back() != '/') dir.push_back('/');
 +    return dir + file;
@@ -105,8 +96,8 @@
  void registerInteraction(int argc, char *argv[]) {
      __testlib_ensuresPreconditions();
      __testlib_set_testset_and_group(argc, argv);
-@@ -4693,24 +4699,20 @@
-
+@@ -4676,24 +4682,20 @@
+ 
      if (argc > 1 && !strcmp("--help", argv[1]))
          __testlib_help();
 -
@@ -124,7 +115,7 @@
 +        resultName = make_new_file_in_a_dir(argv[3]);
          appesMode = false;
      }
-
+ 
  #ifndef EJUDGE
 -    if (argc == 5) {
 -        resultName = argv[4];
@@ -135,20 +126,20 @@
      if (argc == 6) {
          if (strcmp("-APPES", argv[5]) && strcmp("-appes", argv[5])) {
              quit(_fail, std::string("Program must be run with the following arguments: ") +
-@@ -4720,18 +4722,19 @@
+@@ -4703,18 +4705,19 @@
              appesMode = true;
          }
      }
 +*/
  #endif
-
+ 
      inf.init(argv[1], _input);
 -
 +/*
      tout.open(argv[2], std::ios_base::out);
      if (tout.fail() || !tout.is_open())
          quit(_fail, std::string("Can not write to the test-output-file '") + argv[2] + std::string("'"));
-
+ 
 +*/
      ouf.init(stdin, _output);
 -
@@ -159,7 +150,7 @@
      else
          ans.name = "unopened answer stream";
  }
-@@ -4886,19 +4889,20 @@
+@@ -4869,19 +4872,20 @@
      argc = int(args.size());
      if (argc > 1 && "--help" == args[1])
          __testlib_help();
@@ -177,19 +168,19 @@
 +        resultName = make_new_file_in_a_dir(args[3]);
          appesMode = false;
      }
-
+ 
  #ifndef EJUDGE
 +/*
      if (argc == 5) {
          resultName = args[4];
          appesMode = false;
-@@ -4913,12 +4917,13 @@
+@@ -4896,12 +4900,13 @@
              appesMode = true;
          }
      }
 +*/
  #endif
-
+ 
      inf.init(args[1], _input);
 -    ouf.init(args[2], _output);
 +    ouf.init(stdin, _output);
@@ -197,5 +188,5 @@
 -    ans.init(args[3], _answer);
 +    ans.init(args[2], _answer);
  }
-
+ 
  void registerTestlib(int argc, ...) {
