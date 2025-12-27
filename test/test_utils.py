@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 
 @pytest.mark.parametrize(
-    "lang, expected",
+    ("lang", "expected"),
     [
         ("c.gcc", "c"),
         ("cpp.g++", "cpp"),
@@ -40,14 +40,14 @@ def test_get_normalized_lang(lang: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "config_file, exception",
+    ("config_file", "exception"),
     [
         ("config-not-exist.toml", FileNotFoundError),
         ("config-broken.toml", TOMLDecodeError),
         ("config-broken2.toml", ValidationError),
     ],
 )
-def test_load_broken_config(config_file: str, exception: BaseException) -> None:
+def test_load_broken_config(config_file: str, exception: type[BaseException]) -> None:
     from p2d.utils import load_config
 
     with pytest.raises(exception):

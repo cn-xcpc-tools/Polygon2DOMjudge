@@ -21,15 +21,16 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "deepmerge>=2.0",
-    "pydantic>=2.10.6",
-    "pyyaml>=6.0.2",
-    "rich>=13.9.4",
-    "tomli>=2.0.1;python_version<'3.11'",
-    "typer-slim[standard]>=0.12.5",
+    "deepmerge>=2.0,<3.0",
+    "pydantic>=2.12.5,<3.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
+    "rich>=14.2.0,<15.0.0",
+    "tomli>=2.3.0,<3.0.0 ; python_full_version < '3.11'",
+    "typer-slim[standard]>=0.21.0,<0.22.0",
 ]
 dynamic = ["version"]
 
@@ -44,10 +45,12 @@ p2d-contest = "p2d.contest:app"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3.3",
-    "types-pyyaml>=6.0.12.20240917",
-    "mypy>=1.11.2",
-    "pytest-cov>=5.0.0",
+    "mypy>=1.19.1,<2.0.0",
+    "pre-commit>=4.5.1,<5.0.0",
+    "pytest>=9.0.2,<10.0.0",
+    "pytest-cov>=7.0.0,<8.0.0",
+    "ruff>=0.14.10,<0.15.0",
+    "types-pyyaml>=6.0.12.20250915,<7.0.0.0",
 ]
 
 [tool.ruff]

@@ -1,20 +1,22 @@
 import shutil
 import zipfile
+from collections.abc import Callable, Generator
 from os import chdir
 from pathlib import Path
-from typing import Callable, Generator
+from typing import Any, ContextManager
 
 import pytest
 from typer.testing import CliRunner
 
-from p2d import GlobalConfig, Options
+from p2d import GlobalConfig
+from p2d.p2d import ConvertOptions
 
-from .utils.dataloader import load_api_test_data, load_cli_test_data, ExceptionContext
+from .utils.dataloader import load_api_test_data, load_cli_test_data
 
 runner = CliRunner()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def temp_dir(tmp_path: Path) -> Generator[Path, None, None]:
     old_cwd = Path.cwd()
     chdir(tmp_path)
@@ -42,15 +44,15 @@ def test_cli_version() -> None:
 
 
 @pytest.mark.parametrize("extract", [True, False], ids=["dir", "zip"])
-@pytest.mark.parametrize("package_name, global_config, kwargs, assertion, expectation", load_api_test_data())
+@pytest.mark.parametrize(("package_name", "global_config", "kwargs", "assertion", "expectation"), load_api_test_data())
 def test_api(
     temp_dir: Path,
     package_name: str,
     extract: bool,
     global_config: GlobalConfig,
-    kwargs: Options,
+    kwargs: ConvertOptions,
     assertion: Callable[[Path], None],
-    expectation: ExceptionContext,
+    expectation: ContextManager[Any],
 ) -> None:
     test_data_dir = Path(__file__).parent / "test_data"
     polygon_package_dir = temp_dir / "example-polygon-dir"
@@ -84,7 +86,7 @@ def test_api(
 
 
 @pytest.mark.parametrize("extract", [True, False], ids=["dir", "zip"])
-@pytest.mark.parametrize("package_name, args, user_input, assertion, exitcode", load_cli_test_data())
+@pytest.mark.parametrize(("package_name", "args", "user_input", "assertion", "exitcode"), load_cli_test_data())
 def test_cli(
     temp_dir: Path,
     package_name: str,
