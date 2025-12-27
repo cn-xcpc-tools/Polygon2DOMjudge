@@ -9,7 +9,7 @@ from rich.logging import RichHandler
 
 from ._version import __version__
 from .models import GlobalConfig
-from .p2d import DEFAULT_COLOR, convert
+from .p2d import DEFAULT_COLOR, ConvertOptions, DomjudgeOptions, convert
 from .utils import load_config
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -176,25 +176,37 @@ def convert_problem(
         def confirm() -> bool:
             return typer.confirm("Are you sure to convert the package?", abort=True, default=True, err=True)
 
+    keep_sample_tuple = tuple(keep_sample) if keep_sample else None
+
+    options = ConvertOptions(
+        output=output,
+        global_config=global_config,
+        options=DomjudgeOptions(
+            color=color,
+            force_default_validator=force_default_validator,
+            auto_detect_std_checker=auto_detect_std_checker,
+            validator_flags=validator_flags,
+            hide_sample=hide_sample,
+            keep_sample=keep_sample_tuple,
+            external_id=external_id,
+            with_statement=with_statement,
+            with_attachments=with_attachments,
+            memory_limit_override=memory_limit,
+            output_limit_override=output_limit,
+        ),
+        testset_name=testset_name,
+    )
+
+    logger.info(
+        "This is Polygon2DOMjudge by cubercsl.\nProcess Polygon Package to DOMjudge Package.\nVersion: %s",
+        __version__,
+    )
     try:
         convert(
             package=package,
             short_name=short_name,
-            color=color,
-            output=output,
-            memory_limit=memory_limit,
-            output_limit=output_limit,
-            global_config=global_config,
+            options=options,
             confirm=confirm,
-            auto_detect_std_checker=auto_detect_std_checker,
-            force_default_validator=force_default_validator,
-            validator_flags=validator_flags,
-            hide_sample=hide_sample,
-            keep_sample=keep_sample,
-            external_id=external_id,
-            with_statement=with_statement,
-            with_attachments=with_attachments,
-            testset_name=testset_name,
         )
     except Exception as e:
         logger.exception(e)

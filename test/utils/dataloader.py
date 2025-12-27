@@ -110,7 +110,7 @@ class DataLoader:
             yield pytest.param(
                 test_case.input,
                 test_case.global_config,
-                test_case.kwargs,
+                test_case.convert,
                 self.create_composite_assertion(test_case.assertions or []),
                 self.get_exception_context(test_case.raise_),
                 id=name,

@@ -58,7 +58,6 @@ def convert_contest(
         root = tree.getroot()
         problems = root.find("problems")
         if problems is None:
-            logger.error("No problems found in contest.xml")
             msg = "No problems found in contest.xml"
             raise ValueError(msg)
         logger.info("Found %d problems in %s", len(problems), str(contest_xml))

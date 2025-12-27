@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 def add_attachments(ctx: ProcessingContext) -> None:
     """Copy additional attachments if present."""
-    if not ctx.polygon_problem.attachments:
+    if not ctx.problem.attachments:
         logger.warning("No attachments found in problem.xml, skip adding attachments.")
         return
 
     ensure_dir(ctx.temp_dir / "attachments")
     logger.info("[bold green reverse]Add attachments:[/]", extra={"markup": True})
-    for attachment in ctx.polygon_problem.attachments:
+    for attachment in ctx.problem.attachments:
         logger.info("* %s", attachment.name)
         shutil.copyfile(
             ctx.package_dir / attachment,

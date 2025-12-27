@@ -9,9 +9,9 @@ import pytest
 from typer.testing import CliRunner
 
 from p2d import GlobalConfig
-from p2d.p2d import ConvertOptions
 
 from .utils.dataloader import load_api_test_data, load_cli_test_data
+from .utils.models import ConvertConfig
 
 runner = CliRunner()
 
@@ -44,13 +44,13 @@ def test_cli_version() -> None:
 
 
 @pytest.mark.parametrize("extract", [True, False], ids=["dir", "zip"])
-@pytest.mark.parametrize(("package_name", "global_config", "kwargs", "assertion", "expectation"), load_api_test_data())
+@pytest.mark.parametrize(("package_name", "global_config", "convert_config", "assertion", "expectation"), load_api_test_data())
 def test_api(
     temp_dir: Path,
     package_name: str,
     extract: bool,
     global_config: GlobalConfig,
-    kwargs: ConvertOptions,
+    convert_config: ConvertConfig,
     assertion: Callable[[Path], None],
     expectation: ContextManager[Any],
 ) -> None:
@@ -72,9 +72,11 @@ def test_api(
 
     package = polygon_package_dir if extract else polygon_package
 
+    short_name, options = convert_config.build(global_config, domjudge_package)
+
     with expectation:
         # Skip confirmation for testing
-        convert(package, domjudge_package, global_config=global_config, **kwargs)
+        convert(package=package, short_name=short_name, options=options, confirm=lambda: True)
 
         assert domjudge_package.is_file()
 

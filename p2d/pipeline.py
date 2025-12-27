@@ -12,6 +12,22 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
+class DomjudgeProfile:
+    """Problem specific profile toggles shared across pipeline steps."""
+
+    color: str
+    external_id: str
+    hide_sample: bool
+    keep_sample: Sequence[int] | None
+    use_std_checker: bool
+    validator_flags: str | None
+    with_statement: bool
+    with_attachments: bool
+    memory_limit_override: int | None
+    output_limit_override: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class ProcessingContext:
     """Immutable view over all artifacts needed during processing."""
 
@@ -19,16 +35,9 @@ class ProcessingContext:
     temp_dir: Path
     output_file: Path
     short_name: str
-    color: str
-    external_id: str
-    polygon_problem: PolygonProblem
+    problem: PolygonProblem
     config: GlobalConfig
-    hide_sample: bool
-    keep_sample: Sequence[int] | None
-    use_std_checker: bool
-    validator_flags: str | None
-    with_statement: bool
-    with_attachments: bool
+    profile: DomjudgeProfile
 
 
 StepCallable: TypeAlias = Callable[[ProcessingContext], None]

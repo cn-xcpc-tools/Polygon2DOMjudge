@@ -23,17 +23,42 @@ TESTLIB_PATH = (Path(os.getenv("TESTLIB_PATH", DEFAULT_TESTLIB_PATH)) / "testlib
 def add_metadata(ctx: ProcessingContext) -> None:
     """Generate metadata files (domjudge-problem.ini, problem.yaml, validators)."""
     logger.info("[bold green reverse]Add problem metadata files:[/]", extra={"markup": True})
+    _override_limits(ctx)
     _write_ini(ctx)
     _write_yaml(ctx)
+
+
+def _override_limits(ctx: ProcessingContext) -> None:
+    if ctx.profile.memory_limit_override is not None:
+        if not isinstance(ctx.profile.memory_limit_override, int):
+            raise TypeError("Memory limit override must be an integer.")
+        if ctx.profile.memory_limit_override != ctx.problem.memorylimit:
+            logger.info(
+                "Override memory limit: %dMB -> %dMB",
+                ctx.problem.memorylimit,
+                ctx.profile.memory_limit_override,
+            )
+            ctx.problem.memorylimit = ctx.profile.memory_limit_override
+
+    if ctx.profile.output_limit_override is not None:
+        if not isinstance(ctx.profile.output_limit_override, int):
+            raise TypeError("Output limit override must be an integer.")
+        if ctx.profile.output_limit_override != ctx.problem.outputlimit:
+            logger.info(
+                "Override output limit: %dMB -> %dMB",
+                ctx.problem.outputlimit,
+                ctx.profile.output_limit_override,
+            )
+            ctx.problem.outputlimit = ctx.profile.output_limit_override
 
 
 def _write_ini(ctx: ProcessingContext) -> None:
     ini_file = ctx.temp_dir / "domjudge-problem.ini"
     ini_content = (
         f"short-name = {ctx.short_name}",
-        f"timelimit = {ctx.polygon_problem.timelimit}",
-        f"color = {ctx.color}",
-        f"externalid = {ctx.external_id}",
+        f"timelimit = {ctx.problem.timelimit}",
+        f"color = {ctx.profile.color}",
+        f"externalid = {ctx.profile.external_id}",
     )
     for line in ini_content:
         logger.info(line)
@@ -53,12 +78,12 @@ def _write_yaml(ctx: ProcessingContext) -> None:
 
 
 def _build_yaml_content(ctx: ProcessingContext) -> dict[str, Any]:
-    yaml_content: dict[str, Any] = {"name": ctx.polygon_problem.name}
+    yaml_content: dict[str, Any] = {"name": ctx.problem.name}
     limits: dict[str, int] = {}
-    if ctx.polygon_problem.memorylimit > 0:
-        limits["memory"] = ctx.polygon_problem.memorylimit
-    if ctx.polygon_problem.outputlimit > 0:
-        limits["output"] = ctx.polygon_problem.outputlimit
+    if ctx.problem.memorylimit > 0:
+        limits["memory"] = ctx.problem.memorylimit
+    if ctx.problem.outputlimit > 0:
+        limits["output"] = ctx.problem.outputlimit
     if limits:
         yaml_content["limits"] = limits
     return yaml_content
@@ -71,32 +96,32 @@ def _configure_validation_assets(
 ) -> None:
     checker_dir = output_validators_dir / "checker"
     interactor_dir = output_validators_dir / "interactor"
-    passlimit = ctx.polygon_problem.run_count
+    passlimit = ctx.problem.run_count
 
-    if ctx.polygon_problem.interactor is None and ctx.use_std_checker:
-        checker_name = ctx.polygon_problem.checker.name if ctx.polygon_problem.checker is not None else "unknown"
+    if ctx.problem.interactor is None and ctx.profile.use_std_checker:
+        checker_name = ctx.problem.checker.name if ctx.problem.checker is not None else "unknown"
         logger.info("Use std checker: %s", checker_name)
         yaml_content["validation"] = "default"
-        if ctx.validator_flags:
-            logger.info("Validator flags: %s", ctx.validator_flags)
-            yaml_content["validator_flags"] = ctx.validator_flags
+        if ctx.profile.validator_flags:
+            logger.info("Validator flags: %s", ctx.profile.validator_flags)
+            yaml_content["validator_flags"] = ctx.profile.validator_flags
         return
 
     if passlimit == 1:
         ensure_dir(output_validators_dir)
-        if ctx.polygon_problem.interactor is not None:
+        if ctx.problem.interactor is not None:
             logger.info("Use custom interactor.")
             yaml_content["validation"] = "custom interactive"
-            interactor_file = ctx.package_dir / ctx.polygon_problem.interactor.path
+            interactor_file = ctx.package_dir / ctx.problem.interactor.path
             _copy_validator_source(interactor_file, interactor_dir)
-        elif ctx.polygon_problem.checker is not None:
+        elif ctx.problem.checker is not None:
             logger.info("Use custom checker.")
             yaml_content["validation"] = "custom"
-            checker_file = ctx.package_dir / ctx.polygon_problem.checker.path
+            checker_file = ctx.package_dir / ctx.problem.checker.path
             _copy_validator_source(checker_file, checker_dir)
         else:
-            logger.error("No checker found.")
             msg = "No checker found."
+
             raise ProcessError(msg)
         return
 
@@ -113,17 +138,17 @@ def _configure_multi_pass_validation(
     logger.warning(
         "Multiple passes is an experimental feature.\nIt is not fully supported by DOMjudge.\nPlease ensure what you are doing.",
     )
-    assert ctx.polygon_problem.run_count == 2
+    assert ctx.problem.run_count == 2
     limits = yaml_content.setdefault("limits", {})
-    limits["validation_passes"] = ctx.polygon_problem.run_count
+    limits["validation_passes"] = ctx.problem.run_count
     yaml_content["validation"] = "custom multi-pass"
     ensure_dir(output_validators_dir)
-    if ctx.polygon_problem.interactor is None:
-        logger.error("No interactor found.")
+    if ctx.problem.interactor is None:
         msg = "No interactor found, not supported in multi-pass validation."
+
         raise ProcessError(msg)
     logger.info("Use custom interactor.")
-    interactor_file = ctx.package_dir / ctx.polygon_problem.interactor.path
+    interactor_file = ctx.package_dir / ctx.problem.interactor.path
     _copy_validator_source(interactor_file, interactor_dir, create_build_script=True)
 
 

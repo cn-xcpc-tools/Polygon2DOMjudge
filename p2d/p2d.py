@@ -5,14 +5,14 @@ import logging
 import os
 import sys
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._version import __version__
 from .exceptions import ProcessError
 from .models import GlobalConfig
-from .pipeline import ProcessingContext, ProcessPipeline, ProcessStep
+from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
 from .polygon import PolygonProblem
 from .steps import (
     add_attachments,
@@ -24,11 +24,6 @@ from .steps import (
 )
 from .utils import merge_pydantic_models, resolve_output_file, resolve_package_dir
 
-if sys.version_info < (3, 12):  # pragma: no cover
-    from typing_extensions import TypedDict, Unpack
-else:  # pragma: no cover
-    from typing import TypedDict, Unpack
-
 if TYPE_CHECKING:
     from _typeshed import StrPath
 
@@ -36,6 +31,58 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_COLOR = "#000000"
 UNKNOWN = "unknown"
+
+DEFAULT_PIPELINE = ProcessPipeline(
+    (
+        ProcessStep("add_metadata", add_metadata),
+        ProcessStep("add_testcases", add_testcases),
+        ProcessStep("add_jury_solutions", add_jury_solutions),
+        ProcessStep(
+            "add_statement",
+            add_statement,
+            condition=lambda ctx: ctx.profile.with_statement,
+        ),
+        ProcessStep(
+            "add_attachments",
+            add_attachments,
+            condition=lambda ctx: ctx.profile.with_attachments,
+        ),
+        ProcessStep("archive", make_archive),
+    ),
+)
+
+
+@dataclass(slots=True)
+class DomjudgeOptions:
+    color: str = DEFAULT_COLOR
+    force_default_validator: bool = False
+    auto_detect_std_checker: bool = False
+    validator_flags: str | None = None
+    hide_sample: bool = False
+    keep_sample: tuple[int, ...] | None = None
+    external_id: str | None = None
+    with_statement: bool = False
+    with_attachments: bool = False
+    memory_limit_override: int | None = None
+    output_limit_override: int | None = None
+
+    def validate(self) -> None:
+        if not self.force_default_validator and self.validator_flags is not None:
+            logger.warning("You are not using default validation, validator flags will be ignored.")
+
+        if self.force_default_validator and self.auto_detect_std_checker:
+            msg = "Can not use auto_detect_std_checker and force_default_validator at the same time."
+
+            raise ValueError(msg)
+
+
+@dataclass(slots=True)
+class ConvertOptions:
+    output: StrPath | None = None
+    global_config: GlobalConfig = field(default_factory=GlobalConfig)
+    process_pipeline: ProcessPipeline = field(default_factory=lambda: DEFAULT_PIPELINE)
+    options: DomjudgeOptions = field(default_factory=DomjudgeOptions)
+    testset_name: str | None = None
 
 
 class Polygon2DOMjudge:
@@ -48,115 +95,30 @@ class Polygon2DOMjudge:
         output_file: StrPath,
         short_name: str,
         /,
-        color: str = DEFAULT_COLOR,
-        force_default_validator: bool = False,
-        auto_detect_std_checker: bool = False,
-        validator_flags: str | None = None,
-        hide_sample: bool = False,
-        keep_sample: Sequence[int] | None = None,
+        *,
         testset_name: str | None = None,
-        external_id: str | None = None,
-        with_statement: bool = False,
-        with_attachments: bool = False,
         global_config: GlobalConfig = GlobalConfig(),
-        process_pipeline: ProcessPipeline | None = None,
+        process_pipeline: ProcessPipeline = DEFAULT_PIPELINE,
+        options: DomjudgeOptions = DomjudgeOptions(),
     ) -> None:
         """Initialize the Polygon2DOMjudge class."""
-        if not force_default_validator and validator_flags:
-            logger.warning("You are not using default validation, validator flags will be ignored.")
 
         self._package_dir = Path(package_dir)
         self._short_name = short_name
-        self._color = color
         self._temp_dir = Path(temp_dir)
         self._output_file = Path(output_file)
-        self._with_statement = with_statement
-        self._with_attachments = with_attachments
         self._global_config = global_config
 
         logger.debug("Parse 'problem.xml':")
         if testset_name:
             logger.debug("With testset_name: %s", testset_name)
-        self._polygon_problem = PolygonProblem(
+        self._problem = PolygonProblem(
             self._package_dir / "problem.xml",
             language_preference=self._global_config.language_preference,
             testset_name=testset_name,
         )
-        self._external_id = external_id if external_id else self._polygon_problem.short_name
-
-        if force_default_validator and auto_detect_std_checker:
-            logger.error("Can not use auto_detect_std_checker and force_default_validator at the same time.")
-            msg = "Can not use auto_detect_std_checker and force_default_validator at the same time."
-            raise ValueError(msg)
-
-        self._hide_sample = hide_sample
-        if self._polygon_problem.interactor is not None:
-            logger.warning("Problem has interactor, hide_sample will be forced enabled.")
-            self._hide_sample = True
-
-        self._keep_sample = None
-        if not self._hide_sample:
-            self._keep_sample = keep_sample
-        elif keep_sample is not None:
-            logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
-
-        self._use_std_checker = (
-            auto_detect_std_checker
-            and self._polygon_problem.checker is not None
-            and self._polygon_problem.checker.name.startswith("std::")
-        ) or force_default_validator
-        self._validator_flags = None
-
-        if self._use_std_checker:
-            if force_default_validator:
-                self._validator_flags = validator_flags
-            elif self._polygon_problem.checker is not None and self._polygon_problem.checker.name.startswith("std::"):
-                self._validator_flags = self._global_config.flag.get(self._polygon_problem.checker.name[5:], None)
-            else:
-                msg = "Logic error in auto_detect_std_checker."
-                raise ProcessError(msg)
-
-        self._process_pipeline: ProcessPipeline = process_pipeline or self._build_default_pipeline()
-
-    def override_memory_limit(self, memory_limit: int) -> Polygon2DOMjudge:
-        if not isinstance(memory_limit, int):
-            msg = "memory_limit must be an integer."
-            raise TypeError(msg)
-        if self._polygon_problem.memorylimit == memory_limit:
-            return self
-        logger.info("Override memory limit: %dMB", memory_limit)
-        self._polygon_problem.memorylimit = memory_limit
-        return self
-
-    def override_output_limit(self, output_limit: int) -> Polygon2DOMjudge:
-        if not isinstance(output_limit, int):
-            msg = "output_limit must be an integer."
-            raise TypeError(msg)
-        if self._polygon_problem.outputlimit == output_limit:
-            return self
-        logger.info("Override output limit: %dMB", output_limit)
-        self._polygon_problem.outputlimit = output_limit
-        return self
-
-    def _build_default_pipeline(self) -> ProcessPipeline:
-        return ProcessPipeline(
-            (
-                ProcessStep("add_metadata", add_metadata),
-                ProcessStep("add_testcases", add_testcases),
-                ProcessStep("add_jury_solutions", add_jury_solutions),
-                ProcessStep(
-                    "add_statement",
-                    add_statement,
-                    condition=lambda context: context.with_statement,
-                ),
-                ProcessStep(
-                    "add_attachments",
-                    add_attachments,
-                    condition=lambda context: context.with_attachments,
-                ),
-                ProcessStep("archive", make_archive),
-            ),
-        )
+        self._profile = self._derive_profile(options)
+        self._process_pipeline = process_pipeline
 
     def process(self) -> None:
         context = self._build_context()
@@ -168,55 +130,73 @@ class Polygon2DOMjudge:
             temp_dir=self._temp_dir,
             output_file=self._output_file,
             short_name=self._short_name,
-            color=self._color,
-            external_id=self._external_id,
-            polygon_problem=self._polygon_problem,
+            problem=self._problem,
             config=self._global_config,
-            hide_sample=self._hide_sample,
-            keep_sample=self._keep_sample,
-            use_std_checker=self._use_std_checker,
-            validator_flags=self._validator_flags,
-            with_statement=self._with_statement,
-            with_attachments=self._with_attachments,
+            profile=self._profile,
         )
 
+    @property
+    def profile(self) -> DomjudgeProfile:
+        return self._profile
 
-class ConvertOptions(TypedDict, total=False):
-    force_default_validator: bool
-    auto_detect_std_checker: bool
-    validator_flags: str | None
-    hide_sample: bool
-    keep_sample: Sequence[int] | None
-    testset_name: str | None
-    external_id: str | None
-    with_statement: bool
-    with_attachments: bool
+    def _derive_profile(self, options: DomjudgeOptions) -> DomjudgeProfile:
+        options.validate()
+
+        resolved_external_id = options.external_id if options.external_id else self._problem.short_name
+
+        force_hide_sample = options.hide_sample
+        if self._problem.interactor is not None:
+            logger.warning("Problem has interactor, hide_sample will be forced enabled.")
+            force_hide_sample = True
+
+        effective_keep_sample = None if force_hide_sample else options.keep_sample
+        if force_hide_sample and options.keep_sample is not None:
+            logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
+
+        use_std_checker = (
+            options.auto_detect_std_checker
+            and self._problem.checker is not None
+            and self._problem.checker.name.startswith("std::")
+        ) or options.force_default_validator
+
+        derived_flags = None
+        if use_std_checker:
+            if options.force_default_validator:
+                derived_flags = options.validator_flags
+            elif self._problem.checker is not None and self._problem.checker.name.startswith("std::"):
+                derived_flags = self._global_config.flag.get(self._problem.checker.name[5:], None)
+            else:
+                msg = "Logic error in auto_detect_std_checker."
+                raise ProcessError(msg)
+
+        return DomjudgeProfile(
+            color=options.color,
+            external_id=resolved_external_id,
+            hide_sample=force_hide_sample,
+            keep_sample=effective_keep_sample,
+            use_std_checker=use_std_checker,
+            validator_flags=derived_flags,
+            with_statement=options.with_statement,
+            with_attachments=options.with_attachments,
+            memory_limit_override=options.memory_limit_override,
+            output_limit_override=options.output_limit_override,
+        )
 
 
 def convert(
     package: StrPath,
-    output: StrPath | None = None,
     *,
-    short_name: str | None = None,
-    color: str = DEFAULT_COLOR,
-    memory_limit: int | None = None,
-    output_limit: int | None = None,
-    global_config: GlobalConfig = GlobalConfig(),
-    process_pipeline: ProcessPipeline | None = None,
+    short_name: str,
+    options: ConvertOptions = ConvertOptions(),
     confirm: Callable[[], bool] = lambda: True,
-    **kwargs: Unpack[ConvertOptions],
 ) -> None:
     """Convert a Polygon package to a DOMjudge package.
 
     Args:
         package (StrPath): The path to the polygon package directory.
-        output (Optional[StrPath], optional): The path to the output DOMjudge package.
-        short_name (Optional[Str], optional): The short name of the problem.
-        color (str, optional): The color of the problem.
-        memory_limit (Optional[int], optional): Override memory limit in MB.
-        output_limit (Optional[int], optional): Override output limit in MB.
-        global_config (GlobalConfig, optional): Global configuration.
-        process_pipeline (Optional[ProcessPipeline], optional): Custom pipeline to override processing steps.
+        short_name (str): The short name of the problem within DOMjudge.
+        options (Optional[ConvertOptions], optional): Conversion configuration bundle. When not provided,
+            defaults are used.
         confirm (Callable[[], bool], optional): A function to confirm the conversion.
 
     Raises:
@@ -225,23 +205,18 @@ def convert(
         FileExistsError: If the output file already exists.
 
     """
-    logger.info(
-        "This is Polygon2DOMjudge by cubercsl.\nProcess Polygon Package to DOMjudge Package.\nVersion: %s",
-        __version__,
-    )
-
-    if short_name is None:
+    if not short_name:
         msg = "short_name is required."
         raise ValueError(msg)
 
-    global_config = merge_pydantic_models(GlobalConfig(), global_config)
+    global_config = merge_pydantic_models(GlobalConfig(), options.global_config)
 
     with (
         tempfile.TemporaryDirectory(prefix="p2d-polygon-") as polygon_temp_dir,
         tempfile.TemporaryDirectory(prefix="p2d-domjudge-") as domjudge_temp_dir,
     ):
         package_dir = resolve_package_dir(package, polygon_temp_dir)
-        output_file = resolve_output_file(output, short_name)
+        output_file = resolve_output_file(options.output, short_name)
 
         if output_file.with_suffix(".zip").resolve().exists():
             raise FileExistsError(
@@ -261,16 +236,11 @@ def convert(
             domjudge_temp_dir,
             output_file,
             short_name,
-            color,
+            testset_name=options.testset_name,
             global_config=global_config,
-            process_pipeline=process_pipeline,
-            **kwargs,
+            process_pipeline=options.process_pipeline,
+            options=options.options,
         )
-
-        if memory_limit is not None:
-            p.override_memory_limit(memory_limit)
-        if output_limit is not None:
-            p.override_output_limit(output_limit)
 
         if confirm():
             p.process()

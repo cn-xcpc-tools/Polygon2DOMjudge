@@ -78,7 +78,6 @@ class PolygonProblem:
 
         judging = problem.find("judging")
         if judging is None:
-            logger.error("Can not find judgings in problem.xml.")
             msg = "Can not find judgings in problem.xml."
             raise ProcessError(msg)
         run_count = judging.attrib.get("run-count", "1")
@@ -86,7 +85,6 @@ class PolygonProblem:
         testset = self._get_testset(problem, testset_name)
 
         if not short_name:
-            logger.error("Short name is invalid in problem.xml.")
             msg = "Short name is invalid in problem.xml."
             raise ProcessError(msg)
 
@@ -126,7 +124,6 @@ class PolygonProblem:
         language_preference: Sequence[str] = _LANGUAGE_PREFERENCE,
     ) -> tuple[str, str]:
         if names is None:
-            logger.error("Can not find names in problem.xml.")
             msg = "Can not find names in problem.xml."
             raise ProcessError(msg)
 
@@ -139,7 +136,6 @@ class PolygonProblem:
         if name is not None and "value" in name.attrib and "language" in name.attrib:
             return name.attrib["value"], name.attrib["language"]
 
-        logger.error("Name is invalid in problem.xml.")
         msg = "Name is invalid in problem.xml."
         raise ProcessError(msg)
 
@@ -149,11 +145,8 @@ class PolygonProblem:
             if t := problem.findall("judging/testset"):
                 if len(t) == 1:
                     return t[0]
-                logger.error("Multiple testsets found in problem.xml.")
-                logger.error("Please specify the testset name in the command line.")
-                msg = "Multiple testsets found in problem.xml."
+                msg = "Multiple testsets found in problem.xml. Please specify testset_name."
                 raise ProcessError(msg)
-            logger.error("Can not find any testset in problem.xml.")
             msg = "Can not find any testset in problem.xml."
             raise ProcessError(msg)
 
@@ -180,7 +173,6 @@ class PolygonProblem:
     @staticmethod
     def _require_text(element: Element | None, description: str) -> str:
         if element is None or element.text is None:
-            logger.error("%s is invalid in problem.xml.", description.capitalize())
             msg = f"{description.capitalize()} is invalid in problem.xml."
             raise ProcessError(msg)
         return element.text
@@ -190,7 +182,6 @@ class PolygonProblem:
         text = PolygonProblem._require_text(element, description)
         if text.isdigit():
             return int(text)
-        logger.error("%s is invalid in problem.xml.", description.capitalize())
         msg = f"{description.capitalize()} is invalid in problem.xml."
         raise ProcessError(msg)
 
@@ -198,7 +189,6 @@ class PolygonProblem:
     def _parse_positive_int(value: str | None, description: str) -> int:
         if value and value.isdigit():
             return int(value)
-        logger.error("%s is invalid in problem.xml.", description.capitalize())
         msg = f"{description.capitalize()} is invalid in problem.xml."
         raise ProcessError(msg)
 

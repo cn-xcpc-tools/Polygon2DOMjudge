@@ -28,17 +28,13 @@ def add_testcases(ctx: ProcessingContext) -> None:
     sample_input_path_pattern = ctx.config.example_path_pattern.input
     sample_output_path_pattern = ctx.config.example_path_pattern.output
 
-    for idx, test in enumerate(ctx.polygon_problem.test_cases, 1):
-        input_src = ctx.package_dir / (ctx.polygon_problem.input_path_pattern % idx)
-        output_src = ctx.package_dir / (ctx.polygon_problem.answer_path_pattern % idx)
+    for idx, test in enumerate(ctx.problem.test_cases, 1):
+        input_src = ctx.package_dir / (ctx.problem.input_path_pattern % idx)
+        output_src = ctx.package_dir / (ctx.problem.answer_path_pattern % idx)
 
-        if test.sample and not ctx.hide_sample:
-            sample_input_src = (
-                ctx.package_dir / "statements" / ctx.polygon_problem.language / (sample_input_path_pattern % idx)
-            )
-            sample_output_src = (
-                ctx.package_dir / "statements" / ctx.polygon_problem.language / (sample_output_path_pattern % idx)
-            )
+        if test.sample and not ctx.profile.hide_sample:
+            sample_input_src = ctx.package_dir / "statements" / ctx.problem.language / (sample_input_path_pattern % idx)
+            sample_output_src = ctx.package_dir / "statements" / ctx.problem.language / (sample_output_path_pattern % idx)
             if sample_input_src.exists() and _compare(input_src, sample_input_src):
                 logger.warning(
                     "Input file %s is different from the sample input file, please check it manually.",
@@ -49,7 +45,7 @@ def add_testcases(ctx: ProcessingContext) -> None:
                     "Output file %s is different from the sample output file, use the sample output.",
                     output_src.name,
                 )
-                if ctx.keep_sample and idx not in ctx.keep_sample:
+                if ctx.profile.keep_sample and idx not in ctx.profile.keep_sample:
                     output_src = sample_output_src
             input_dst = ctx.temp_dir / "data" / "sample" / f"{idx:02d}.in"
             output_dst = ctx.temp_dir / "data" / "sample" / f"{idx:02d}.ans"
@@ -63,7 +59,7 @@ def add_testcases(ctx: ProcessingContext) -> None:
 
             logger.debug("* secret: %02d.(in/ans) %s", idx, test.method)
 
-        if ctx.polygon_problem.outputlimit > 0 and output_src.stat().st_size > ctx.polygon_problem.outputlimit * 1048576:
+        if ctx.problem.outputlimit > 0 and output_src.stat().st_size > ctx.problem.outputlimit * 1048576:
             logger.warning("Output file %s is exceed the output limit.", output_src.name)
 
         shutil.copyfile(input_src, input_dst)
@@ -73,4 +69,4 @@ def add_testcases(ctx: ProcessingContext) -> None:
         if test_description:
             logger.debug(test_description)
             desc_dst.write_text(test_description + "\n", encoding="utf-8")
-    logger.info("Total %d tests.", len(ctx.polygon_problem.test_cases))
+    logger.info("Total %d tests.", len(ctx.problem.test_cases))

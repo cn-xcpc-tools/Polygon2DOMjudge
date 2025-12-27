@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 def add_statement(ctx: ProcessingContext) -> None:
     """Copy the statement PDF if available."""
-    if ctx.polygon_problem.statement is None:
+    if ctx.problem.statement is None:
         logger.warning("No statement found in problem.xml, skip adding statement.")
         return
 
     ensure_dir(ctx.temp_dir / "problem_statement")
     logger.info("[bold green reverse]Add statement:[/]", extra={"markup": True})
-    logger.info("* %s", ctx.polygon_problem.statement)
+    logger.info("* %s", ctx.problem.statement)
     shutil.copyfile(
-        ctx.package_dir / ctx.polygon_problem.statement,
+        ctx.package_dir / ctx.problem.statement,
         ctx.temp_dir / "problem_statement" / "problem.pdf",
     )

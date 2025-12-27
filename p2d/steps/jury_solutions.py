@@ -29,7 +29,7 @@ def add_jury_solutions(ctx: ProcessingContext) -> None:
     """Copy jury solutions grouped by expected verdicts."""
     logger.info("[bold green reverse]Add jury solutions:[/]", extra={"markup": True})
 
-    for solution in ctx.polygon_problem.solutions:
+    for solution in ctx.problem.solutions:
         tag = solution.attrib["tag"]
         results = ctx.config.tag.get(tag, None)
 

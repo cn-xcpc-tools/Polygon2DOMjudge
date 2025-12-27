@@ -165,76 +165,81 @@ __meta__:
             name: "小 H 的重启"
 
   api_base:
-    kwargs: &base-api-kwargs
+    convert: &base-api-convert
       short_name: A
-      color: "#FF0000"
       testset_name: tests
+      options: &base-domjudge-options
+        color: "#FF0000"
 
 api:
   normal:
-    kwargs:
-      <<: *base-api-kwargs
+    convert: *base-api-convert
     input: *normal-package
     assertions: *normal-assertions
 
   auto_validation:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
-      auto_detect_std_checker: true
+    convert:
+      <<: *base-api-convert
+      options:
+        <<: *base-domjudge-options
+        auto_detect_std_checker: true
     assertions: *auto-validation-assertions
 
   custom_validator_flags:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
-      force_default_validator: true
-      validator_flags: float_tolerance 1e-6
+    convert:
+      <<: *base-api-convert
+      options:
+        <<: *base-domjudge-options
+        force_default_validator: true
+        validator_flags: float_tolerance 1e-6
     assertions: *custom-validator-flags-assertions
 
   hide_sample_data:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
-      hide_sample: true
+    convert:
+      <<: *base-api-convert
+      options:
+        <<: *base-domjudge-options
+        hide_sample: true
     assertions: *hide-sample-data-assertions
 
   interaction:
-    kwargs:
-      <<: *base-api-kwargs
+    convert: *base-api-convert
     input: *interaction-package
     assertions: *interaction-assertions
 
   wrong_args:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
-      auto_detect_std_checker: true
-      force_default_validator: true
+    convert:
+      <<: *base-api-convert
+      options:
+        <<: *base-domjudge-options
+        auto_detect_std_checker: true
+        force_default_validator: true
     raise:
       type: ValueError
       match: Can not use auto_detect_std_checker and force_default_validator at the same time.
 
   non_exist_package:
     input: not-exist.zip
-    kwargs:
-      <<: *base-api-kwargs
+    convert: *base-api-convert
     raise:
       type: FileNotFoundError
       match: e
 
   language_preference:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
+    convert: *base-api-convert
     global_config:
       language_preference: ["russian", "chinese", "english"]
     assertions: *chinese-assertions
 
   invalid_testset:
     input: *normal-package
-    kwargs:
-      <<: *base-api-kwargs
+    convert:
+      <<: *base-api-convert
       testset_name: not-exist
     raise:
       type: Exception

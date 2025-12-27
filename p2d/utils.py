@@ -13,10 +13,7 @@ if sys.version_info < (3, 11):
     import tomli as tomllib  # pragma: no cover
 else:
     import tomllib
-if sys.version_info < (3, 12):  # pragma: no cover
-    from typing_extensions import TypedDict
-else:  # pragma: no cover
-    from typing import TypedDict
+
 from deepmerge import always_merger
 from pydantic import BaseModel
 
@@ -25,8 +22,6 @@ from .models import GlobalConfig
 T = TypeVar("T", bound=BaseModel)
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from _typeshed import StrPath  # pragma: no cover
 
 
@@ -60,21 +55,6 @@ def merge_pydantic_models(base: T, nxt: T) -> T:
 
 def get_normalized_lang(lang: str) -> str:
     return lang.split(".")[0].rstrip(string.digits)
-
-
-class Options(TypedDict, total=False):
-    force_default_validator: bool
-    auto_detect_std_checker: bool
-    validator_flags: str | None
-    hide_sample: bool
-    keep_sample: Sequence[int] | None
-    memory_limit: int | None
-    output_limit: int | None
-    testset_name: str | None
-    external_id: str | None
-    with_statement: bool
-    with_attachments: bool
-    test_set: str | None
 
 
 def resolve_package_dir(package: StrPath, polygon_temp_dir: StrPath) -> Path:
