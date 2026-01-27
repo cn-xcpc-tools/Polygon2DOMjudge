@@ -9,15 +9,33 @@
 
 ## 安装
 
+### 使用 uvx 直接运行
+
+```bash
+# 从 PyPI（稳定版）
+uvx p2d --help
+
+# 从 GitHub（最新版）
+uvx --from git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge p2d --help
+```
+
 ### 从 PyPI（稳定版本, 已经在一些比赛中使用过）
 
 ```bash
+# 使用 uv（推荐）
+uv tool install p2d
+
+# 或使用 pipx
 pipx install p2d
 ```
 
 ### 从源码（最新版本，正在开发中，有新的特性）
 
 ```bash
+# 使用 uv（推荐）
+uv tool install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
+
+# 或使用 pipx
 pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 

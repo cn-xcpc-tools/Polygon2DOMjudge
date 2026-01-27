@@ -11,15 +11,33 @@ It is a simple python script converting polygon package to DOMjudge (kattis) pac
 
 ## Install
 
+### Run directly with uvx
+
+```bash
+# From PyPI (stable)
+uvx p2d --help
+
+# From GitHub (latest)
+uvx --from git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge p2d --help
+```
+
 ### From PyPI (stable release, has been used in some contests)
 
 ```bash
+# Using uv (recommended)
+uv tool install p2d
+
+# Or using pipx
 pipx install p2d
 ```
 
 ### From source (latest version, under development with new features)
 
 ```bash
+# Using uv (recommended)
+uv tool install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
+
+# Or using pipx
 pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 
