@@ -16,6 +16,8 @@ from p2d import ProcessError
 from . import assertions
 from .models import Assertion, RaiseExpectation, TestData
 
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
+
 
 class DataLoader:
     """Handles loading and validation of test data."""
@@ -26,7 +28,7 @@ class DataLoader:
 
     def _load_test_data(self) -> TestData:
         """Load and validate test data from YAML file."""
-        yaml_path = Path(__file__).parent.parent / "test_data" / "data.yaml"
+        yaml_path = FIXTURES_DIR / "data.yaml"
         try:
             raw_data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
             return TestData(**raw_data)

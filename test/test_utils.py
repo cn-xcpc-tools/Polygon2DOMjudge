@@ -47,8 +47,8 @@ def test_get_normalized_lang(lang: str, expected: str) -> None:
         ("config-broken2.toml", ValidationError),
     ],
 )
-def test_load_broken_config(config_file: str, exception: type[BaseException]) -> None:
+def test_load_broken_config(fixtures_dir: Path, config_file: str, exception: type[BaseException]) -> None:
     from p2d.utils import load_config
 
     with pytest.raises(exception):
-        load_config(Path(__file__).parent / "test_data" / config_file)
+        load_config(fixtures_dir / config_file)

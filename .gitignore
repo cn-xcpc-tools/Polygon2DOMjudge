@@ -162,7 +162,7 @@ tmp/*
 *.log
 *.zip
 
-!/test/test_data/*
+!/test/fixtures/*
 /test/test_output
 
 _version.py
