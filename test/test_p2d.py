@@ -1,7 +1,6 @@
-import shutil
-import zipfile
-from collections.abc import Callable, Generator
-from os import chdir
+"""Tests for the Polygon2DOMjudge conversion functionality."""
+
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, ContextManager
 
@@ -10,18 +9,10 @@ from typer.testing import CliRunner
 
 from p2d import GlobalConfig
 
-from .utils.dataloader import load_api_test_data, load_cli_test_data
-from .utils.models import ConvertConfig
+from .helpers.dataloader import load_api_test_data, load_cli_test_data
+from .helpers.models import ConvertConfig
 
 runner = CliRunner()
-
-
-@pytest.fixture
-def temp_dir(tmp_path: Path) -> Generator[Path, None, None]:
-    old_cwd = Path.cwd()
-    chdir(tmp_path)
-    yield tmp_path
-    chdir(old_cwd)
 
 
 def test_import() -> None:
@@ -43,88 +34,52 @@ def test_cli_version() -> None:
     assert __version__ in result.stdout
 
 
-@pytest.mark.parametrize("extract", [True, False], ids=["dir", "zip"])
+@pytest.mark.parametrize("prepare_package", [True, False], ids=["dir", "zip"], indirect=True)
 @pytest.mark.parametrize(("package_name", "global_config", "convert_config", "assertion", "expectation"), load_api_test_data())
 def test_api(
-    temp_dir: Path,
+    prepare_package: Callable[[str], Path],
+    domjudge_package_path: Path,
+    extract_domjudge_package: Callable[[Path], Path],
     package_name: str,
-    extract: bool,
     global_config: GlobalConfig,
     convert_config: ConvertConfig,
     assertion: Callable[[Path], None],
     expectation: ContextManager[Any],
 ) -> None:
-    test_data_dir = Path(__file__).parent / "test_data"
-    polygon_package_dir = temp_dir / "example-polygon-dir"
-    domjudge_package_dir = temp_dir / "example-domjudge-dir"
-    polygon_package = temp_dir / "example-polygon.zip"
-    domjudge_package = temp_dir / "example-domjudge.zip"
-
-    if (test_data_dir / package_name).exists():
-        # there are some test cases that tests the package is not found
-        # keep this error in api calling.
-        shutil.copyfile(test_data_dir / package_name, polygon_package)
-        if extract:
-            with zipfile.ZipFile(polygon_package, "r") as zip_ref:
-                zip_ref.extractall(polygon_package_dir)
-
     from p2d import convert
 
-    package = polygon_package_dir if extract else polygon_package
-
-    short_name, options = convert_config.build(global_config, domjudge_package)
+    package = prepare_package(package_name)
+    short_name, options = convert_config.build(global_config, domjudge_package_path)
 
     with expectation:
         # Skip confirmation for testing
         convert(package=package, short_name=short_name, options=options, confirm=lambda: True)
 
-        assert domjudge_package.is_file()
-
-        # Extract the output zip file for further assertion
-        with zipfile.ZipFile(domjudge_package, "r") as zip_ref:
-            zip_ref.extractall(domjudge_package_dir)
-
-        assertion(domjudge_package_dir)
+        assert domjudge_package_path.is_file()
+        domjudge_dir = extract_domjudge_package(domjudge_package_path)
+        assertion(domjudge_dir)
 
 
-@pytest.mark.parametrize("extract", [True, False], ids=["dir", "zip"])
+@pytest.mark.parametrize("prepare_package", [True, False], ids=["dir", "zip"], indirect=True)
 @pytest.mark.parametrize(("package_name", "args", "user_input", "assertion", "exitcode"), load_cli_test_data())
 def test_cli(
-    temp_dir: Path,
+    prepare_package: Callable[[str], Path],
+    domjudge_package_path: Path,
+    extract_domjudge_package: Callable[[Path], Path],
     package_name: str,
     args: list[str],
     user_input: str | None,
-    extract: bool,
     assertion: Callable[[Path], None],
     exitcode: int,
 ) -> None:
-    test_data_dir = Path(__file__).parent / "test_data"
-    polygon_package_dir = temp_dir / "example-polygon-dir"
-    domjudge_package_dir = temp_dir / "example-domjudge-dir"
-    polygon_package = temp_dir / "example-polygon.zip"
-    domjudge_package = temp_dir / "example-domjudge.zip"
-
-    if (test_data_dir / package_name).exists():
-        # there are some test cases that tests the package is not found
-        # keep this error in cli calling.
-        shutil.copyfile(test_data_dir / package_name, polygon_package)
-        if extract:
-            with zipfile.ZipFile(polygon_package, "r") as zip_ref:
-                zip_ref.extractall(polygon_package_dir)
-
     from p2d.cli import app
 
-    package = polygon_package_dir if extract else polygon_package
-
+    package = prepare_package(package_name)
     result = runner.invoke(app, [str(package), *args], input=user_input)
 
     assert result.exit_code == exitcode
 
     if exitcode == 0:
-        assert domjudge_package.is_file()
-
-        # Extract the output zip file for further assertion
-        with zipfile.ZipFile(domjudge_package, "r") as zip_ref:
-            zip_ref.extractall(domjudge_package_dir)
-
-        assertion(domjudge_package_dir)
+        assert domjudge_package_path.is_file()
+        domjudge_dir = extract_domjudge_package(domjudge_package_path)
+        assertion(domjudge_dir)
