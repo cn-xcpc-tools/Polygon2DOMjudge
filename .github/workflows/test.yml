@@ -47,9 +47,15 @@ jobs:
         run: |
           uv sync --all-extras --dev
 
+      - name: Register Pytest problem matcher
+        run: echo "::add-matcher::${{ github.workspace }}/.github/problem-matchers/pytest.json"
+
+      - name: Ruff format
+        run: uv run ruff format --diff .
+
       - name: Lint
         run: |
-          uv run ruff check
+          uv run ruff check --output-format=github .
 
       - name: Unit Test
         run: |

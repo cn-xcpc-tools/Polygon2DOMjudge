@@ -23,6 +23,16 @@ RESULT_REMAP = {
     "NO_OUTPUT": "NO-OUTPUT",
     "OUTPUT_LIMIT": "OUTPUT-LIMIT",
 }
+"""Mapping from internal result names to DOMjudge @EXPECTED_RESULTS@ format."""
+
+
+def _colorize_result(result: str) -> str:
+    """Return a Rich-formatted string for the result verdict."""
+    if result == "accepted":
+        return f"[green italic]{result}[/]"
+    if result == "wrong_answer":
+        return f"[red italic]{result}[/]"
+    return f"[yellow italic]{result}[/]"
 
 
 def add_jury_solutions(ctx: ProcessingContext) -> None:
@@ -57,6 +67,7 @@ def _add_solutions_with_expected_result(
     lang: str,
     results: list[Result] | None,
 ) -> None:
+    """Copy a solution file, adding @EXPECTED_RESULTS@ annotation if needed."""
     if results is None:
         logger.warning(
             "Find expected result with check_manually, you may add @EXPECTED_RESULTS@ in your source code for validation.",
@@ -64,15 +75,8 @@ def _add_solutions_with_expected_result(
         shutil.copyfile(src, dst)
         return
 
-    def colorized(result: str) -> str:
-        if result == "accepted":
-            return f"[green italic]{result}[/]"
-        if result == "wrong_answer":
-            return f"[red italic]{result}[/]"
-        return f"[yellow italic]{result}[/]"
-
     if len(results) == 1:
-        logger.info("> %s: %s", src.name, colorized(results[0]), extra={"markup": True})
+        logger.info("> %s: %s", src.name, _colorize_result(results[0]), extra={"markup": True})
         shutil.copyfile(src, dst)
         return
 
@@ -89,7 +93,7 @@ def _add_solutions_with_expected_result(
     logger.info(
         "> %s: %s",
         src.name,
-        ", ".join(map(colorized, results)),
+        ", ".join(map(_colorize_result, results)),
         extra={"markup": True},
     )
 

@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _compare(src: Path, dst: Path) -> bool:
-    logger.debug("Compare %s and %s", src.name, dst.name)
-    return src.read_bytes() != dst.read_bytes()
+def _files_differ(file1: Path, file2: Path) -> bool:
+    """Check if two files have different content."""
+    return file1.read_bytes() != file2.read_bytes()
 
 
 def add_testcases(ctx: ProcessingContext) -> None:
@@ -35,12 +35,12 @@ def add_testcases(ctx: ProcessingContext) -> None:
         if test.sample and not ctx.profile.hide_sample:
             sample_input_src = ctx.package_dir / "statements" / ctx.problem.language / (sample_input_path_pattern % idx)
             sample_output_src = ctx.package_dir / "statements" / ctx.problem.language / (sample_output_path_pattern % idx)
-            if sample_input_src.exists() and _compare(input_src, sample_input_src):
+            if sample_input_src.exists() and _files_differ(input_src, sample_input_src):
                 logger.warning(
                     "Input file %s is different from the sample input file, please check it manually.",
                     input_src.name,
                 )
-            if sample_output_src.exists() and _compare(output_src, sample_output_src):
+            if sample_output_src.exists() and _files_differ(output_src, sample_output_src):
                 logger.warning(
                     "Output file %s is different from the sample output file, use the sample output.",
                     output_src.name,
@@ -59,8 +59,8 @@ def add_testcases(ctx: ProcessingContext) -> None:
 
             logger.debug("* secret: %02d.(in/ans) %s", idx, test.method)
 
-        if ctx.problem.outputlimit > 0 and output_src.stat().st_size > ctx.problem.outputlimit * 1048576:
-            logger.warning("Output file %s is exceed the output limit.", output_src.name)
+        if ctx.profile.output_limit > 0 and output_src.stat().st_size > ctx.profile.output_limit * 1048576:
+            logger.warning("Output file %s exceeds the output limit.", output_src.name)
 
         shutil.copyfile(input_src, input_dst)
         shutil.copyfile(output_src, output_dst)

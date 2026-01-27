@@ -104,6 +104,8 @@ class PolygonProblem:
         self.answer_path_pattern = answer_path_pattern
         self.checker = self.Executable.from_element(problem.find("assets/checker[source]"))
         self.interactor = self.Executable.from_element(problem.find("assets/interactor[source]"))
+        # Determine if interactive multipass is needed (experimental)
+        self.interactive_multipass = len(problem.findall("assets/interactor/runs/run")) > 1
         self.test_cases = tuple(
             self.TestCase(
                 method=test.attrib["method"],

@@ -8,8 +8,8 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from ._version import __version__
-from .models import GlobalConfig
-from .p2d import DEFAULT_COLOR, ConvertOptions, DomjudgeOptions, convert
+from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig
+from .p2d import ConvertOptions, convert
 from .utils import load_config
 
 app = typer.Typer(pretty_exceptions_show_locals=False)

@@ -1,3 +1,9 @@
+"""Main conversion logic for Polygon to DOMjudge package transformation.
+
+This module provides the core conversion functionality through the
+`Polygon2DOMjudge` class and the high-level `convert()` function.
+"""
+
 from __future__ import annotations
 
 import errno
@@ -5,13 +11,13 @@ import logging
 import os
 import sys
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .exceptions import ProcessError
-from .models import GlobalConfig
+from .models import DomjudgeOptions, GlobalConfig
 from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
 from .polygon import PolygonProblem
 from .steps import (
@@ -29,8 +35,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_COLOR = "#000000"
-UNKNOWN = "unknown"
+
+# -----------------------------------------------------------------------------
+# Default Pipeline Configuration
+# -----------------------------------------------------------------------------
 
 DEFAULT_PIPELINE = ProcessPipeline(
     (
@@ -52,32 +60,27 @@ DEFAULT_PIPELINE = ProcessPipeline(
 )
 
 
-@dataclass(slots=True)
-class DomjudgeOptions:
-    color: str = DEFAULT_COLOR
-    force_default_validator: bool = False
-    auto_detect_std_checker: bool = False
-    validator_flags: str | None = None
-    hide_sample: bool = False
-    keep_sample: tuple[int, ...] | None = None
-    external_id: str | None = None
-    with_statement: bool = False
-    with_attachments: bool = False
-    memory_limit_override: int | None = None
-    output_limit_override: int | None = None
-
-    def validate(self) -> None:
-        if not self.force_default_validator and self.validator_flags is not None:
-            logger.warning("You are not using default validation, validator flags will be ignored.")
-
-        if self.force_default_validator and self.auto_detect_std_checker:
-            msg = "Can not use auto_detect_std_checker and force_default_validator at the same time."
-
-            raise ValueError(msg)
+# -----------------------------------------------------------------------------
+# Convert Options
+# -----------------------------------------------------------------------------
 
 
 @dataclass(slots=True)
 class ConvertOptions:
+    """Configuration bundle for the convert() function.
+
+    Groups together all options needed for a conversion operation,
+    separating concerns between output location, global settings,
+    problem-specific options, and processing pipeline.
+
+    Attributes:
+        output: Output path for the generated package (optional).
+        global_config: Global configuration (language preferences, checker flags, etc.).
+        process_pipeline: The pipeline of processing steps to execute.
+        options: DOMjudge-specific conversion options.
+        testset_name: Name of the testset to use (for multi-testset problems).
+    """
+
     output: StrPath | None = None
     global_config: GlobalConfig = field(default_factory=GlobalConfig)
     process_pipeline: ProcessPipeline = field(default_factory=lambda: DEFAULT_PIPELINE)
@@ -85,8 +88,22 @@ class ConvertOptions:
     testset_name: str | None = None
 
 
+# -----------------------------------------------------------------------------
+# Main Converter Class
+# -----------------------------------------------------------------------------
+
+
 class Polygon2DOMjudge:
-    """Polygon to DOMjudge package."""
+    """Converts a Polygon package to DOMjudge format.
+
+    This class handles the conversion process by:
+    1. Parsing the Polygon problem.xml
+    2. Deriving a DOMjudge profile from user options
+    3. Running the processing pipeline to generate the package
+
+    Attributes:
+        profile: The derived DOMjudge profile for this conversion.
+    """
 
     def __init__(
         self,
@@ -101,7 +118,18 @@ class Polygon2DOMjudge:
         process_pipeline: ProcessPipeline = DEFAULT_PIPELINE,
         options: DomjudgeOptions = DomjudgeOptions(),
     ) -> None:
-        """Initialize the Polygon2DOMjudge class."""
+        """Initialize the converter.
+
+        Args:
+            package_dir: Path to the extracted Polygon package.
+            temp_dir: Temporary directory for building the DOMjudge package.
+            output_file: Output path for the final archive (without .zip).
+            short_name: Problem short name in DOMjudge.
+            testset_name: Testset to convert (required if multiple testsets exist).
+            global_config: Global conversion configuration.
+            process_pipeline: Pipeline of processing steps.
+            options: DOMjudge-specific options.
+        """
 
         self._package_dir = Path(package_dir)
         self._short_name = short_name
@@ -120,11 +148,18 @@ class Polygon2DOMjudge:
         self._profile = self._derive_profile(options)
         self._process_pipeline = process_pipeline
 
+    @property
+    def profile(self) -> DomjudgeProfile:
+        """The DOMjudge profile derived from conversion options."""
+        return self._profile
+
     def process(self) -> None:
+        """Execute the processing pipeline to generate the DOMjudge package."""
         context = self._build_context()
         self._process_pipeline.run(context)
 
     def _build_context(self) -> ProcessingContext:
+        """Build the processing context for pipeline steps."""
         return ProcessingContext(
             package_dir=self._package_dir,
             temp_dir=self._temp_dir,
@@ -135,52 +170,143 @@ class Polygon2DOMjudge:
             profile=self._profile,
         )
 
-    @property
-    def profile(self) -> DomjudgeProfile:
-        return self._profile
-
     def _derive_profile(self, options: DomjudgeOptions) -> DomjudgeProfile:
-        options.validate()
+        """Derive the internal DOMjudge profile from user options.
 
-        resolved_external_id = options.external_id if options.external_id else self._problem.short_name
+        This method translates user-facing options into the internal
+        profile used by processing steps, applying validation and
+        automatic adjustments as needed.
 
-        force_hide_sample = options.hide_sample
-        if self._problem.interactor is not None:
-            logger.warning("Problem has interactor, hide_sample will be forced enabled.")
-            force_hide_sample = True
+        Args:
+            options: User-provided DOMjudge options.
 
-        effective_keep_sample = None if force_hide_sample else options.keep_sample
-        if force_hide_sample and options.keep_sample is not None:
-            logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
+        Returns:
+            A DomjudgeProfile configured for this problem.
 
-        use_std_checker = (
-            options.auto_detect_std_checker
-            and self._problem.checker is not None
-            and self._problem.checker.name.startswith("std::")
-        ) or options.force_default_validator
+        Raises:
+            ValueError: If options are invalid.
+            ProcessError: If profile derivation fails.
+        """
+        options.validate_options()
 
-        derived_flags = None
-        if use_std_checker:
-            if options.force_default_validator:
-                derived_flags = options.validator_flags
-            elif self._problem.checker is not None and self._problem.checker.name.startswith("std::"):
-                derived_flags = self._global_config.flag.get(self._problem.checker.name[5:], None)
-            else:
-                msg = "Logic error in auto_detect_std_checker."
-                raise ProcessError(msg)
+        external_id = options.external_id or self._problem.short_name
+        hide_sample = self._resolve_hide_sample(options.hide_sample)
+        keep_sample = self._resolve_keep_sample(options.keep_sample, hide_sample)
+        use_std_checker, validator_flags = self._resolve_validation(options)
+        memory_limit, output_limit = self._resolve_limits(options)
 
         return DomjudgeProfile(
             color=options.color,
-            external_id=resolved_external_id,
-            hide_sample=force_hide_sample,
-            keep_sample=effective_keep_sample,
+            external_id=external_id,
+            hide_sample=hide_sample,
+            keep_sample=keep_sample,
             use_std_checker=use_std_checker,
-            validator_flags=derived_flags,
+            validator_flags=validator_flags,
             with_statement=options.with_statement,
             with_attachments=options.with_attachments,
-            memory_limit_override=options.memory_limit_override,
-            output_limit_override=options.output_limit_override,
+            memory_limit=memory_limit,
+            output_limit=output_limit,
         )
+
+    def _resolve_hide_sample(self, user_hide_sample: bool) -> bool:
+        """Resolve the hide_sample setting, forcing True for interactive problems."""
+        if self._problem.interactor is not None:
+            logger.warning("Problem has interactor, hide_sample will be forced enabled.")
+            return True
+        return user_hide_sample
+
+    def _resolve_keep_sample(
+        self,
+        user_keep_sample: Sequence[int] | None,
+        hide_sample: bool,
+    ) -> Sequence[int] | None:
+        """Resolve which samples to keep, considering hide_sample."""
+        if hide_sample:
+            if user_keep_sample is not None:
+                logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
+            return None
+        return user_keep_sample
+
+    def _resolve_validation(
+        self,
+        options: DomjudgeOptions,
+    ) -> tuple[bool, str | None]:
+        """Resolve validation settings (checker vs default validator).
+
+        Returns:
+            A tuple of (use_std_checker, validator_flags).
+
+        Raises:
+            ProcessError: If validation configuration is inconsistent.
+        """
+        should_use_std = self._should_use_std_checker(options)
+
+        if not should_use_std:
+            return False, None
+
+        # Determine validator flags
+        if options.force_default_validator:
+            return True, options.validator_flags
+
+        # Auto-detect: derive flags from Polygon checker name
+        if self._problem.checker is not None and self._problem.checker.name.startswith("std::"):
+            checker_base = self._problem.checker.name[5:]  # Remove "std::" prefix
+            flags = self._global_config.flag.get(checker_base)
+            return True, flags
+
+        msg = "Logic error in auto_detect_std_checker."
+        raise ProcessError(msg)
+
+    def _should_use_std_checker(self, options: DomjudgeOptions) -> bool:
+        """Determine if the standard DOMjudge validator should be used."""
+        if options.force_default_validator:
+            return True
+
+        if not options.auto_detect_std_checker:
+            return False
+
+        return self._problem.checker is not None and self._problem.checker.name.startswith("std::")
+
+    def _resolve_limits(self, options: DomjudgeOptions) -> tuple[int, int]:
+        """Resolve effective memory and output limits.
+
+        Applies user overrides if specified, otherwise uses problem defaults.
+        Logs when overrides differ from problem defaults.
+
+        Returns:
+            A tuple of (memory_limit, output_limit) in MB.
+            -1 means use DOMjudge's default.
+        """
+        # Memory limit
+        if options.memory_limit_override is not None:
+            memory_limit = options.memory_limit_override
+            if memory_limit != self._problem.memorylimit:
+                logger.info(
+                    "Override memory limit: %dMB -> %dMB",
+                    self._problem.memorylimit,
+                    memory_limit,
+                )
+        else:
+            memory_limit = self._problem.memorylimit
+
+        # Output limit
+        if options.output_limit_override is not None:
+            output_limit = options.output_limit_override
+            if output_limit != self._problem.outputlimit:
+                logger.info(
+                    "Override output limit: %dMB -> %dMB",
+                    self._problem.outputlimit,
+                    output_limit,
+                )
+        else:
+            output_limit = self._problem.outputlimit
+
+        return memory_limit, output_limit
+
+
+# -----------------------------------------------------------------------------
+# High-Level API
+# -----------------------------------------------------------------------------
 
 
 def convert(
@@ -192,18 +318,33 @@ def convert(
 ) -> None:
     """Convert a Polygon package to a DOMjudge package.
 
+    This is the main entry point for package conversion. It handles:
+    - Package extraction (if a zip file is provided)
+    - Temporary directory management
+    - Output file validation
+    - Conversion execution
+
     Args:
-        package (StrPath): The path to the polygon package directory.
-        short_name (str): The short name of the problem within DOMjudge.
-        options (Optional[ConvertOptions], optional): Conversion configuration bundle. When not provided,
-            defaults are used.
-        confirm (Callable[[], bool], optional): A function to confirm the conversion.
+        package: Path to the Polygon package (directory or zip file).
+        short_name: Problem short name for DOMjudge.
+        options: Conversion configuration bundle.
+        confirm: Callback function for user confirmation (returns True to proceed).
 
     Raises:
-        ProcessError: If convert failed.
-        FileNotFoundError: If the package is not found.
+        ValueError: If short_name is empty.
+        FileNotFoundError: If the package does not exist.
         FileExistsError: If the output file already exists.
+        ProcessError: If conversion fails.
 
+    Example:
+        >>> from p2d import convert, ConvertOptions, DomjudgeOptions
+        >>> convert(
+        ...     "problem-package.zip",
+        ...     short_name="A",
+        ...     options=ConvertOptions(
+        ...         options=DomjudgeOptions(color="#FF0000", with_statement=True)
+        ...     ),
+        ... )
     """
     if not short_name:
         msg = "short_name is required."
@@ -218,20 +359,13 @@ def convert(
         package_dir = resolve_package_dir(package, polygon_temp_dir)
         output_file = resolve_output_file(options.output, short_name)
 
-        if output_file.with_suffix(".zip").resolve().exists():
-            raise FileExistsError(
-                errno.EEXIST,
-                os.strerror(errno.EEXIST),
-                f"{output_file.with_suffix('.zip')}",
-            )
-
-        if sys.platform.startswith("win"):
-            logger.warning("It is not recommended running on windows.")  # pragma: no cover
+        _validate_output_not_exists(output_file)
+        _warn_if_windows()
 
         logger.info("Package directory: %s", package_dir)
         logger.info("Output file: %s.zip", output_file)
 
-        p = Polygon2DOMjudge(
+        converter = Polygon2DOMjudge(
             package_dir,
             domjudge_temp_dir,
             output_file,
@@ -243,4 +377,21 @@ def convert(
         )
 
         if confirm():
-            p.process()
+            converter.process()
+
+
+def _validate_output_not_exists(output_file: Path) -> None:
+    """Raise FileExistsError if the output zip file already exists."""
+    zip_path = output_file.with_suffix(".zip").resolve()
+    if zip_path.exists():
+        raise FileExistsError(
+            errno.EEXIST,
+            os.strerror(errno.EEXIST),
+            str(zip_path),
+        )
+
+
+def _warn_if_windows() -> None:
+    """Log a warning when running on Windows."""
+    if sys.platform.startswith("win"):
+        logger.warning("It is not recommended running on windows.")  # pragma: no cover
