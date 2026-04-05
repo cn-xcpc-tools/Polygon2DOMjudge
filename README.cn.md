@@ -130,7 +130,7 @@ for problem in problems:
 - 对于交互题，您必须在交互器中完成对输出的验证（即，在交互器中直接返回最终的结果，略去使用checker对`tout`文件内容进行验证的步骤），因为 DOMjudge 无法像 Polygon 那样处理 `tout` 流。
 - 对于 multi-pass 问题
   - 部分逻辑可能与 Polygon 不同，您可能需要调整一些逻辑来适应 DOMjudge 的要求。DOMjudge 会使用 `-DDOMJUDGE` 宏定义来区分是否为 DOMjudge 环境，您可以使用这个宏定义来调整您的代码。
-  - 您可能需要调用 `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` 来获取下一次传递的输入文件。
+  - 当选手程序还需要运行时，您可能需要调用 `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out)` 来创建下一次运行的输入文件。
 
 ## 开发
 
