@@ -134,7 +134,7 @@ for problem in problems:
 - For interactive problems, you must validate the output in the interactors, because DOMjudge cannot handle `tout` stream like Polygon.
 - For multi-pass problems
   - Some logic are different from Polygon, you may need to modify it to fit the DOMjudge environment, DOMjudge will use `-DDOMJUDGE` macro to distinguish whether it is in DOMjudge environment, so you can use it to adapt your code.
-  - You may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"))` to get the next pass input file when there exists a next pass.
+  - You may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out)` to create the next pass input file when there exists a next pass.
 
 ## Development
 
