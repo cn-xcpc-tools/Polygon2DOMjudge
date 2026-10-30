@@ -1,4 +1,4 @@
-import zipfile
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,6 +9,7 @@ from p2d.pipeline import ProcessPipeline, ProcessStep
 from p2d.steps.testcases import add_testcases
 
 
+@pytest.mark.parametrize("prepare_package", [True], ids=["dir"], indirect=True)
 @pytest.mark.parametrize(
     ("keep_sample", "hide_sample", "statement_output", "expected_output"),
     [
@@ -23,17 +24,16 @@ from p2d.steps.testcases import add_testcases
     ],
 )
 def test_sample_output_selection(
-    tmp_path: Path,
+    temp_dir: Path,
+    prepare_package: Callable[[str], Path],
     caplog: pytest.LogCaptureFixture,
     keep_sample: tuple[int, ...] | None,
     hide_sample: bool,
     statement_output: bytes | None,
     expected_output: bytes,
 ) -> None:
-    package_dir = tmp_path / "polygon"
-    output_dir = tmp_path / "domjudge"
-    with zipfile.ZipFile(Path(__file__).parent / "test_data" / "little-h-reboot-7$linux.zip") as archive:
-        archive.extractall(package_dir)
+    package_dir = prepare_package("little-h-reboot-7$linux.zip")
+    output_dir = temp_dir / "domjudge"
     (package_dir / "tests" / "01.a").write_bytes(b"original\n")
     sample_output = package_dir / "statements" / "english" / "example.01.a"
     if statement_output is None:
@@ -44,7 +44,7 @@ def test_sample_output_selection(
     converter = Polygon2DOMjudge(
         package_dir,
         output_dir,
-        tmp_path / "result",
+        temp_dir / "result",
         "A",
         options=DomjudgeOptions(keep_sample=keep_sample, hide_sample=hide_sample),
         process_pipeline=ProcessPipeline((ProcessStep("add_testcases", add_testcases),)),
