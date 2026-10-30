@@ -41,11 +41,13 @@ def add_testcases(ctx: ProcessingContext) -> None:
                     input_src.name,
                 )
             if sample_output_src.exists() and _files_differ(output_src, sample_output_src):
+                keep_original = ctx.profile.keep_sample is not None and idx in ctx.profile.keep_sample
                 logger.warning(
-                    "Output file %s is different from the sample output file, use the sample output.",
+                    "Output file %s is different from the sample output file, %s.",
                     output_src.name,
+                    "keep the original output" if keep_original else "use the sample output",
                 )
-                if ctx.profile.keep_sample and idx not in ctx.profile.keep_sample:
+                if not keep_original:
                     output_src = sample_output_src
             input_dst = ctx.temp_dir / "data" / "sample" / f"{idx:02d}.in"
             output_dst = ctx.temp_dir / "data" / "sample" / f"{idx:02d}.ans"
