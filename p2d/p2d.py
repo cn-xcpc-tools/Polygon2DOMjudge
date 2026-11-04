@@ -193,8 +193,7 @@ class Polygon2DOMjudge:
         options.validate_options()
 
         external_id = options.external_id or self._problem.short_name
-        hide_sample = self._resolve_hide_sample(options.hide_sample)
-        keep_sample = self._resolve_keep_sample(options.keep_sample, hide_sample)
+        keep_sample = self._resolve_keep_sample(options.keep_sample, options.hide_sample)
         use_std_checker, validator_flags = self._resolve_validation(options)
         memory_limit, output_limit = self._resolve_limits(options)
 
@@ -202,7 +201,7 @@ class Polygon2DOMjudge:
             package_format=PackageFormat.LEGACY if options.legacy else PackageFormat.V2025_09,
             color=options.color,
             external_id=external_id,
-            hide_sample=hide_sample,
+            hide_sample=options.hide_sample,
             keep_sample=keep_sample,
             use_std_checker=use_std_checker,
             validator_flags=validator_flags,
@@ -212,22 +211,20 @@ class Polygon2DOMjudge:
             output_limit=output_limit,
         )
 
-    def _resolve_hide_sample(self, user_hide_sample: bool) -> bool:
-        """Resolve the hide_sample setting, forcing True for interactive problems."""
-        if self._problem.interactor is not None:
-            logger.warning("Problem has interactor, hide_sample will be forced enabled.")
-            return True
-        return user_hide_sample
-
     def _resolve_keep_sample(
         self,
         user_keep_sample: Sequence[int] | None,
         hide_sample: bool,
     ) -> Sequence[int] | None:
-        """Resolve which samples to keep, considering hide_sample."""
         if hide_sample:
             if user_keep_sample is not None:
                 logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
+            return None
+        if self._problem.interactor is not None:
+            if user_keep_sample is not None:
+                logger.warning(
+                    "Problem has interactor, original sample outputs are always preserved, keep_sample will be ignored."
+                )
             return None
         return user_keep_sample
 

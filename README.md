@@ -42,16 +42,14 @@ The default output is `<code>.zip`. Ensure source files and test data use UTF-8 
 | `--auto` | Replace recognized standard checkers with the default validator; mutually exclusive with `--default`. |
 | `--memory-limit` | Memory limit in MiB; defaults to the Polygon limit. `-1` uses the DOMjudge default. |
 | `--output-limit` | Output limit in MiB; defaults to `-1`, the DOMjudge default. |
-| `--hide-sample` | Hide samples; always enabled for problems with an interactor. |
-| `--keep`, `--keep-sample` | Preserve solution outputs for selected samples, e.g. `--keep 1 --keep 2`. |
+| `--hide-sample` | Store samples as secret tests and omit interaction logs. |
+| `--keep`, `--keep-sample` | Preserve solution outputs for selected non-interactive samples, e.g. `--keep 1 --keep 2`. |
 | `--external-id` | Override the external ID, which defaults to the Polygon short name. |
 | `--with-statement` | Include the PDF statement. |
 | `--with-attachments` | Include attachments such as local interaction tools. |
 | `--testset` | Select a testset; required when there are multiple testsets. |
 | `-l`, `--log-level` | Logging level, default `info`. |
 | `-v`, `--version` | Print version information. |
-
-Samples provided for contestants to download use the statement's outputs when available. Use `--keep` for placeholders; it has no effect on hidden samples.
 
 `p2d-contest contest.xml` lists the problem indices and names from Polygon contest metadata.
 

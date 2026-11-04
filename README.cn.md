@@ -42,16 +42,14 @@ p2d polygon-package.zip --code A --color '#FF0000' -o domjudge-package.zip
 | `--auto` | 将已识别的标准 checker 替换为默认输出校验器，与 `--default` 互斥。 |
 | `--memory-limit` | 内存限制，单位 MiB，默认使用 Polygon 限制；`-1` 表示 DOMjudge 默认值。 |
 | `--output-limit` | 输出限制，单位 MiB，默认为 `-1`，表示 DOMjudge 默认值。 |
-| `--hide-sample` | 隐藏样例；有 interactor 的题目始终启用。 |
-| `--keep`, `--keep-sample` | 保留指定样例的标程输出，例如 `--keep 1 --keep 2`。 |
+| `--hide-sample` | 将样例保存为隐藏测试，并省略交互日志。 |
+| `--keep`, `--keep-sample` | 保留指定普通题样例的标程输出，例如 `--keep 1 --keep 2`。 |
 | `--external-id` | 覆盖 external ID，默认使用 Polygon 题目简称。 |
 | `--with-statement` | 包含 PDF 题面。 |
 | `--with-attachments` | 包含附件，例如交互题本地测试工具。 |
 | `--testset` | 选择测试集；存在多个测试集时必填。 |
 | `-l`, `--log-level` | 日志级别，默认为 `info`。 |
 | `-v`, `--version` | 输出版本信息。 |
-
-提供给选手下载的样例优先使用题面中的输出。题面输出为占位符时可用 `--keep` 保留标程输出；该选项对隐藏样例无效。
 
 `p2d-contest contest.xml` 列出 Polygon 比赛元数据中的题目编号和名称。
 

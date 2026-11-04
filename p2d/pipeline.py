@@ -34,15 +34,14 @@ class DomjudgeProfile:
     """Derived configuration for DOMjudge package generation.
 
     This profile is derived from user-provided DomjudgeOptions and represents
-    the resolved settings after applying defaults and automatic adjustments
-    (e.g., forcing hide_sample for interactive problems).
+    the resolved settings after applying defaults and automatic adjustments.
 
     Attributes:
         package_format: Package serialization format.
         color: Problem color in DOMjudge (hex format).
         external_id: Problem external ID in DOMjudge.
-        hide_sample: Whether to hide sample test cases.
-        keep_sample: Indices of samples to keep original output.
+        hide_sample: Whether to store samples as secret tests and omit interaction logs.
+        keep_sample: Samples retaining original output; unused for hidden samples or interactors.
         use_std_checker: Use DOMjudge's default output validator.
         validator_flags: Flags for the output validator.
         with_statement: Include PDF statement in package.

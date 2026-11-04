@@ -75,7 +75,8 @@ class PolygonProblem:
         short_name = self._SHORT_NAME_FILTER.sub("", problem.attrib.get("short-name", ""))
         url = problem.attrib.get("url")
         name, language = self._get_preference_name(problem.find("names"), language_preference)
-        statement = self._get_statement(problem.find("statements"), language)
+        statements = problem.find("statements")
+        statement = self._get_statement(statements, language)
 
         judging = problem.find("judging")
         if judging is None:
@@ -119,6 +120,9 @@ class PolygonProblem:
         )
         self.solutions = tuple(problem.findall("assets/solutions/solution[@tag]"))
         self.statement = statement
+        self.use_interaction_log_in_example_tests = self._parse_bool_attribute(
+            statements.get("use-interaction-log-in-example-tests") if statements is not None else None
+        )
         self.attachments = tuple(Path(ele.attrib["path"]) for ele in problem.findall("files/attachments/file[@path]"))
         self.run_count = run_count_value
 

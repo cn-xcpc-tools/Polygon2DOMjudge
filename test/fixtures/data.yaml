@@ -121,11 +121,11 @@ __meta__:
               memory: 512
             name: Guess The Array
             validation: custom interactive
-      - no_sample_data
+      - sample_data
       - secret_data
       - type: no_file
         args:
-          file: data/secret/01.desc
+          file: data/sample/01.desc
       - type: file
         args:
           file: data/secret/02.desc

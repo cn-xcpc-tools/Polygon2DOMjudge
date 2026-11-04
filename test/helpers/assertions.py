@@ -45,6 +45,7 @@ def assert_sample_data(package_dir: Path, expect: tuple[str, str] = ("01.in", "0
 def assert_no_sample_data(package_dir: Path) -> None:
     assert not any((package_dir / "data" / "sample").rglob("*.in"))
     assert not any((package_dir / "data" / "sample").rglob("*.ans"))
+    assert not any((package_dir / "data" / "sample").rglob("*.interaction"))
 
 
 def assert_secret_data(package_dir: Path) -> None:

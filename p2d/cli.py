@@ -110,7 +110,7 @@ def convert_problem(
     hide_sample: Annotated[
         bool,
         typer.Option(
-            help="hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).",
+            help="store sample tests as secret tests and omit sample interaction logs",
         ),
     ] = False,
     keep_sample: Annotated[
@@ -118,7 +118,7 @@ def convert_problem(
         typer.Option(
             "--keep",
             "--keep-sample",
-            help="keep the specified numbered sample output from the main and correct solution, can be used multiple times, (e.g. --keep 1 --keep 2), default is replacing all sample output with problem statement.",
+            help="keep original outputs for selected samples (e.g. --keep 1 --keep 2); otherwise use statement outputs when available. Ignored for hidden samples and problems with an interactor.",
         ),
     ] = None,
     external_id: Annotated[

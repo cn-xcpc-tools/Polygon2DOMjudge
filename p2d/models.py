@@ -30,7 +30,7 @@ DEFAULT_COLOR = "#000000"
 
 
 class ExamplePathPattern(BaseModel):
-    """Pattern for locating sample input/output files in Polygon package."""
+    """Statement sample paths; interaction logs use the input pattern with an .i suffix."""
 
     input: str
     output: str
@@ -52,8 +52,8 @@ class DomjudgeOptions(BaseModel):
             checker can be replaced with DOMjudge's default validator.
         validator_flags: Flags passed to the output validator (only with
             force_default_validator).
-        hide_sample: Hide all sample test cases from contestants.
-        keep_sample: Indices of samples to keep original output (not from statement).
+        hide_sample: Store samples as secret tests and omit interaction logs.
+        keep_sample: Samples retaining original output; ignored for hidden samples or interactors.
         external_id: External ID in DOMjudge (defaults to Polygon short-name).
         with_statement: Include PDF statement in the package.
         with_attachments: Include attachments in the package.
@@ -108,7 +108,7 @@ class GlobalConfig(BaseModel):
         language_preference: Ordered list of preferred languages for problem name/statement.
         flag: Mapping of Polygon standard checker names to DOMjudge validator flags.
         tag: Mapping of Polygon solution tags to permitted/required submission rules.
-        example_path_pattern: Path patterns for sample I/O files in Polygon.
+        example_path_pattern: Statement sample paths; interaction logs append .i to the input pattern.
         comment_str: Language comment syntax for legacy expected-result annotations.
     """
 
