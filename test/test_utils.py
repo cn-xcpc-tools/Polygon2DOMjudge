@@ -1,11 +1,5 @@
-import sys
-
-if sys.version_info < (3, 11):
-    from tomli import TOMLDecodeError
-else:
-    from tomllib import TOMLDecodeError
-
 from pathlib import Path
+from tomllib import TOMLDecodeError
 
 import pytest
 from pydantic import ValidationError

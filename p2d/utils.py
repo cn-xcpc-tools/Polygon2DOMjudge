@@ -4,22 +4,15 @@ import errno
 import logging
 import os
 import string
-import sys
+import tomllib
 import zipfile
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
-
-if sys.version_info < (3, 11):
-    import tomli as tomllib  # pragma: no cover
-else:
-    import tomllib
+from typing import TYPE_CHECKING
 
 from deepmerge import always_merger
 from pydantic import BaseModel
 
 from .models import GlobalConfig
-
-T = TypeVar("T", bound=BaseModel)
 
 if TYPE_CHECKING:
     from _typeshed import StrPath  # pragma: no cover
@@ -37,7 +30,7 @@ def load_config(config_file: StrPath) -> GlobalConfig:
     return GlobalConfig.model_validate(tomllib.loads(Path(config_file).read_text(encoding="utf-8")))
 
 
-def merge_pydantic_models(base: T, nxt: T) -> T:
+def merge_pydantic_models[T: BaseModel](base: T, nxt: T) -> T:
     """Merge two Pydantic model instances.
 
     The attributes of 'base' and 'nxt' that weren't explicitly set are dumped into dicts

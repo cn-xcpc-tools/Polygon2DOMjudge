@@ -11,6 +11,8 @@ It is a simple python script converting polygon package to DOMjudge (kattis) pac
 
 ## Install
 
+Requires Python **3.12 or newer**.
+
 ### Run directly with uvx
 
 ```bash
@@ -60,23 +62,28 @@ You can omit the output path, and the default output path will be in the current
 
 All available parameters are:
 
-- `--code`: problem short name in DOMjudge contest.
-- `--color`: problem color in DOMjudge.
-- `--default`: force use the default output validator.
-- `--validator-flags`: add some flags to the output validator, only works when `--default` is set.
-- `--auto`: use the default output validator if the checker is defined in config and can be replaced by the default one.
-- `--memory-limit`: override the memory limit for DOMjudge package (in MB), default is using the memory limit defined in polygon package.
-- `--output-limit`: override the output limit for DOMjudge package (in MB), default is using the default output limit in DOMjudge setting.
-- `--hide-sample`: hide the sample input and output from the problem statement, no sample data will be available for the contestants (force True if this is an interactive problem).
-    When this is not set to True and the sample output is different from the main and correct solution (usually both are correct answers),
-    the sample output will be replaced with the one shipped with problem statement.
-    But the sample input will not be replaced because DOMjudge does not support different sample input from the one downloaded.
-- `--keep-sample`: keep the sample output from the main and correct solution, this is useful when the sample output from problem statement is a placeholder.
-    (By default, all sample output will be replaced with the one shipped with problem statement)
-- `--external-id`: specify the external id of the problem in DOMjudge, default is using the problem short-name in polygon.
-- `--with-statement`: include the pdf statement in the DOMjudge package.
-- `--with-attachments`: include attachments (e.g. local testing tools for interactive problem) in the DOMjudge package.
-- `--testset`: specify the testset to convert, must specify the testset name if the problem has multiple testsets.
+| Option | Description |
+| --- | --- |
+| `--code`, `--short-name` | Problem short name in DOMjudge; prompted for when omitted. |
+| `--color` | Problem color, default `#000000`. |
+| `-o`, `--output` | Output ZIP path or directory. |
+| `-c`, `--config` | Path to a TOML configuration file. |
+| `-y`, `--yes` | Skip confirmation. |
+| `--default` | Force the default output validator. |
+| `--validator-flags` | Flags for the default output validator; used with `--default`. |
+| `--auto` | Replace recognized standard checkers with the default validator using configured flags. Mutually exclusive with `--default`. |
+| `--memory-limit` | Override the memory limit in MB; otherwise use the Polygon limit. `-1` uses the DOMjudge default. |
+| `--output-limit` | Override the output limit in MB; defaults to `-1`, the DOMjudge default. |
+| `--hide-sample` | Hide sample input and output; always enabled for interactive problems. |
+| `--keep`, `--keep-sample` | Preserve numbered sample outputs from the solution, e.g. `--keep 1 --keep 2`. |
+| `--external-id` | Override the external ID, which otherwise comes from the Polygon problem short name. Consider overriding it if the original ID hints at the solution. |
+| `--with-statement` | Include the PDF statement. |
+| `--with-attachments` | Include attachments such as local interaction tools. |
+| `--testset` | Select a testset; required when the problem has multiple testsets. |
+| `-l`, `--log-level` | Logging level; default `info`. |
+| `-v`, `--version` | Print version information. |
+
+By default, visible sample outputs are replaced with outputs from the statement. Sample inputs remain those from the generated tests because DOMjudge does not support different downloaded sample inputs. Use `--keep` when a statement output is a placeholder. Hidden samples ignore `--keep`.
 
 ### Convert the whole contest
 
@@ -108,24 +115,27 @@ Don't change them unless you know what you are doing.
 This is an example to convert all problems in a contest defined in [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) to DOMjudge package.
 
 ```python
-import yaml
 from pathlib import Path
 
-from p2d import convert
+import yaml
 
-polygon = Path('/path/to/polygon-packages')
-domjudge = Path('/path/to/domjudge-packages')
+from p2d import ConvertOptions, DomjudgeOptions, convert
 
-with open(domjudge / 'problems.yaml') as f:
+polygon = Path("/path/to/polygon-packages")
+domjudge = Path("/path/to/domjudge-packages")
+
+with open(domjudge / "problems.yaml") as f:
     problems = yaml.safe_load(f)
 
 for problem in problems:
-    prob_id = problem['id']
+    prob_id = problem["id"]
     convert(
-        polygon / f'{prob_id}.zip',
-        domjudge / f'{prob_id}.zip',
-        short_name=problem['label'],
-        color=problem['rgb'],
+        polygon / f"{prob_id}.zip",
+        short_name=problem["label"],
+        options=ConvertOptions(
+            output=domjudge / f"{prob_id}.zip",
+            options=DomjudgeOptions(color=problem["rgb"]),
+        ),
     )
 ```
 
@@ -138,16 +148,26 @@ for problem in problems:
 
 ## Development
 
+Development uses uv, Ruff and ty, with Python 3.15 selected by `.python-version`. CI tests Python 3.12–3.15.
+
 ```bash
 # install
-uv sync
+uv sync --locked
+
+# format, lint and type check
+uv run --locked ruff format --check .
+uv run --locked ruff check .
+uv run --locked ty check
+
+# run unittest
+uv run --locked pytest
+
+# pre-commit hooks
+uv run --locked pre-commit install
+uv run --locked pre-commit run --all-files
 
 # build
 uv build
-
-# run unittest
-uv run pytest
-
 ```
 
 [gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg

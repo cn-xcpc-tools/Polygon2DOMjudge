@@ -1,10 +1,10 @@
 """Test data loading utilities with type safety and validation."""
 
 from collections.abc import Callable, Generator
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from functools import partial
 from pathlib import Path
-from typing import Any, ContextManager, cast
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -73,7 +73,7 @@ class DataLoader:
 
         return composite_assertion
 
-    def get_exception_context(self, error_config: RaiseExpectation | None) -> ContextManager[Any]:
+    def get_exception_context(self, error_config: RaiseExpectation | None) -> AbstractContextManager[Any]:
         """Get pytest exception context for test cases."""
         if error_config is None:
             return nullcontext()

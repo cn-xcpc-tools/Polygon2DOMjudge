@@ -6,8 +6,21 @@ repos:
       - id: trailing-whitespace
         exclude: ^p2d/testlib/
       - id: mixed-line-ending
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.10
+  - repo: local
     hooks:
-      - id: ruff
+      - id: ruff-check
+        name: Ruff check
+        entry: uv run --locked ruff check
+        language: system
+        types_or: [python, pyi]
       - id: ruff-format
+        name: Ruff format
+        entry: uv run --locked ruff format
+        language: system
+        types_or: [python, pyi, markdown]
+      - id: ty
+        name: ty check
+        entry: uv run --locked ty check
+        language: system
+        pass_filenames: false
+        always_run: true

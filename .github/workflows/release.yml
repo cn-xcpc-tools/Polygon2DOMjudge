@@ -3,46 +3,48 @@ name: Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Set node
-        uses: actions/setup-node@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: 18.x
+          node-version: "26"
 
-      - run: npx changelogithub
+      - name: Publish release notes
+        run: npx --yes changelogithub@15.0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-pypi:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Install uv and set the python version
-        uses: astral-sh/setup-uv@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.13.7"
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
 
-      - name: Build
-        run: |
-          uv build
+      - name: Build distributions
+        run: uv build
 
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish distributions
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}

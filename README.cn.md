@@ -9,6 +9,8 @@
 
 ## 安装
 
+需要 **Python 3.12 或更新版本**。
+
 ### 使用 uvx 直接运行
 
 ```bash
@@ -49,7 +51,7 @@ pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 
 ```bash
 # 首先从 Polygon 下载完整的 Linux 题目包到本地
-$ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
+$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
 ```
 
 运行此命令可以从 `/path/to/polygon-package.zip` 处题目包转换为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
@@ -58,21 +60,28 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 
 所有可用的命令行参数如下：
 
-- `--code`: 题目在 DOMjudge 比赛中的 short name。
-- `--color`: 题目在 DOMjudge 中的颜色。
-- `--default`: 强制使用 DOMjudge 默认的输出校验器。
-- `--validator-flags`: 为输出校验器添加一些命令行参数，仅在 `--default` 被设置时生效。
-- `--auto`: 自动使用 DOMjudge 默认的输出校验器，即如果 checker 在配置文件中被定义，则使用默认的输出校验器与合适的命令行参数替代。
-- `--memory-limit`: 覆盖 DOMjudge 题目包的内存限制，如果不设置，则使用 Polygon 题目包中的内存限制。
-- `--output-limit`: 覆盖 DOMjudge 题目包的输出限制，如果不设置，则使用 DOMjudge 设置中默认的输出限制。
-- `--hide-sample`: 隐藏题面中的样例输入输出，不会为选手提供样例数据（如果是交互题，则此参数强制为 True）。
-    当此参数不设置为 True 且样例输出与标程的输出不同时 （通常两者都是符合要求的答案），
-    样例输出将会被替换为题面中提供的样例输出。但是样例输入不会被替换，因为 DOMjudge 不支持下载的样例输入与实际使用的不同。
-- `--keep-sample`: 保持样例输出与标程的输出一致，当题面中的样例输出是一个占位符时，这个参数很有用。（默认情况下，所有的样例输出将会被替换为题面中提供的样例输出）
-- `--external-id`: 指定题目在 DOMjudge 中的 external id，如果不设置，则使用 Polygon 中的题目 short-name。
-- `--with-statement`: 在 DOMjudge 题目包中包含 pdf 题面。
-- `--with-attachments`: 在 DOMjudge 题目包中包含附件（例如交互题的本地测试工具）。
-- `--testset`: 指定要转换的测试点集，如果题目有多个测试点集，则必须指定测试点集的名称。
+| 选项 | 说明 |
+| --- | --- |
+| `--code`, `--short-name` | DOMjudge 中的题目简称；省略时会提示输入。 |
+| `--color` | 题目颜色，默认为 `#000000`。 |
+| `-o`, `--output` | 输出 ZIP 路径或目录。 |
+| `-c`, `--config` | TOML 配置文件路径。 |
+| `-y`, `--yes` | 跳过确认。 |
+| `--default` | 强制使用默认输出校验器。 |
+| `--validator-flags` | 默认输出校验器的参数，与 `--default` 配合使用。 |
+| `--auto` | 按配置将已识别的标准 checker 替换为默认输出校验器；与 `--default` 互斥。 |
+| `--memory-limit` | 覆盖内存限制，单位 MB；省略时使用 Polygon 的限制，`-1` 表示 DOMjudge 默认值。 |
+| `--output-limit` | 覆盖输出限制，单位 MB；默认为 `-1`，表示 DOMjudge 默认值。 |
+| `--hide-sample` | 隐藏样例输入输出；交互题强制启用。 |
+| `--keep`, `--keep-sample` | 保留指定编号样例的标程输出，例如 `--keep 1 --keep 2`。 |
+| `--external-id` | 覆盖 external ID；默认使用 Polygon 中的题目简称。如果原 ID 暗示了题目解法，建议用此参数覆盖。 |
+| `--with-statement` | 包含 PDF 题面。 |
+| `--with-attachments` | 包含附件，例如交互题的本地测试工具。 |
+| `--testset` | 选择测试集；题目包含多个测试集时必填。 |
+| `-l`, `--log-level` | 日志级别，默认为 `info`。 |
+| `-v`, `--version` | 输出版本信息。 |
+
+默认情况下，公开样例的输出会替换为题面中的输出。样例输入仍使用生成的测试数据，因为 DOMjudge 不支持不同的下载样例输入。题面输出为占位符时，可以用 `--keep` 保留对应标程输出。隐藏样例时，`--keep` 会被忽略。
 
 ### 转换整个比赛
 
@@ -80,7 +89,7 @@ $ ./bin/p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to
 
 ```bash
 # 首先从 Polygon 下载 contest.xml
-$ ./bin/p2d-contest /path/to/contest.xml > convert.sh
+$ p2d-contest /path/to/contest.xml > convert.sh
 ```
 
 ## 配置
@@ -104,24 +113,27 @@ $ ./bin/p2d-contest /path/to/contest.xml > convert.sh
 这是一个将 [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) 中定义的比赛中的所有题目转换为 DOMjudge 题目包的示例。
 
 ```python
-import yaml
 from pathlib import Path
 
-from p2d import convert
+import yaml
 
-polygon = Path('/path/to/polygon-packages')
-domjudge = Path('/path/to/domjudge-packages')
+from p2d import ConvertOptions, DomjudgeOptions, convert
 
-with open(domjudge / 'problems.yaml') as f:
+polygon = Path("/path/to/polygon-packages")
+domjudge = Path("/path/to/domjudge-packages")
+
+with open(domjudge / "problems.yaml") as f:
     problems = yaml.safe_load(f)
 
 for problem in problems:
-    prob_id = problem['id']
+    prob_id = problem["id"]
     convert(
-        polygon / f'{prob_id}.zip',
-        domjudge / f'{prob_id}.zip',
-        short_name=problem['label'],
-        color=problem['rgb'],
+        polygon / f"{prob_id}.zip",
+        short_name=problem["label"],
+        options=ConvertOptions(
+            output=domjudge / f"{prob_id}.zip",
+            options=DomjudgeOptions(color=problem["rgb"]),
+        ),
     )
 ```
 
@@ -134,15 +146,26 @@ for problem in problems:
 
 ## 开发
 
+开发使用 uv、Ruff 和 ty，`.python-version` 默认选择 Python 3.15。CI 测试 Python 3.12–3.15。
+
 ```bash
 # install
-uv sync
+uv sync --locked
+
+# format, lint and type check
+uv run --locked ruff format --check .
+uv run --locked ruff check .
+uv run --locked ty check
+
+# run unittest
+uv run --locked pytest
+
+# pre-commit hooks
+uv run --locked pre-commit install
+uv run --locked pre-commit run --all-files
 
 # build
 uv build
-
-# run unittest
-uv run pytest
 ```
 
 [gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg

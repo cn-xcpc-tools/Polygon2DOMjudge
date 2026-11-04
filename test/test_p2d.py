@@ -1,8 +1,9 @@
 """Tests for the Polygon2DOMjudge conversion functionality."""
 
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any, ContextManager
+from typing import Any
 
 import pytest
 from typer.testing import CliRunner
@@ -35,7 +36,9 @@ def test_cli_version() -> None:
 
 
 @pytest.mark.parametrize("prepare_package", [True, False], ids=["dir", "zip"], indirect=True)
-@pytest.mark.parametrize(("package_name", "global_config", "convert_config", "assertion", "expectation"), load_api_test_data())
+@pytest.mark.parametrize(
+    ("package_name", "global_config", "convert_config", "assertion", "expectation"), list(load_api_test_data())
+)
 def test_api(
     prepare_package: Callable[[str], Path],
     domjudge_package_path: Path,
@@ -44,7 +47,7 @@ def test_api(
     global_config: GlobalConfig,
     convert_config: ConvertConfig,
     assertion: Callable[[Path], None],
-    expectation: ContextManager[Any],
+    expectation: AbstractContextManager[Any],
 ) -> None:
     from p2d import convert
 
@@ -61,7 +64,7 @@ def test_api(
 
 
 @pytest.mark.parametrize("prepare_package", [True, False], ids=["dir", "zip"], indirect=True)
-@pytest.mark.parametrize(("package_name", "args", "user_input", "assertion", "exitcode"), load_cli_test_data())
+@pytest.mark.parametrize(("package_name", "args", "user_input", "assertion", "exitcode"), list(load_cli_test_data()))
 def test_cli(
     prepare_package: Callable[[str], Path],
     domjudge_package_path: Path,

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -27,7 +27,7 @@ DEFAULT_COLOR = "#000000"
 # Type Aliases
 # -----------------------------------------------------------------------------
 
-Result: TypeAlias = Literal[
+type Result = Literal[
     "accepted",
     "wrong_answer",
     "time_limit_exceeded",

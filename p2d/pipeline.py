@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,7 +86,7 @@ class ProcessingContext:
     profile: DomjudgeProfile
 
 
-StepCallable: TypeAlias = Callable[[ProcessingContext], None]
+type StepCallable = Callable[[ProcessingContext], None]
 """Type alias for step handler functions."""
 
 
