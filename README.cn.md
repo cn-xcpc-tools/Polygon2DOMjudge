@@ -118,6 +118,8 @@ uv run --locked pytest
 uv build
 ```
 
+测试使用 pytest 参数化，分为 `test/unit/` 和 `test/integration/`。定向运行：`uv run --locked pytest --no-cov <path>`。
+
 [gh-test-badge]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml/badge.svg
 [gh-test]: https://github.com/cn-xcpc-tools/Polygon2DOMjudge/actions/workflows/test.yml
 [gh-release-badge]: https://img.shields.io/github/release/cn-xcpc-tools/Polygon2DOMjudge.svg

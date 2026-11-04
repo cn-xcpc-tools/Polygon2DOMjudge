@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,6 @@ from p2d.pipeline import ProcessPipeline, ProcessStep
 from p2d.steps.testcases import add_testcases
 
 
-@pytest.mark.parametrize("prepare_package", [True], ids=["dir"], indirect=True)
 @pytest.mark.parametrize("legacy", [False, True], ids=["2025-09", "legacy"])
 @pytest.mark.parametrize(
     ("keep_sample", "hide_sample", "statement_output", "expected_output"),
@@ -25,8 +23,8 @@ from p2d.steps.testcases import add_testcases
     ],
 )
 def test_sample_output_selection(
-    temp_dir: Path,
-    prepare_package: Callable[[str], Path],
+    tmp_path: Path,
+    polygon_dir: Path,
     caplog: pytest.LogCaptureFixture,
     legacy: bool,
     keep_sample: tuple[int, ...] | None,
@@ -34,19 +32,18 @@ def test_sample_output_selection(
     statement_output: bytes | None,
     expected_output: bytes,
 ) -> None:
-    package_dir = prepare_package("little-h-reboot-7$linux.zip")
-    output_dir = temp_dir / "domjudge"
-    (package_dir / "tests" / "01.a").write_bytes(b"original\n")
-    sample_output = package_dir / "statements" / "english" / "example.01.a"
+    output_dir = tmp_path / "domjudge"
+    (polygon_dir / "tests" / "01.a").write_bytes(b"original\n")
+    sample_output = polygon_dir / "statements" / "english" / "example.01.a"
     if statement_output is None:
         sample_output.unlink()
     else:
         sample_output.write_bytes(statement_output)
 
     converter = Polygon2DOMjudge(
-        package_dir,
+        polygon_dir,
         output_dir,
-        temp_dir / "result",
+        tmp_path / "result",
         "A",
         options=DomjudgeOptions(legacy=legacy, keep_sample=keep_sample, hide_sample=hide_sample),
         process_pipeline=ProcessPipeline((ProcessStep("add_testcases", add_testcases),)),
@@ -55,7 +52,7 @@ def test_sample_output_selection(
 
     data_dir = output_dir / "data" / ("secret" if hide_sample else "sample")
     assert (data_dir / "01.ans").read_bytes() == expected_output
-    assert (data_dir / "01.in").read_bytes() == (package_dir / "tests" / "01").read_bytes()
+    assert (data_dir / "01.in").read_bytes() == (polygon_dir / "tests" / "01").read_bytes()
     if hide_sample:
         assert not any((output_dir / "data" / "sample").iterdir())
     if not hide_sample and statement_output == b"statement\n":

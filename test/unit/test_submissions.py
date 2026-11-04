@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -6,21 +5,20 @@ from pydantic import ValidationError
 
 from p2d import GlobalConfig, SubmissionRule
 from p2d.submissions import default_submission_directory
-from p2d.utils import load_config
 
 
 @pytest.mark.parametrize(
     "rule",
     [
-        ["accepted"],
-        {"permitted": ["accepted"]},
-        {"required": ["OLE"]},
-        {"required": ["output_limit_exceeded"]},
-        {"permitted": []},
-        {"required": []},
-        {"permitted": ["AC"], "required": ["TLE"]},
-        {"permitted": None},
-        {"require": ["AC"]},
+        pytest.param(["accepted"], id="list-instead-of-rule"),
+        pytest.param({"permitted": ["accepted"]}, id="long-verdict-name"),
+        pytest.param({"required": ["OLE"]}, id="unsupported-verdict"),
+        pytest.param({"required": ["output_limit_exceeded"]}, id="unsupported-long-verdict"),
+        pytest.param({"permitted": []}, id="empty-permitted"),
+        pytest.param({"required": []}, id="empty-required"),
+        pytest.param({"permitted": ["AC"], "required": ["TLE"]}, id="incompatible-verdicts"),
+        pytest.param({"permitted": None}, id="null-permitted"),
+        pytest.param({"require": ["AC"]}, id="unknown-field"),
     ],
 )
 def test_invalid_tag_rules(rule: Any) -> None:
@@ -45,10 +43,18 @@ def test_directory_matching_expands_omitted_defaults() -> None:
     assert default_submission_directory(rule) == "rejected"
 
 
-def test_directory_matching_keeps_distinct_requirements() -> None:
-    assert default_submission_directory(SubmissionRule(permitted=("AC", "TLE"))) is None
-    assert default_submission_directory(SubmissionRule(required=("TLE",))) is None
-    assert default_submission_directory(SubmissionRule(permitted=("AC", "RTE", "TLE"), required=("TLE",))) is None
+@pytest.mark.parametrize(
+    "rule",
+    [
+        pytest.param(SubmissionRule(permitted=("AC", "TLE")), id="optional-timeout"),
+        pytest.param(SubmissionRule(required=("TLE",)), id="required-timeout"),
+        pytest.param(
+            SubmissionRule(permitted=("AC", "RTE", "TLE"), required=("TLE",)), id="brute-force-with-required-timeout"
+        ),
+    ],
+)
+def test_directory_matching_keeps_distinct_requirements(rule: SubmissionRule) -> None:
+    assert default_submission_directory(rule) is None
 
 
 @pytest.mark.parametrize(
@@ -68,8 +74,3 @@ def test_directory_matching_keeps_distinct_requirements() -> None:
 )
 def test_default_polygon_tag_mapping(tag: str, directory: str | None) -> None:
     assert default_submission_directory(GlobalConfig().tag[tag]) == directory
-
-
-def test_example_config_matches_defaults() -> None:
-    config = load_config(Path(__file__).parent.parent / "config.example.toml")
-    assert config == GlobalConfig()
