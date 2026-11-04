@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Literal
 
 from pydantic import BaseModel, field_validator
+
+from .submissions import DEFAULT_SUBMISSION_RULES, SubmissionRule
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +22,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_COLOR = "#000000"
 """Default problem color in DOMjudge (black)."""
-
-
-# -----------------------------------------------------------------------------
-# Type Aliases
-# -----------------------------------------------------------------------------
-
-type Result = Literal[
-    "accepted",
-    "wrong_answer",
-    "time_limit_exceeded",
-    # 'memory_limit_exceeded',   # not used in domjudge
-    "output_limit_exceeded",
-    "run_time_error",
-]
-"""Possible verdict results for DOMjudge submissions."""
 
 
 # -----------------------------------------------------------------------------
@@ -59,6 +45,7 @@ class DomjudgeOptions(BaseModel):
     how the Polygon package is converted to DOMjudge format.
 
     Attributes:
+        legacy: Export the deprecated legacy package format.
         color: Problem color in DOMjudge (hex format #RRGGBB).
         force_default_validator: Use DOMjudge's default output validator.
         auto_detect_std_checker: Automatically detect if Polygon's standard
@@ -74,6 +61,7 @@ class DomjudgeOptions(BaseModel):
         output_limit_override: Override output limit (MB), -1 uses DOMjudge default.
     """
 
+    legacy: bool = False
     color: str = DEFAULT_COLOR
     force_default_validator: bool = False
     auto_detect_std_checker: bool = False
@@ -119,9 +107,9 @@ class GlobalConfig(BaseModel):
     Attributes:
         language_preference: Ordered list of preferred languages for problem name/statement.
         flag: Mapping of Polygon standard checker names to DOMjudge validator flags.
-        tag: Mapping of Polygon solution tags to expected DOMjudge verdicts.
+        tag: Mapping of Polygon solution tags to permitted/required submission rules.
         example_path_pattern: Path patterns for sample I/O files in Polygon.
-        comment_str: Mapping of language identifiers to comment syntax.
+        comment_str: Language comment syntax for legacy expected-result annotations.
     """
 
     language_preference: list[str] = ["english", "russian", "chinese"]
@@ -133,20 +121,17 @@ class GlobalConfig(BaseModel):
         "rcmp9.cpp": "float_tolerance 1e-9",
         "wcmp.cpp": "case_sensitive",
     }
-    tag: dict[str, list[Result]] = {
-        "main": ["accepted"],
-        "accepted": ["accepted"],
-        "wrong-answer": ["wrong_answer"],
-        "presentation-error": ["wrong_answer"],
-        "time-limit-exceeded": ["time_limit_exceeded"],
-        "time-limit-exceeded-or-accepted": ["time_limit_exceeded", "accepted"],
-        "time-limit-exceeded-or-memory-limit-exceeded": [
-            "time_limit_exceeded",
-            "run_time_error",
-        ],
-        "memory-limit-exceeded": ["run_time_error"],
-        "rejected": ["wrong_answer", "time_limit_exceeded", "run_time_error"],
-        "failed": ["wrong_answer", "time_limit_exceeded", "run_time_error"],
+    tag: dict[str, SubmissionRule] = {
+        "main": DEFAULT_SUBMISSION_RULES["accepted"],
+        "accepted": DEFAULT_SUBMISSION_RULES["accepted"],
+        "wrong-answer": DEFAULT_SUBMISSION_RULES["wrong_answer"],
+        "presentation-error": DEFAULT_SUBMISSION_RULES["wrong_answer"],
+        "time-limit-exceeded": DEFAULT_SUBMISSION_RULES["time_limit_exceeded"],
+        "time-limit-exceeded-or-accepted": SubmissionRule(permitted=("AC", "TLE")),
+        "time-limit-exceeded-or-memory-limit-exceeded": DEFAULT_SUBMISSION_RULES["brute_force"],
+        "memory-limit-exceeded": DEFAULT_SUBMISSION_RULES["run_time_error"],
+        "rejected": DEFAULT_SUBMISSION_RULES["rejected"],
+        "failed": DEFAULT_SUBMISSION_RULES["rejected"],
     }
     example_path_pattern: ExamplePathPattern = ExamplePathPattern(input="example.%02d", output="example.%02d.a")
     comment_str: dict[str, str] = {

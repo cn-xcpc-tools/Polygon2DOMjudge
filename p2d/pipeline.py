@@ -18,6 +18,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .formats import PackageFormat
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -36,6 +38,7 @@ class DomjudgeProfile:
     (e.g., forcing hide_sample for interactive problems).
 
     Attributes:
+        package_format: Package serialization format.
         color: Problem color in DOMjudge (hex format).
         external_id: Problem external ID in DOMjudge.
         hide_sample: Whether to hide sample test cases.
@@ -58,6 +61,7 @@ class DomjudgeProfile:
     with_attachments: bool
     memory_limit: int
     output_limit: int
+    package_format: PackageFormat = PackageFormat.V2025_09
 
 
 @dataclass(frozen=True, slots=True)

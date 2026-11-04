@@ -11,6 +11,7 @@ Configuration classes:
     - DomjudgeOptions: User-facing options for conversion
     - ConvertOptions: Bundle of options for convert()
     - GlobalConfig: Global settings loaded from config.toml
+    - SubmissionRule: Permitted and required verdicts for a Polygon solution tag
 
 Pipeline classes (for advanced customization):
     - ProcessPipeline: Sequential processing pipeline
@@ -33,6 +34,7 @@ from .exceptions import ProcessError
 from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig
 from .p2d import ConvertOptions, Polygon2DOMjudge, convert
 from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
+from .submissions import SubmissionRule
 
 __all__ = [
     # Constants
@@ -44,6 +46,7 @@ __all__ = [
     "ConvertOptions",
     "DomjudgeOptions",
     "GlobalConfig",
+    "SubmissionRule",
     # Pipeline (advanced)
     "DomjudgeProfile",
     "ProcessError",

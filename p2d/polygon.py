@@ -73,6 +73,7 @@ class PolygonProblem:
             raise ProcessError(msg)
 
         short_name = self._SHORT_NAME_FILTER.sub("", problem.attrib.get("short-name", ""))
+        url = problem.attrib.get("url")
         name, language = self._get_preference_name(problem.find("names"), language_preference)
         statement = self._get_statement(problem.find("statements"), language)
 
@@ -95,6 +96,7 @@ class PolygonProblem:
         run_count_value = self._parse_positive_int(run_count, "run count")
 
         self.short_name = short_name
+        self.url = url
         self.name = name
         self.language = language
         self.timelimit = timelimit_ms / 1000.0

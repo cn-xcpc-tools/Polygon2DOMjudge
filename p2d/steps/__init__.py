@@ -6,7 +6,7 @@ a specific transformation or file generation task.
 Steps:
     add_metadata: Generate domjudge-problem.ini, problem.yaml, and validators
     add_testcases: Copy test cases into sample/secret directories
-    add_jury_solutions: Copy jury solutions with expected verdict annotations
+    add_jury_solutions: Copy jury solutions and write verdict rules for the selected format
     add_statement: Copy the problem statement PDF
     add_attachments: Copy additional attachments
     make_archive: Create the final zip archive

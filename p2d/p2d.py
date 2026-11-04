@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .exceptions import ProcessError
+from .formats import PackageFormat
 from .models import DomjudgeOptions, GlobalConfig
 from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
 from .polygon import PolygonProblem
@@ -155,6 +156,8 @@ class Polygon2DOMjudge:
 
     def process(self) -> None:
         """Execute the processing pipeline to generate the DOMjudge package."""
+        if self._profile.package_format is PackageFormat.LEGACY:
+            logger.warning("Legacy export is deprecated and may be removed at any time.")
         context = self._build_context()
         self._process_pipeline.run(context)
 
@@ -196,6 +199,7 @@ class Polygon2DOMjudge:
         memory_limit, output_limit = self._resolve_limits(options)
 
         return DomjudgeProfile(
+            package_format=PackageFormat.LEGACY if options.legacy else PackageFormat.V2025_09,
             color=options.color,
             external_id=external_id,
             hide_sample=hide_sample,

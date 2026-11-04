@@ -39,7 +39,7 @@ def test_cli_version() -> None:
 @pytest.mark.parametrize(
     ("package_name", "global_config", "convert_config", "assertion", "expectation"), list(load_api_test_data())
 )
-def test_api(
+def test_legacy_api(
     prepare_package: Callable[[str], Path],
     domjudge_package_path: Path,
     extract_domjudge_package: Callable[[Path], Path],
@@ -53,6 +53,7 @@ def test_api(
 
     package = prepare_package(package_name)
     short_name, options = convert_config.build(global_config, domjudge_package_path)
+    options.options = options.options.model_copy(update={"legacy": True})
 
     with expectation:
         # Skip confirmation for testing
@@ -65,7 +66,7 @@ def test_api(
 
 @pytest.mark.parametrize("prepare_package", [True, False], ids=["dir", "zip"], indirect=True)
 @pytest.mark.parametrize(("package_name", "args", "user_input", "assertion", "exitcode"), list(load_cli_test_data()))
-def test_cli(
+def test_legacy_cli(
     prepare_package: Callable[[str], Path],
     domjudge_package_path: Path,
     extract_domjudge_package: Callable[[Path], Path],
@@ -78,7 +79,7 @@ def test_cli(
     from p2d.cli import app
 
     package = prepare_package(package_name)
-    result = runner.invoke(app, [str(package), *args], input=user_input)
+    result = runner.invoke(app, [str(package), "--legacy", *args], input=user_input)
 
     assert result.exit_code == exitcode
 

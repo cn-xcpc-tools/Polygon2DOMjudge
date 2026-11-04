@@ -10,6 +10,7 @@ from p2d.steps.testcases import add_testcases
 
 
 @pytest.mark.parametrize("prepare_package", [True], ids=["dir"], indirect=True)
+@pytest.mark.parametrize("legacy", [False, True], ids=["2025-09", "legacy"])
 @pytest.mark.parametrize(
     ("keep_sample", "hide_sample", "statement_output", "expected_output"),
     [
@@ -27,6 +28,7 @@ def test_sample_output_selection(
     temp_dir: Path,
     prepare_package: Callable[[str], Path],
     caplog: pytest.LogCaptureFixture,
+    legacy: bool,
     keep_sample: tuple[int, ...] | None,
     hide_sample: bool,
     statement_output: bytes | None,
@@ -46,7 +48,7 @@ def test_sample_output_selection(
         output_dir,
         temp_dir / "result",
         "A",
-        options=DomjudgeOptions(keep_sample=keep_sample, hide_sample=hide_sample),
+        options=DomjudgeOptions(legacy=legacy, keep_sample=keep_sample, hide_sample=hide_sample),
         process_pipeline=ProcessPipeline((ProcessStep("add_testcases", add_testcases),)),
     )
     converter.process()

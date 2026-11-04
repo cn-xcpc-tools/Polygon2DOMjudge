@@ -70,5 +70,5 @@ def add_testcases(ctx: ProcessingContext) -> None:
         test_description = str(test).strip()
         if test_description:
             logger.debug(test_description)
-            desc_dst.write_text(test_description + "\n", encoding="utf-8")
+            desc_dst.write_text(test_description + "\n", encoding="utf-8", newline="\n")
     logger.info("Total %d tests.", len(ctx.problem.test_cases))

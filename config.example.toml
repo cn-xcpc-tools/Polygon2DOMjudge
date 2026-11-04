@@ -1,9 +1,8 @@
-# This is the default configuration file for Polygon2DOMjudge
-# If you want to override the default configuration,
-# create a new file named "config.toml" and override the default values there
+# Select with --config; a local config.toml takes precedence.
 
 language_preference = ["english", "russian", "chinese"]
 
+# Standard checker arguments used by --auto.
 [flag]
 "fcmp.cpp" = "case_sensitive space_change_sensitive"
 "lcmp.cpp" = "case_sensitive"
@@ -11,30 +10,27 @@ language_preference = ["english", "russian", "chinese"]
 "rcmp6.cpp" = "float_tolerance 1e-6"
 "rcmp9.cpp" = "float_tolerance 1e-9"
 "wcmp.cpp" = "case_sensitive"
-# "hcmp.cpp" = ""
-# "ncmp.cpp" = ""
-# "nyesno.cpp" = ""
-# "yesno.cpp" = ""
 
+# permitted: allowed results per test; required: any listed result must occur.
+# Omitted fields default to ["AC", "WA", "TLE", "RTE"].
+# A custom tag table replaces this entire mapping.
 [tag]
-main = ["accepted"]
-accepted = ["accepted"]
-wrong-answer = ["wrong_answer"]
-presentation-error = ["wrong_answer"]
-time-limit-exceeded = ["time_limit_exceeded"]
-time-limit-exceeded-or-accepted = ["time_limit_exceeded", "accepted"]
-time-limit-exceeded-or-memory-limit-exceeded = [
-    "time_limit_exceeded",
-    "run_time_error",
-]
-memory-limit-exceeded = ["run_time_error"]
-rejected = ["wrong_answer", "time_limit_exceeded", "run_time_error"]
-failed = ["wrong_answer", "time_limit_exceeded", "run_time_error"]
+main = { permitted = ["AC"] }
+accepted = { permitted = ["AC"] }
+wrong-answer = { permitted = ["AC", "WA"], required = ["WA"] }
+presentation-error = { permitted = ["AC", "WA"], required = ["WA"] }
+time-limit-exceeded = { permitted = ["AC", "TLE"], required = ["TLE"] }
+time-limit-exceeded-or-accepted = { permitted = ["AC", "TLE"] }
+time-limit-exceeded-or-memory-limit-exceeded = { permitted = ["AC", "RTE", "TLE"], required = ["RTE", "TLE"] }
+memory-limit-exceeded = { permitted = ["AC", "RTE"], required = ["RTE"] }
+rejected = { required = ["RTE", "TLE", "WA"] }
+failed = { required = ["RTE", "TLE", "WA"] }
 
 [example_path_pattern]
 input = "example.%02d"
 output = "example.%02d.a"
 
+# Comment syntax for legacy @EXPECTED_RESULTS@ annotations.
 [comment_str]
 c = "//"
 cpp = "//"

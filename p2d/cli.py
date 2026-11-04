@@ -40,6 +40,10 @@ def convert_problem(
         typer.Option("--code", "--short-name", help="problem short name in domjudge", prompt=True),
     ],
     color: Annotated[str, typer.Option(help="problem color in domjudge (in #RRGGBB format)")] = DEFAULT_COLOR,
+    legacy: Annotated[
+        bool,
+        typer.Option("--legacy", help="export the deprecated legacy format; support may be removed at any time"),
+    ] = False,
     log_level: Annotated[
         str,
         typer.Option(
@@ -182,6 +186,7 @@ def convert_problem(
         output=output,
         global_config=global_config,
         options=DomjudgeOptions(
+            legacy=legacy,
             color=color,
             force_default_validator=force_default_validator,
             auto_detect_std_checker=auto_detect_std_checker,

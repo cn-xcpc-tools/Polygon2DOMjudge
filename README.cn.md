@@ -3,168 +3,120 @@
 [![Test][gh-test-badge]][gh-test]
 [![GitHub release][gh-release-badge]][gh-release]
 
-## 这是什么
+[English](README.md)
 
-这是一个简单的将 polygon 题目包转换成 DOMjudge (kattis) 题目包的 python 脚本。
+将 Polygon 题目包转换为 DOMjudge 题目包。默认采用 [2025-09 格式](https://icpc.io/problem-package-format/spec/2025-09.html)，并适配 DOMjudge 的约定。旧版 DOMjudge 可使用 `--legacy`；旧格式支持已弃用，随时可能移除。
 
 ## 安装
 
 需要 **Python 3.12 或更新版本**。
 
-### 使用 uvx 直接运行
-
 ```bash
-# 从 PyPI（稳定版）
-uvx p2d --help
-
-# 从 GitHub（最新版）
-uvx --from git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge p2d --help
-```
-
-### 从 PyPI（稳定版本, 已经在一些比赛中使用过）
-
-```bash
-# 使用 uv（推荐）
 uv tool install p2d
-
-# 或使用 pipx
-pipx install p2d
-```
-
-### 从源码（最新版本，正在开发中，有新的特性）
-
-```bash
-# 使用 uv（推荐）
+# 最新源码：
 uv tool install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
-
-# 或使用 pipx
-pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 
-## 命令行使用示例
+也可以使用 `pipx install p2d`，或通过 `uvx p2d --help` 直接运行。
 
-首先，你需要从 Polygon 构建 **完整的** 题目包并将 **Linux** 题目包下载到本地。
+## 使用
 
-> [!WARNING]
-> 如果你下载了标准的题目包并且运行 `doall.sh` 来构建完整的题目包，那么换行符将会是 CRLF。
-> 在运行脚本之前，请确保将换行符转换为 LF，因为 DOMjudge 是在 Linux 上运行的。
+从 Polygon 下载 **完整的 Linux 题目包**，然后转换 ZIP 或解压后的目录：
 
 ```bash
-# 首先从 Polygon 下载完整的 Linux 题目包到本地
-$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
+p2d polygon-package.zip --code A --color '#FF0000' -o domjudge-package.zip
 ```
 
-运行此命令可以从 `/path/to/polygon-package.zip` 处题目包转换为 `/path/to/domjudge-package.zip`，并设置  `code` 和 `color` 属性。
-
-你可以省略输出路径，输出路径将会在当前工作目录中，并命名为 `{{ code }}.zip`。
-
-所有可用的命令行参数如下：
+默认输出为 `<code>.zip`。源码和测试数据应使用 UTF-8 和 LF 换行，自行运行 `doall.sh` 构建题包时尤其需要注意。
 
 | 选项 | 说明 |
 | --- | --- |
-| `--code`, `--short-name` | DOMjudge 中的题目简称；省略时会提示输入。 |
+| `--code`, `--short-name` | 题目简称；省略时提示输入。 |
 | `--color` | 题目颜色，默认为 `#000000`。 |
-| `-o`, `--output` | 输出 ZIP 路径或目录。 |
-| `-c`, `--config` | TOML 配置文件路径。 |
+| `--legacy` | 导出已弃用的旧格式。 |
+| `-o`, `--output` | 输出 ZIP 路径或目录；不覆盖已有压缩包。 |
+| `-c`, `--config` | TOML 配置文件；当前目录的 `config.toml` 优先。 |
 | `-y`, `--yes` | 跳过确认。 |
 | `--default` | 强制使用默认输出校验器。 |
-| `--validator-flags` | 默认输出校验器的参数，与 `--default` 配合使用。 |
-| `--auto` | 按配置将已识别的标准 checker 替换为默认输出校验器；与 `--default` 互斥。 |
-| `--memory-limit` | 覆盖内存限制，单位 MB；省略时使用 Polygon 的限制，`-1` 表示 DOMjudge 默认值。 |
-| `--output-limit` | 覆盖输出限制，单位 MB；默认为 `-1`，表示 DOMjudge 默认值。 |
-| `--hide-sample` | 隐藏样例输入输出；交互题强制启用。 |
-| `--keep`, `--keep-sample` | 保留指定编号样例的标程输出，例如 `--keep 1 --keep 2`。 |
-| `--external-id` | 覆盖 external ID；默认使用 Polygon 中的题目简称。如果原 ID 暗示了题目解法，建议用此参数覆盖。 |
+| `--validator-flags` | 默认输出校验器参数，与 `--default` 配合使用。 |
+| `--auto` | 将已识别的标准 checker 替换为默认输出校验器，与 `--default` 互斥。 |
+| `--memory-limit` | 内存限制，单位 MiB，默认使用 Polygon 限制；`-1` 表示 DOMjudge 默认值。 |
+| `--output-limit` | 输出限制，单位 MiB，默认为 `-1`，表示 DOMjudge 默认值。 |
+| `--hide-sample` | 隐藏样例；有 interactor 的题目始终启用。 |
+| `--keep`, `--keep-sample` | 保留指定样例的标程输出，例如 `--keep 1 --keep 2`。 |
+| `--external-id` | 覆盖 external ID，默认使用 Polygon 题目简称。 |
 | `--with-statement` | 包含 PDF 题面。 |
-| `--with-attachments` | 包含附件，例如交互题的本地测试工具。 |
-| `--testset` | 选择测试集；题目包含多个测试集时必填。 |
+| `--with-attachments` | 包含附件，例如交互题本地测试工具。 |
+| `--testset` | 选择测试集；存在多个测试集时必填。 |
 | `-l`, `--log-level` | 日志级别，默认为 `info`。 |
 | `-v`, `--version` | 输出版本信息。 |
 
-默认情况下，公开样例的输出会替换为题面中的输出。样例输入仍使用生成的测试数据，因为 DOMjudge 不支持不同的下载样例输入。题面输出为占位符时，可以用 `--keep` 保留对应标程输出。隐藏样例时，`--keep` 会被忽略。
+提供给选手下载的样例优先使用题面中的输出。题面输出为占位符时可用 `--keep` 保留标程输出；该选项对隐藏样例无效。
 
-### 转换整个比赛
-
-你可以使用 `p2d-contest` 来获取一个脚本来转换整个比赛中的题目。
-
-```bash
-# 首先从 Polygon 下载 contest.xml
-$ p2d-contest /path/to/contest.xml > convert.sh
-```
+`p2d-contest contest.xml` 列出 Polygon 比赛元数据中的题目编号和名称。
 
 ## 配置
 
-在 [config.toml](./config.example.toml) 文件中，你可以设置一些特殊的 checker 的输出校验器参数，这会在 `--auto` 参数被设置时用来将 checker 替换为默认的输出校验器。
+语言偏好、标准 checker 参数和题解标签见 [config.example.toml](config.example.toml)。可以通过 `TESTLIB_PATH` 指定另一个包含 `testlib.h` 的目录。
 
-> [!NOTE]
-> 你应该创建一个新的文件，命名为 `config.toml` 或其他名称，并使用 `--config` 参数将其传递给脚本。脚本将会合并默认配置和你的配置。
+题解标签使用 `permitted` 和 `required` 配置预期结果：
 
-## 环境变量
-
-某些时候可能会有用。但如果你不知道你在干啥，请不要随便修改。
-
-- `TESTLIB_PATH`
-
-## API 使用示例
-
-> [!WARNING]
-> API 不是稳定的，可能会在未来的版本中发生变化。
-
-这是一个将 [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) 中定义的比赛中的所有题目转换为 DOMjudge 题目包的示例。
-
-```python
-from pathlib import Path
-
-import yaml
-
-from p2d import ConvertOptions, DomjudgeOptions, convert
-
-polygon = Path("/path/to/polygon-packages")
-domjudge = Path("/path/to/domjudge-packages")
-
-with open(domjudge / "problems.yaml") as f:
-    problems = yaml.safe_load(f)
-
-for problem in problems:
-    prob_id = problem["id"]
-    convert(
-        polygon / f"{prob_id}.zip",
-        short_name=problem["label"],
-        options=ConvertOptions(
-            output=domjudge / f"{prob_id}.zip",
-            options=DomjudgeOptions(color=problem["rgb"]),
-        ),
-    )
+```toml
+[tag]
+main = { permitted = ["AC"] }
+wrong-answer = { permitted = ["AC", "WA"], required = ["WA"] }
+time-limit-exceeded-or-accepted = { permitted = ["AC", "TLE"] }
+rejected = { required = ["RTE", "TLE", "WA"] }
 ```
 
-## 已知Issues
+`permitted` 指定每个测试允许的结果；`required` 要求至少一个测试出现列表中的任意一种结果。省略任意字段时，其默认值为 `["AC", "WA", "TLE", "RTE"]`。
 
-- 对于交互题，您必须在交互器中完成对输出的验证（即，在交互器中直接返回最终的结果，略去使用checker对`tout`文件内容进行验证的步骤），因为 DOMjudge 无法像 Polygon 那样处理 `tout` 流。
-- 对于 multi-pass 问题
-  - 部分逻辑可能与 Polygon 不同，您可能需要调整一些逻辑来适应 DOMjudge 的要求。DOMjudge 会使用 `-DDOMJUDGE` 宏定义来区分是否为 DOMjudge 环境，您可以使用这个宏定义来调整您的代码。
-  - 当选手程序还需要运行时，您可能需要调用 `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out)` 来创建下一次运行的输入文件。
+自定义 `tag` 表会替换默认映射，请包含所需的全部标签。旧的列表式配置需要改为上述格式，`--legacy` 也一样；旧格式无法表达的规则会报错。
+
+## 兼容性
+
+- 默认导出需要 DOMjudge 支持 [2025-09 题解元数据](https://github.com/DOMjudge/domjudge/pull/3833)，要求 Polygon 题目包含 URL。
+- 自定义校验器放入 `output_validator/`。题解规则使用标准目录或 `submissions/submissions.yaml`，保留源码原文；已有的 `@EXPECTED_RESULTS@` 和 `@EXPECTED_SCORE@` 注释仍会影响判题。
+- 交互器必须自行验证选手输出；DOMjudge 不会额外运行 checker 检查 `tout`。
+- multi-pass 转换为实验功能，支持两轮。C++ 交互器使用 `-DDOMJUDGE` 编译；需要下一轮时，在反馈目录写入 `nextpass.in`，并以 42 退出：
+
+  ```cpp
+  #include <filesystem>
+  #include <fstream>
+
+  // Inside the interactor, after preparing next_input_data:
+  std::ofstream next_input(std::filesystem::path(argv[3]) / "nextpass.in");
+  next_input << next_input_data;
+  next_input.close();
+  if (!next_input)
+      quitf(_fail, "Cannot write next-pass input");
+  quitf(_ok, "Continue to next pass");
+  ```
+
+## Python API
+
+```python
+from p2d import ConvertOptions, DomjudgeOptions, convert
+
+convert(
+    "polygon-package.zip",
+    short_name="A",
+    options=ConvertOptions(
+        output="domjudge-package.zip",
+        options=DomjudgeOptions(color="#FF0000", with_statement=True),
+    ),
+)
+```
+
+使用 `DomjudgeOptions(legacy=True)` 导出旧格式。API 可能变化。
 
 ## 开发
 
-开发使用 uv、Ruff 和 ty，`.python-version` 默认选择 Python 3.15。CI 测试 Python 3.12–3.15。
-
 ```bash
-# install
 uv sync --locked
-
-# format, lint and type check
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-uv run --locked ty check
-
-# run unittest
-uv run --locked pytest
-
-# pre-commit hooks
 uv run --locked pre-commit install
 uv run --locked pre-commit run --all-files
-
-# build
+uv run --locked pytest
 uv build
 ```
 

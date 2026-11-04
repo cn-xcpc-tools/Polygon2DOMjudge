@@ -5,168 +5,118 @@
 
 [中文](README.cn.md)
 
-## What is this
+Convert Polygon problem packages to DOMjudge packages. Exports use the [2025-09 format](https://icpc.io/problem-package-format/spec/2025-09.html) with DOMjudge-specific conventions. Older DOMjudge installations can use `--legacy`; legacy support is deprecated and may be removed at any time.
 
-It is a simple python script converting polygon package to DOMjudge (kattis) package.
-
-## Install
+## Installation
 
 Requires Python **3.12 or newer**.
 
-### Run directly with uvx
-
 ```bash
-# From PyPI (stable)
-uvx p2d --help
-
-# From GitHub (latest)
-uvx --from git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge p2d --help
-```
-
-### From PyPI (stable release, has been used in some contests)
-
-```bash
-# Using uv (recommended)
 uv tool install p2d
-
-# Or using pipx
-pipx install p2d
-```
-
-### From source (latest version, under development with new features)
-
-```bash
-# Using uv (recommended)
+# Latest source:
 uv tool install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
-
-# Or using pipx
-pipx install git+https://github.com/cn-xcpc-tools/Polygon2DOMjudge
 ```
 
-## CLI Example
+You can also use `pipx install p2d`, or run directly with `uvx p2d --help`.
 
-First, you should build **full** package from Polygon and download the **Linux** package to your local.
+## Usage
 
-> [!WARNING]
-> If you download the standard package and then run `doall.sh` to build the full package by yourself, the linebreaks will be CRLF.
-> Make sure you convert the linebreaks to LF before running the script because DOMjudge is running on Linux.
+Download a **full Linux package** from Polygon, then convert the ZIP or its extracted directory:
 
 ```bash
-# Download the full package from Polygon to /path/to/polygon-package.zip
-$ p2d --code A --color "#FF0000" -o /path/to/domjudge-package.zip /path/to/polygon-package.zip
+p2d polygon-package.zip --code A --color '#FF0000' -o domjudge-package.zip
 ```
 
-Run this command to make a package from `/path/to/polygon-package.zip` to `/path/to/domjudge-package.zip` and set `code` and `color`.
-
-You can omit the output path, and the default output path will be in the current working directory and named as `{{ code }}.zip`.
-
-All available parameters are:
+The default output is `<code>.zip`. Ensure source files and test data use UTF-8 and LF line endings, especially when building the package yourself with `doall.sh`.
 
 | Option | Description |
 | --- | --- |
-| `--code`, `--short-name` | Problem short name in DOMjudge; prompted for when omitted. |
+| `--code`, `--short-name` | Problem short name; prompted for when omitted. |
 | `--color` | Problem color, default `#000000`. |
-| `-o`, `--output` | Output ZIP path or directory. |
-| `-c`, `--config` | Path to a TOML configuration file. |
+| `--legacy` | Export the deprecated legacy format. |
+| `-o`, `--output` | Output ZIP path or directory; existing archives are not overwritten. |
+| `-c`, `--config` | TOML configuration file; a local `config.toml` takes precedence. |
 | `-y`, `--yes` | Skip confirmation. |
 | `--default` | Force the default output validator. |
-| `--validator-flags` | Flags for the default output validator; used with `--default`. |
-| `--auto` | Replace recognized standard checkers with the default validator using configured flags. Mutually exclusive with `--default`. |
-| `--memory-limit` | Override the memory limit in MB; otherwise use the Polygon limit. `-1` uses the DOMjudge default. |
-| `--output-limit` | Override the output limit in MB; defaults to `-1`, the DOMjudge default. |
-| `--hide-sample` | Hide sample input and output; always enabled for interactive problems. |
-| `--keep`, `--keep-sample` | Preserve numbered sample outputs from the solution, e.g. `--keep 1 --keep 2`. |
-| `--external-id` | Override the external ID, which otherwise comes from the Polygon problem short name. Consider overriding it if the original ID hints at the solution. |
+| `--validator-flags` | Default-validator arguments; used with `--default`. |
+| `--auto` | Replace recognized standard checkers with the default validator; mutually exclusive with `--default`. |
+| `--memory-limit` | Memory limit in MiB; defaults to the Polygon limit. `-1` uses the DOMjudge default. |
+| `--output-limit` | Output limit in MiB; defaults to `-1`, the DOMjudge default. |
+| `--hide-sample` | Hide samples; always enabled for problems with an interactor. |
+| `--keep`, `--keep-sample` | Preserve solution outputs for selected samples, e.g. `--keep 1 --keep 2`. |
+| `--external-id` | Override the external ID, which defaults to the Polygon short name. |
 | `--with-statement` | Include the PDF statement. |
 | `--with-attachments` | Include attachments such as local interaction tools. |
-| `--testset` | Select a testset; required when the problem has multiple testsets. |
-| `-l`, `--log-level` | Logging level; default `info`. |
+| `--testset` | Select a testset; required when there are multiple testsets. |
+| `-l`, `--log-level` | Logging level, default `info`. |
 | `-v`, `--version` | Print version information. |
 
-By default, visible sample outputs are replaced with outputs from the statement. Sample inputs remain those from the generated tests because DOMjudge does not support different downloaded sample inputs. Use `--keep` when a statement output is a placeholder. Hidden samples ignore `--keep`.
+Samples provided for contestants to download use the statement's outputs when available. Use `--keep` for placeholders; it has no effect on hidden samples.
 
-### Convert the whole contest
+`p2d-contest contest.xml` lists the problem indices and names from Polygon contest metadata.
 
-You can use `p2d-contest` to get a script to convert all problems in a contest.
+## Configuration
 
-```bash
-# Download the contest.xml from Polygon first
-$ p2d-contest /path/to/contest.xml > convert.sh
+See [config.example.toml](config.example.toml) for language preferences, standard-checker arguments and solution tags. Use `TESTLIB_PATH` to supply a directory containing an alternative `testlib.h`.
+
+Solution tags use `permitted` and `required` verdict lists:
+
+```toml
+[tag]
+main = { permitted = ["AC"] }
+wrong-answer = { permitted = ["AC", "WA"], required = ["WA"] }
+time-limit-exceeded-or-accepted = { permitted = ["AC", "TLE"] }
+rejected = { required = ["RTE", "TLE", "WA"] }
 ```
 
-## Config
+`permitted` lists the allowed results for each test. `required` requires at least one test with any of its listed results. Each omitted field defaults to `["AC", "WA", "TLE", "RTE"]`.
 
-In [config.toml](./config.example.toml), you can change some special checker's validator's flags, which will be used to replace the checker with the default output validator when `--auto` is set.
+A custom `tag` table replaces the default mapping, so include all tags you need. Migrate old list-valued entries to this syntax, including when using `--legacy`. Legacy export rejects rules it cannot represent.
 
-> [!NOTE]
-> You should create a new file named `config.toml` or something else and pass it to the script with `--config` parameter. The script will merge the default config with your config.
+## Compatibility
 
-## Environment Variable
+- Default export requires DOMjudge with [2025-09 submission metadata support](https://github.com/DOMjudge/domjudge/pull/3833). It requires a Polygon problem URL.
+- Custom validators go into `output_validator/`. Submission rules use standard directories or `submissions/submissions.yaml`; solution sources are preserved. Existing `@EXPECTED_RESULTS@` and `@EXPECTED_SCORE@` annotations still affect judging.
+- Interactors must validate contestant output themselves; DOMjudge does not run a separate checker over `tout`.
+- Multi-pass conversion is experimental and supports two passes. C++ interactors are built with `-DDOMJUDGE`. To request another pass, write `nextpass.in` in the feedback directory and exit with code 42:
 
-Don't change them unless you know what you are doing.
+  ```cpp
+  #include <filesystem>
+  #include <fstream>
 
-- `TESTLIB_PATH`
+  // Inside the interactor, after preparing next_input_data:
+  std::ofstream next_input(std::filesystem::path(argv[3]) / "nextpass.in");
+  next_input << next_input_data;
+  next_input.close();
+  if (!next_input)
+      quitf(_fail, "Cannot write next-pass input");
+  quitf(_ok, "Continue to next pass");
+  ```
 
-## API Example
-
-> [!WARNING]
-> The API is not stable and may change in the future.
-
-This is an example to convert all problems in a contest defined in [`problems.yaml`](https://ccs-specs.icpc.io/draft/contest_package#problemsyaml) to DOMjudge package.
+## Python API
 
 ```python
-from pathlib import Path
-
-import yaml
-
 from p2d import ConvertOptions, DomjudgeOptions, convert
 
-polygon = Path("/path/to/polygon-packages")
-domjudge = Path("/path/to/domjudge-packages")
-
-with open(domjudge / "problems.yaml") as f:
-    problems = yaml.safe_load(f)
-
-for problem in problems:
-    prob_id = problem["id"]
-    convert(
-        polygon / f"{prob_id}.zip",
-        short_name=problem["label"],
-        options=ConvertOptions(
-            output=domjudge / f"{prob_id}.zip",
-            options=DomjudgeOptions(color=problem["rgb"]),
-        ),
-    )
+convert(
+    "polygon-package.zip",
+    short_name="A",
+    options=ConvertOptions(
+        output="domjudge-package.zip",
+        options=DomjudgeOptions(color="#FF0000", with_statement=True),
+    ),
+)
 ```
 
-## Known Issues
-
-- For interactive problems, you must validate the output in the interactors, because DOMjudge cannot handle `tout` stream like Polygon.
-- For multi-pass problems
-  - Some logic are different from Polygon, you may need to modify it to fit the DOMjudge environment, DOMjudge will use `-DDOMJUDGE` macro to distinguish whether it is in DOMjudge environment, so you can use it to adapt your code.
-  - You may need to call `tout.open(make_new_file_in_a_dir(argv[3], "nextpass.in"), std::ios_base::out)` to create the next pass input file when there exists a next pass.
+Use `DomjudgeOptions(legacy=True)` for legacy output. The API may change.
 
 ## Development
 
-Development uses uv, Ruff and ty, with Python 3.15 selected by `.python-version`. CI tests Python 3.12–3.15.
-
 ```bash
-# install
 uv sync --locked
-
-# format, lint and type check
-uv run --locked ruff format --check .
-uv run --locked ruff check .
-uv run --locked ty check
-
-# run unittest
-uv run --locked pytest
-
-# pre-commit hooks
 uv run --locked pre-commit install
 uv run --locked pre-commit run --all-files
-
-# build
+uv run --locked pytest
 uv build
 ```
 

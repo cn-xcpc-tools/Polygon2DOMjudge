@@ -2,112 +2,113 @@ from __future__ import annotations
 
 import logging
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from p2d.exceptions import ProcessError
+from p2d.formats import PackageFormat, write_yaml
+from p2d.submissions import default_submission_directory, legacy_verdicts
 from p2d.utils import ensure_dir, get_normalized_lang
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from p2d.models import Result
     from p2d.pipeline import ProcessingContext
+    from p2d.submissions import Verdict
 
 logger = logging.getLogger(__name__)
 
-RESULT_REMAP = {
-    "ACCEPTED": "CORRECT",
-    "WRONG_ANSWER": "WRONG-ANSWER",
-    "TIME_LIMIT_EXCEEDED": "TIMELIMIT",
-    "RUN_TIME_ERROR": "RUN-ERROR",
-    "COMPILER_ERROR": "COMPILER-ERROR",
-    "NO_OUTPUT": "NO-OUTPUT",
-    "OUTPUT_LIMIT": "OUTPUT-LIMIT",
+LEGACY_RESULTS: dict[Verdict, str] = {
+    "AC": "CORRECT",
+    "WA": "WRONG-ANSWER",
+    "TLE": "TIMELIMIT",
+    "RTE": "RUN-ERROR",
 }
-"""Mapping from internal result names to DOMjudge @EXPECTED_RESULTS@ format."""
-
-
-def _colorize_result(result: str) -> str:
-    """Return a Rich-formatted string for the result verdict."""
-    if result == "accepted":
-        return f"[green italic]{result}[/]"
-    if result == "wrong_answer":
-        return f"[red italic]{result}[/]"
-    return f"[yellow italic]{result}[/]"
+LEGACY_DIRECTORIES: dict[Verdict, str] = {
+    "AC": "accepted",
+    "WA": "wrong_answer",
+    "TLE": "time_limit_exceeded",
+    "RTE": "run_time_error",
+}
 
 
 def add_jury_solutions(ctx: ProcessingContext) -> None:
-    """Copy jury solutions grouped by expected verdicts."""
     logger.info("[bold green reverse]Add jury solutions:[/]", extra={"markup": True})
+    rules: dict[str, Any] = {}
+    submissions_dir = ctx.temp_dir / "submissions"
 
     for solution in ctx.problem.solutions:
+        source = solution.find("source[@path][@type]")
+        if source is None:
+            continue
+        src = ctx.package_dir / source.attrib["path"]
         tag = solution.attrib["tag"]
-        results = ctx.config.tag.get(tag, None)
-
-        if results is None:
-            relative_dir = "rejected"
-        elif len(results) == 1:
-            relative_dir = results[0]
+        rule = ctx.config.tag.get(tag)
+        verdicts = None
+        if rule is None:
+            directory = "rejected"
+            logger.warning(
+                "Unknown solution tag %s for %s; using the rejected directory's default requirements.", tag, src.name
+            )
+        elif ctx.profile.package_format is PackageFormat.LEGACY:
+            verdicts = legacy_verdicts(rule, tag)
+            directory = LEGACY_DIRECTORIES[verdicts[0]] if len(verdicts) == 1 else "mixed"
         else:
-            relative_dir = "mixed"
+            default_directory = default_submission_directory(rule)
+            directory = "mixed" if default_directory is None else default_directory
+            if default_directory is None:
+                rules[f"{directory}/{src.name}"] = rule.model_dump(mode="json", exclude_defaults=True)
 
-        target_dir = ctx.temp_dir / "submissions" / relative_dir
+        dst = submissions_dir / directory / src.name
+        ensure_dir(dst.parent)
+        if rule is not None:
+            logger.info("> %s: %s", src.name, rule.model_dump(mode="json", exclude_defaults=True))
+        if ctx.profile.package_format is PackageFormat.LEGACY:
+            _copy_legacy_solution(ctx, src, dst, source.attrib["type"], verdicts)
+        else:
+            _copy_solution(src, dst)
 
-        if (source := solution.find("source[@path][@type]")) is not None:
-            ensure_dir(target_dir)
-            src = ctx.package_dir / source.attrib["path"]
-            dst = target_dir / src.name
-            lang = source.attrib["type"]
-            _add_solutions_with_expected_result(ctx, src, dst, lang, results)
+    if rules:
+        write_yaml(submissions_dir / "submissions.yaml", rules)
 
 
-def _add_solutions_with_expected_result(
+def _copy_solution(src: Path, dst: Path) -> None:
+    content = src.read_bytes()
+    if b"@EXPECTED_RESULTS@" in content or b"@EXPECTED_SCORE@" in content:
+        logger.warning(
+            "Existing @EXPECTED_RESULTS@ or @EXPECTED_SCORE@ in %s is preserved; "
+            "DOMjudge also uses these annotations when interpreting submission requirements.",
+            src.name,
+        )
+    shutil.copyfile(src, dst)
+
+
+def _copy_legacy_solution(
     ctx: ProcessingContext,
     src: Path,
     dst: Path,
     lang: str,
-    results: list[Result] | None,
+    verdicts: tuple[Verdict, ...] | None,
 ) -> None:
-    """Copy a solution file, adding @EXPECTED_RESULTS@ annotation if needed."""
-    if results is None:
-        logger.warning(
-            "Find expected result with check_manually, you may add @EXPECTED_RESULTS@ in your source code for validation.",
-        )
-        shutil.copyfile(src, dst)
-        return
-
-    if len(results) == 1:
-        logger.info("> %s: %s", src.name, _colorize_result(results[0]), extra={"markup": True})
+    if verdicts is None or len(verdicts) == 1:
         shutil.copyfile(src, dst)
         return
 
     content = src.read_text()
-
     if "@EXPECTED_RESULTS@" in content or "@EXPECTED_SCORE@" in content:
-        logger.warning(
-            "Find @EXPECTED_RESULTS@ or @EXPECTED_SCORE@ in %s, skip adding expected result.",
-            src.name,
-        )
+        logger.warning("Find @EXPECTED_RESULTS@ or @EXPECTED_SCORE@ in %s, skip adding expected result.", src.name)
         shutil.copyfile(src, dst)
         return
 
-    logger.info(
-        "> %s: %s",
-        src.name,
-        ", ".join(map(_colorize_result, results)),
-        extra={"markup": True},
-    )
-
     normalized_lang = get_normalized_lang(lang)
-    if comment_str := ctx.config.comment_str.get(normalized_lang, None):
-        remapped = ", ".join(RESULT_REMAP.get(res.upper(), res.upper()) for res in results)
-        generated_comment = f"""
+    comment_str = ctx.config.comment_str.get(normalized_lang)
+    if not comment_str:
+        raise ProcessError(
+            f"Legacy export cannot annotate {src.name}: comment_str is not configured for {normalized_lang}; "
+            "configure its comment syntax or use the 2025-09 export."
+        )
+    remapped = ", ".join(LEGACY_RESULTS[verdict] for verdict in verdicts)
+    generated_comment = f"""
 {comment_str} AUTO GENERATED BY POLYGON2DOMJUDGE
 {comment_str} @EXPECTED_RESULTS@: {remapped}
 """
-    else:
-        logger.warning(
-            "comment_str not found for type %s, skip adding expected result.",
-            normalized_lang,
-        )
-        generated_comment = ""
     dst.write_text(content + generated_comment, encoding="utf-8")
