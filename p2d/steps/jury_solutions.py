@@ -60,8 +60,10 @@ def add_jury_solutions(ctx: ProcessingContext) -> None:
 
         dst = submissions_dir / directory / src.name
         ensure_dir(dst.parent)
-        if rule is not None:
-            logger.info("> %s: %s", src.name, rule.model_dump(mode="json", exclude_defaults=True))
+        if directory == "mixed" and rule is not None:
+            logger.info("> %s: %s %s", src.name, directory, rule.model_dump(mode="json", exclude_defaults=True))
+        else:
+            logger.info("> %s: %s", src.name, directory)
         if ctx.profile.package_format is PackageFormat.LEGACY:
             _copy_legacy_solution(ctx, src, dst, source.attrib["type"], verdicts)
         else:
