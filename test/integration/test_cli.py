@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 import typer
 import yaml
+from rich.text import Text
 from typer.testing import CliRunner
 
 from p2d import ProcessError
@@ -186,7 +187,7 @@ def test_invalid_options(cli_runner: CliRunner, polygon_dir: Path, tmp_path: Pat
     output = tmp_path / "invalid.zip"
     result = cli_runner.invoke(app, [str(polygon_dir), "--code", "A", "-o", str(output), "-y", *args])
     assert result.exit_code == 2, result.output
-    assert message in result.stderr
+    assert message in Text.from_ansi(result.stderr).plain
     assert not output.exists()
 
 

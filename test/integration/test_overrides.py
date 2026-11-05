@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from rich.text import Text
 from typer.testing import CliRunner
 
 from p2d import DomjudgeOptions, ProblemType, ProcessError
@@ -123,10 +124,14 @@ def test_cli_type_and_validator_overrides(
 
 @pytest.mark.parametrize("legacy", [False, True], ids=["2025-09", "legacy"])
 @pytest.mark.parametrize("filename", ["validator.cpp", "run"])
-def test_single_validator_file(polygon_dir: Path, tmp_path: Path, legacy: bool, filename: str, testlib_header: bytes) -> None:
+@pytest.mark.parametrize("mode", [0o644, 0o755], ids=["non-executable", "executable"])
+def test_single_validator_file(
+    polygon_dir: Path, tmp_path: Path, legacy: bool, filename: str, mode: int, testlib_header: bytes
+) -> None:
     validator = tmp_path / filename
     validator.write_bytes(b"custom validator\r\n")
-    validator.chmod(0o755)
+    validator.chmod(mode)
+    source_mode = validator.stat().st_mode & 0o777
     output = tmp_path / "single.zip"
     files = export(polygon_dir, output, DomjudgeOptions(legacy=legacy, output_validator=validator))
     prefix = "output_validators/checker" if legacy else "output_validator"
@@ -135,7 +140,7 @@ def test_single_validator_file(polygon_dir: Path, tmp_path: Path, legacy: bool, 
         expected[f"{prefix}/testlib.h"] = testlib_header
     assert {name: content for name, content in files.items() if name.startswith("output_validator")} == expected
     with zipfile.ZipFile(output) as archive:
-        assert (archive.getinfo(f"{prefix}/{filename}").external_attr >> 16) & 0o777 == 0o755
+        assert (archive.getinfo(f"{prefix}/{filename}").external_attr >> 16) & 0o777 == source_mode
 
 
 @pytest.mark.parametrize(
@@ -219,7 +224,7 @@ def test_cli_conflicting_validator_override(cli_runner: CliRunner, polygon_dir: 
         ],
     )
     assert result.exit_code == 2, result.output
-    assert "Cannot use --output-validator with --default or --auto." in result.stderr
+    assert "Cannot use --output-validator with --default or --auto." in Text.from_ansi(result.stderr).plain
     assert not output.exists()
 
 
