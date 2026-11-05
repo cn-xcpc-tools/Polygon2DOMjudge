@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from enum import StrEnum
+from pathlib import Path
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .submissions import DEFAULT_SUBMISSION_RULES, SubmissionRule
 
@@ -27,6 +29,12 @@ DEFAULT_COLOR = "#000000"
 # -----------------------------------------------------------------------------
 # Configuration Models
 # -----------------------------------------------------------------------------
+
+
+class ProblemType(StrEnum):
+    PASS_FAIL = "pass-fail"
+    INTERACTIVE = "interactive"
+    MULTI_PASS = "multi-pass"
 
 
 class ExamplePathPattern(BaseModel):
@@ -50,10 +58,12 @@ class DomjudgeOptions(BaseModel):
         force_default_validator: Use DOMjudge's default output validator.
         auto_detect_std_checker: Automatically detect if Polygon's standard
             checker can be replaced with DOMjudge's default validator.
-        validator_flags: Flags passed to the output validator (only with
-            force_default_validator).
-        hide_sample: Store samples as secret tests and omit interaction logs.
-        keep_sample: Samples retaining original output; ignored for hidden samples or interactors.
+        problem_types: Override inferred modifiers; pass-fail is implicit. None keeps automatic detection.
+        validation_passes: Override the maximum number of validation passes.
+        output_validator: DOMjudge validator file; C++ sources include testlib.h.
+        validator_flags: Arguments for the default or explicitly supplied validator.
+        hide_sample: Store samples as secret tests and omit interaction logs; None hides multi-pass samples by default.
+        keep_sample: Samples retaining original output; ignored for hidden samples and interactive or multi-pass problems.
         external_id: External ID in DOMjudge (defaults to Polygon short-name).
         with_statement: Include PDF statement in the package.
         with_attachments: Include attachments in the package.
@@ -65,8 +75,11 @@ class DomjudgeOptions(BaseModel):
     color: str = DEFAULT_COLOR
     force_default_validator: bool = False
     auto_detect_std_checker: bool = False
+    problem_types: frozenset[ProblemType] | None = None
+    validation_passes: int | None = Field(default=None, ge=2)
+    output_validator: Path | None = None
     validator_flags: str | None = None
-    hide_sample: bool = False
+    hide_sample: bool | None = None
     keep_sample: Sequence[int] | None = None
     external_id: str | None = None
     with_statement: bool = False
@@ -90,12 +103,15 @@ class DomjudgeOptions(BaseModel):
         Raises:
             ValueError: If incompatible options are specified.
         """
-        if not self.force_default_validator and self.validator_flags is not None:
-            logger.warning("You are not using default validation, validator flags will be ignored.")
+        if not self.force_default_validator and self.output_validator is None and self.validator_flags is not None:
+            logger.warning("Validator flags require --default or --output-validator and will be ignored.")
 
         if self.force_default_validator and self.auto_detect_std_checker:
             msg = "Can not use auto_detect_std_checker and force_default_validator at the same time."
             raise ValueError(msg)
+
+        if self.output_validator is not None and (self.force_default_validator or self.auto_detect_std_checker):
+            raise ValueError("Cannot use --output-validator with --default or --auto.")
 
 
 class GlobalConfig(BaseModel):

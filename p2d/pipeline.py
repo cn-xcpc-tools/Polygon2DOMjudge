@@ -23,7 +23,7 @@ from .formats import PackageFormat
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .models import GlobalConfig
+    from .models import GlobalConfig, ProblemType
     from .polygon import PolygonProblem
 
 logger = logging.getLogger(__name__)
@@ -41,8 +41,11 @@ class DomjudgeProfile:
         color: Problem color in DOMjudge (hex format).
         external_id: Problem external ID in DOMjudge.
         hide_sample: Whether to store samples as secret tests and omit interaction logs.
-        keep_sample: Samples retaining original output; unused for hidden samples or interactors.
+        keep_sample: Samples retaining original output; unused for hidden samples and interactive or multi-pass problems.
         use_std_checker: Use DOMjudge's default output validator.
+        problem_types: Effective type combination after inference or explicit override.
+        validation_passes: Maximum validation passes, or None for single-pass problems.
+        output_validator: External DOMjudge validator file; C++ sources include testlib.h.
         validator_flags: Flags for the output validator.
         with_statement: Include PDF statement in package.
         with_attachments: Include attachments in package.
@@ -55,6 +58,9 @@ class DomjudgeProfile:
     hide_sample: bool
     keep_sample: Sequence[int] | None
     use_std_checker: bool
+    problem_types: frozenset[ProblemType]
+    validation_passes: int | None
+    output_validator: Path | None
     validator_flags: str | None
     with_statement: bool
     with_attachments: bool

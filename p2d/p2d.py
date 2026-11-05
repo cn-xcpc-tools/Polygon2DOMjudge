@@ -9,6 +9,7 @@ from __future__ import annotations
 import errno
 import logging
 import os
+import stat
 import sys
 import tempfile
 from collections.abc import Callable, Sequence
@@ -18,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from .exceptions import ProcessError
 from .formats import PackageFormat
-from .models import DomjudgeOptions, GlobalConfig
+from .models import DomjudgeOptions, GlobalConfig, ProblemType
 from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
 from .polygon import PolygonProblem
 from .steps import (
@@ -193,17 +194,25 @@ class Polygon2DOMjudge:
         options.validate_options()
 
         external_id = options.external_id or self._problem.short_name
-        keep_sample = self._resolve_keep_sample(options.keep_sample, options.hide_sample)
-        use_std_checker, validator_flags = self._resolve_validation(options)
+        problem_types = self._resolve_problem_types(options)
+        logger.info("Problem types: %s", " ".join(sorted(problem_types)))
+        requires_custom = ProblemType.INTERACTIVE in problem_types or ProblemType.MULTI_PASS in problem_types
+        hide_sample = ProblemType.MULTI_PASS in problem_types if options.hide_sample is None else options.hide_sample
+        keep_sample = self._resolve_keep_sample(options.keep_sample, hide_sample, requires_custom)
+        use_std_checker, validator_flags = self._resolve_validation(options, requires_custom)
+        validation_passes = self._resolve_validation_passes(options, ProblemType.MULTI_PASS in problem_types)
         memory_limit, output_limit = self._resolve_limits(options)
 
         return DomjudgeProfile(
             package_format=PackageFormat.LEGACY if options.legacy else PackageFormat.V2025_09,
             color=options.color,
             external_id=external_id,
-            hide_sample=options.hide_sample,
+            hide_sample=hide_sample,
             keep_sample=keep_sample,
             use_std_checker=use_std_checker,
+            problem_types=problem_types,
+            validation_passes=validation_passes,
+            output_validator=options.output_validator,
             validator_flags=validator_flags,
             with_statement=options.with_statement,
             with_attachments=options.with_attachments,
@@ -215,15 +224,16 @@ class Polygon2DOMjudge:
         self,
         user_keep_sample: Sequence[int] | None,
         hide_sample: bool,
+        preserve_outputs: bool,
     ) -> Sequence[int] | None:
         if hide_sample:
             if user_keep_sample is not None:
                 logger.warning("Hide sample is enabled, all samples will be hidden, keep_sample will be ignored.")
             return None
-        if self._problem.interactor is not None:
+        if preserve_outputs:
             if user_keep_sample is not None:
                 logger.warning(
-                    "Problem has interactor, original sample outputs are always preserved, keep_sample will be ignored."
+                    "Interactive or multi-pass problem, original sample outputs are always preserved, keep_sample will be ignored."
                 )
             return None
         return user_keep_sample
@@ -231,6 +241,7 @@ class Polygon2DOMjudge:
     def _resolve_validation(
         self,
         options: DomjudgeOptions,
+        requires_custom: bool,
     ) -> tuple[bool, str | None]:
         """Resolve validation settings (checker vs default validator).
 
@@ -240,23 +251,65 @@ class Polygon2DOMjudge:
         Raises:
             ProcessError: If validation configuration is inconsistent.
         """
+        if options.output_validator is not None:
+            if not stat.S_ISREG(options.output_validator.stat().st_mode):
+                raise ValueError("--output-validator must be a regular file.")
+            return False, options.validator_flags
+
+        if requires_custom:
+            if options.force_default_validator:
+                raise ValueError(
+                    "Interactive and multi-pass problems require a custom output validator; cannot use --default."
+                )
+            return False, None
+
         should_use_std = self._should_use_std_checker(options)
 
         if not should_use_std:
             return False, None
 
-        # Determine validator flags
         if options.force_default_validator:
             return True, options.validator_flags
 
-        # Auto-detect: derive flags from Polygon checker name
         if self._problem.checker is not None and self._problem.checker.name.startswith("std::"):
-            checker_base = self._problem.checker.name[5:]  # Remove "std::" prefix
+            checker_base = self._problem.checker.name.removeprefix("std::")
             flags = self._global_config.flag.get(checker_base)
             return True, flags
 
         msg = "Logic error in auto_detect_std_checker."
         raise ProcessError(msg)
+
+    def _resolve_problem_types(self, options: DomjudgeOptions) -> frozenset[ProblemType]:
+        if options.problem_types is not None:
+            return options.problem_types | {ProblemType.PASS_FAIL}
+
+        use_default = (
+            options.output_validator is None and self._should_use_std_checker(options) and self._problem.interactor is None
+        )
+        multi_pass = self._problem.run_count > 1 and not use_default
+        interactive = self._problem.interactor is not None and (not multi_pass or self._problem.interactive_multipass)
+        types = {ProblemType.PASS_FAIL}
+        if interactive:
+            types.add(ProblemType.INTERACTIVE)
+        if multi_pass:
+            types.add(ProblemType.MULTI_PASS)
+        return frozenset(types)
+
+    def _resolve_validation_passes(self, options: DomjudgeOptions, multi_pass: bool) -> int | None:
+        if not multi_pass:
+            if options.validation_passes is not None:
+                raise ValueError("--validation-passes requires a multi-pass problem; use --type to override inference.")
+            return None
+
+        passes = options.validation_passes if options.validation_passes is not None else max(2, self._problem.run_count)
+        if options.output_validator is None:
+            if self._problem.interactor is None:
+                raise ProcessError("Multi-pass validation requires a Polygon interactor or --output-validator.")
+            if passes != 2:
+                raise ProcessError(
+                    "Polygon multi-pass conversion supports only 2 passes; supply --output-validator for more passes."
+                )
+        return passes
 
     def _should_use_std_checker(self, options: DomjudgeOptions) -> bool:
         """Determine if the standard DOMjudge validator should be used."""

@@ -9,6 +9,7 @@ Main entry points:
 
 Configuration classes:
     - DomjudgeOptions: User-facing options for conversion
+    - ProblemType: Supported problem types for explicit overrides
     - ConvertOptions: Bundle of options for convert()
     - GlobalConfig: Global settings loaded from config.toml
     - SubmissionRule: Permitted and required verdicts for a Polygon solution tag
@@ -31,7 +32,7 @@ Example:
 """
 
 from .exceptions import ProcessError
-from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig
+from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig, ProblemType
 from .p2d import ConvertOptions, Polygon2DOMjudge, convert
 from .pipeline import DomjudgeProfile, ProcessingContext, ProcessPipeline, ProcessStep
 from .submissions import SubmissionRule
@@ -46,6 +47,7 @@ __all__ = [
     "ConvertOptions",
     "DomjudgeOptions",
     "GlobalConfig",
+    "ProblemType",
     "SubmissionRule",
     # Pipeline (advanced)
     "DomjudgeProfile",

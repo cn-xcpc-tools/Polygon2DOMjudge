@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from p2d.exceptions import ProcessError
 from p2d.formats import PackageFormat, write_yaml
+from p2d.models import ProblemType
 from p2d.utils import ensure_dir
 
 if TYPE_CHECKING:
@@ -24,19 +25,16 @@ def add_metadata(ctx: ProcessingContext) -> None:
     logger.info("[bold green reverse]Add problem metadata files:[/]", extra={"markup": True})
     package_format = ctx.profile.package_format
     metadata = package_format.problem_metadata(ctx.problem, ctx.profile)
-    use_default = ctx.profile.use_std_checker and ctx.problem.interactor is None
-    multi_pass = ctx.problem.run_count > 1 and not use_default
-    interactive = ctx.problem.interactor is not None and (not multi_pass or ctx.problem.interactive_multipass)
+    use_default = ctx.profile.use_std_checker
+    multi_pass = ProblemType.MULTI_PASS in ctx.profile.problem_types
+    interactive = ProblemType.INTERACTIVE in ctx.profile.problem_types
 
     if multi_pass:
-        if ctx.problem.interactor is None:
-            raise ProcessError("Multi-pass validation requires an interactor.")
-        if ctx.problem.run_count != 2:
-            raise ProcessError(f"Unsupported run_count: {ctx.problem.run_count}. Only 2 passes are currently supported.")
-        metadata.setdefault("limits", {})["validation_passes"] = ctx.problem.run_count
-        logger.warning(
-            "Multi-pass conversion is experimental; the interactor must implement the DOMjudge nextpass.in protocol."
-        )
+        metadata.setdefault("limits", {})["validation_passes"] = ctx.profile.validation_passes
+        if ctx.profile.output_validator is None:
+            logger.warning(
+                "Multi-pass conversion is experimental; the interactor must implement the DOMjudge nextpass.in protocol."
+            )
         if interactive and package_format is PackageFormat.LEGACY:
             logger.warning(
                 "Legacy 'validation: custom interactive multi-pass' is not recognized by the current DOMjudge importer."
@@ -45,19 +43,25 @@ def add_metadata(ctx: ProcessingContext) -> None:
     metadata.update(package_format.validation_metadata(custom=not use_default, interactive=interactive, multi_pass=multi_pass))
     if use_default:
         logger.info("Use default output validator.")
-        if ctx.profile.validator_flags:
-            package_format.configure_validator_args(ctx.temp_dir, metadata, ctx.profile.validator_flags)
     else:
-        executable = ctx.problem.interactor if ctx.problem.interactor is not None else ctx.problem.checker
-        if executable is None:
-            raise ProcessError("No checker found.")
-        role = "interactor" if ctx.problem.interactor is not None else "checker"
+        role = "interactor" if interactive or multi_pass else "checker"
         logger.info("Use custom %s.", role)
+        destination = ctx.temp_dir / package_format.validator_path(role)
+        if ctx.profile.output_validator is not None:
+            source = ctx.profile.output_validator
+        else:
+            executable = ctx.problem.interactor if interactive or multi_pass else ctx.problem.checker
+            if executable is None:
+                raise ProcessError(f"No {role} found; supply --output-validator.")
+            source = ctx.package_dir / executable.path
         _copy_validator_source(
-            ctx.package_dir / executable.path,
-            ctx.temp_dir / package_format.validator_path(role),
-            create_build_script=multi_pass,
+            source,
+            destination,
+            create_build_script=multi_pass and ctx.profile.output_validator is None,
         )
+
+    if ctx.profile.validator_flags:
+        package_format.configure_validator_args(ctx.temp_dir, metadata, ctx.profile.validator_flags)
 
     _write_ini(ctx)
     logger.info(metadata)
@@ -89,4 +93,4 @@ def _copy_validator_source(source_file: Path, destination_dir: Path, *, create_b
                 newline="\n",
             )
             build_script.chmod(0o755)
-    shutil.copyfile(source_file, destination_dir / source_file.name)
+    shutil.copy2(source_file, destination_dir / source_file.name)

@@ -5,6 +5,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from p2d.exceptions import ProcessError
+from p2d.models import ProblemType
 from p2d.utils import ensure_dir
 
 if TYPE_CHECKING:
@@ -50,7 +51,7 @@ def add_testcases(ctx: ProcessingContext) -> None:
         data_dir = ctx.temp_dir / "data" / group
 
         if is_sample:
-            if ctx.problem.interactor is None:
+            if ctx.profile.problem_types == {ProblemType.PASS_FAIL}:
                 output_src = _select_sample_output(ctx, idx, input_src, output_src)
             elif ctx.problem.use_interaction_log_in_example_tests:
                 example_name = ctx.config.example_path_pattern.input % idx

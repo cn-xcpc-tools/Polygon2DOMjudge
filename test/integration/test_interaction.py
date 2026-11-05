@@ -18,8 +18,9 @@ from test.helpers.packages import export
         pytest.param(2, True, "interactive multi-pass", id="interactive-multi-pass"),
     ],
 )
+@pytest.mark.parametrize("hide_sample", [None, False, True], ids=["default", "visible", "hidden"])
 def test_interaction_modes(
-    interactive_dir: Path, tmp_path: Path, legacy: bool, passes: int, interactive: bool, mode: str
+    interactive_dir: Path, tmp_path: Path, legacy: bool, passes: int, interactive: bool, mode: str, hide_sample: bool | None
 ) -> None:
     package = interactive_dir
     tree = ET.parse(package / "problem.xml")
@@ -27,7 +28,9 @@ def test_interaction_modes(
     assert statements is not None
     statements.set("use-interaction-log-in-example-tests", "true")
     interaction = b"< 1\n> 2\n" if passes == 1 else b"< 1\n> 2\n---\n< 2\n> 3\n"
-    (package / "statements/english/example.01.i").write_bytes(interaction)
+    hidden = passes > 1 if hide_sample is None else hide_sample
+    if not hidden:
+        (package / "statements/english/example.01.i").write_bytes(interaction)
     judging = tree.find("judging")
     assert judging is not None
     judging.set("run-count", str(passes))
@@ -39,7 +42,7 @@ def test_interaction_modes(
         ET.SubElement(runs, "run")
     tree.write(package / "problem.xml", encoding="utf-8")
     output = tmp_path / "interaction.zip"
-    files = export(package, output, DomjudgeOptions(legacy=legacy, auto_detect_std_checker=True))
+    files = export(package, output, DomjudgeOptions(legacy=legacy, auto_detect_std_checker=True, hide_sample=hide_sample))
     metadata = yaml.safe_load(files["problem.yaml"])
     if legacy:
         assert metadata["validation"] == f"custom {mode}"
@@ -50,9 +53,13 @@ def test_interaction_modes(
         validator = "output_validator"
     assert f"{validator}/interactor.cpp" in files
     assert f"{validator}/testlib.h" in files
+    group = "secret" if hidden else "sample"
     for extension, original in (("in", "01"), ("ans", "01.a")):
-        assert files[f"data/sample/01.{extension}"] == (package / "tests" / original).read_bytes()
-    assert files["data/sample/01.interaction"] == interaction
+        assert files[f"data/{group}/01.{extension}"] == (package / "tests" / original).read_bytes()
+    if hidden:
+        assert not any(name.startswith("data/sample/") or name.endswith(".interaction") for name in files)
+    else:
+        assert files["data/sample/01.interaction"] == interaction
     if passes > 1:
         assert metadata["limits"]["validation_passes"] == passes
         assert b"-DDOMJUDGE" in files[f"{validator}/build"]

@@ -1,6 +1,6 @@
 # Testlib for DOMjudge
 
-This copy of Mike Mirzayanov's C++ testlib adapts checker and interactor arguments, verdicts and feedback for DOMjudge. The converter includes it automatically with C++ validators. See [LICENSE](LICENSE).
+This copy of Mike Mirzayanov's C++ testlib adapts checker and interactor arguments, verdicts and feedback for DOMjudge. The converter includes it automatically with C++ (`.cpp`) validators, including files supplied through `--output-validator`. Set `TESTLIB_PATH` to use a directory containing an alternative `testlib.h`. See [LICENSE](LICENSE).
 
 ## Checker
 

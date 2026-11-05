@@ -38,11 +38,14 @@ The default output is `<code>.zip`. Ensure source files and test data use UTF-8 
 | `-c`, `--config` | TOML configuration file; a local `config.toml` takes precedence. |
 | `-y`, `--yes` | Skip confirmation. |
 | `--default` | Force the default output validator. |
-| `--validator-flags` | Default-validator arguments; used with `--default`. |
-| `--auto` | Replace recognized standard checkers with the default validator; mutually exclusive with `--default`. |
+| `--validator-flags` | Validator arguments; used with `--default` or `--output-validator`. |
+| `--auto` | Replace recognized standard checkers for ordinary problems with the default validator; mutually exclusive with `--default` and `--output-validator`. |
+| `--type` | Force the correct type when Polygon inference is wrong, using `pass-fail`, `interactive` or `multi-pass`; repeat to combine `interactive` and `multi-pass`. Auto-detected when omitted. |
+| `--validation-passes` | Maximum passes for multi-pass problems, at least 2; defaults to Polygon's `run-count`, with a minimum of 2. |
+| `--output-validator` | Replace a Polygon validator unsuitable for DOMjudge with a single file, e.g. `files/validator.cpp`; `.cpp` sources automatically include `testlib.h`. |
 | `--memory-limit` | Memory limit in MiB; defaults to the Polygon limit. `-1` uses the DOMjudge default. |
 | `--output-limit` | Output limit in MiB; defaults to `-1`, the DOMjudge default. |
-| `--hide-sample` | Store samples as secret tests and omit interaction logs. |
+| `--hide-sample` / `--no-hide-sample` | Hide or show samples; hidden by default for multi-pass problems. |
 | `--keep`, `--keep-sample` | Preserve solution outputs for selected non-interactive samples, e.g. `--keep 1 --keep 2`. |
 | `--external-id` | Override the external ID, which defaults to the Polygon short name. |
 | `--with-statement` | Include the PDF statement. |
@@ -76,7 +79,7 @@ A custom `tag` table replaces the default mapping, so include all tags you need.
 - Default export requires DOMjudge with [2025-09 submission metadata support](https://github.com/DOMjudge/domjudge/pull/3833). It requires a Polygon problem URL.
 - Custom validators go into `output_validator/`. Submission rules use standard directories or `submissions/submissions.yaml`; solution sources are preserved. Existing `@EXPECTED_RESULTS@` and `@EXPECTED_SCORE@` annotations still affect judging.
 - Interactors must validate contestant output themselves; DOMjudge does not run a separate checker over `tout`.
-- Multi-pass conversion is experimental and supports two passes. C++ interactors are built with `-DDOMJUDGE`. To request another pass, write `nextpass.in` in the feedback directory and exit with code 42:
+- Multi-pass conversion of Polygon interactors is experimental and supports two passes. The converter generates a build script with `-DDOMJUDGE` for these C++ interactors. To request another pass, write `nextpass.in` in the feedback directory and exit with code 42:
 
   ```cpp
   #include <filesystem>

@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from ._version import __version__
-from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig
+from .models import DEFAULT_COLOR, DomjudgeOptions, GlobalConfig, ProblemType
 from .p2d import ConvertOptions, convert
 from .utils import load_config
 
@@ -93,7 +93,30 @@ def convert_problem(
     ] = False,
     validator_flags: Annotated[
         str | None,
-        typer.Option(help='add some flags to the output validator, only works when "--default" is set.'),
+        typer.Option(help="arguments for --default or --output-validator"),
+    ] = None,
+    problem_types: Annotated[
+        list[ProblemType] | None,
+        typer.Option(
+            "--type",
+            help="override the complete type combination; repeat to combine modifiers; pass-fail is implicit; omitted means auto-detect",
+        ),
+    ] = None,
+    validation_passes: Annotated[
+        int | None,
+        typer.Option(
+            min=2, help="maximum validation passes for multi-pass problems; defaults to Polygon run-count, at least 2"
+        ),
+    ] = None,
+    output_validator: Annotated[
+        Path | None,
+        typer.Option(
+            help="DOMjudge output validator file; C++ sources include testlib.h; mutually exclusive with --default and --auto",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
     ] = None,
     memory_limit: Annotated[
         int | None,
@@ -108,17 +131,18 @@ def convert_problem(
         ),
     ] = -1,
     hide_sample: Annotated[
-        bool,
+        bool | None,
         typer.Option(
-            help="store sample tests as secret tests and omit sample interaction logs",
+            "--hide-sample/--no-hide-sample",
+            help="store samples as secret tests and omit interaction logs; defaults to hiding multi-pass samples",
         ),
-    ] = False,
+    ] = None,
     keep_sample: Annotated[
         list[int] | None,
         typer.Option(
             "--keep",
             "--keep-sample",
-            help="keep original outputs for selected samples (e.g. --keep 1 --keep 2); otherwise use statement outputs when available. Ignored for hidden samples and problems with an interactor.",
+            help="keep original outputs for selected samples (e.g. --keep 1 --keep 2); otherwise use statement outputs when available. Ignored for hidden samples and interactive or multi-pass problems.",
         ),
     ] = None,
     external_id: Annotated[
@@ -171,6 +195,9 @@ def convert_problem(
         msg = 'Cannot use "--default" and "--auto" at the same time.'
         raise typer.BadParameter(msg)
 
+    if output_validator is not None and (force_default_validator or auto_detect_std_checker):
+        raise typer.BadParameter("Cannot use --output-validator with --default or --auto.")
+
     if skip_confirmation:
 
         def confirm() -> bool:
@@ -190,6 +217,9 @@ def convert_problem(
             color=color,
             force_default_validator=force_default_validator,
             auto_detect_std_checker=auto_detect_std_checker,
+            problem_types=frozenset(problem_types) if problem_types else None,
+            validation_passes=validation_passes,
+            output_validator=output_validator,
             validator_flags=validator_flags,
             hide_sample=hide_sample,
             keep_sample=keep_sample_tuple,

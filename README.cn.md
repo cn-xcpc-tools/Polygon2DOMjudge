@@ -38,11 +38,14 @@ p2d polygon-package.zip --code A --color '#FF0000' -o domjudge-package.zip
 | `-c`, `--config` | TOML 配置文件；当前目录的 `config.toml` 优先。 |
 | `-y`, `--yes` | 跳过确认。 |
 | `--default` | 强制使用默认输出校验器。 |
-| `--validator-flags` | 默认输出校验器参数，与 `--default` 配合使用。 |
-| `--auto` | 将已识别的标准 checker 替换为默认输出校验器，与 `--default` 互斥。 |
+| `--validator-flags` | 校验器参数，与 `--default` 或 `--output-validator` 配合使用。 |
+| `--auto` | 为普通题将已识别的标准 checker 替换为默认输出校验器，与 `--default`、`--output-validator` 互斥。 |
+| `--type` | Polygon 类型推断错误时强制覆盖，可选 `pass-fail`、`interactive`、`multi-pass`；重复传入可组合交互和多轮。省略时自动推断。 |
+| `--validation-passes` | multi-pass 的最大轮数，至少为 2；默认使用 Polygon 的 `run-count`，最低取 2。 |
+| `--output-validator` | Polygon 校验器不适用于 DOMjudge 时，指定替代文件，如 `files/validator.cpp`；`.cpp` 源码自动附带 `testlib.h`。 |
 | `--memory-limit` | 内存限制，单位 MiB，默认使用 Polygon 限制；`-1` 表示 DOMjudge 默认值。 |
 | `--output-limit` | 输出限制，单位 MiB，默认为 `-1`，表示 DOMjudge 默认值。 |
-| `--hide-sample` | 将样例保存为隐藏测试，并省略交互日志。 |
+| `--hide-sample` / `--no-hide-sample` | 隐藏或展示样例；multi-pass 题默认隐藏。 |
 | `--keep`, `--keep-sample` | 保留指定普通题样例的标程输出，例如 `--keep 1 --keep 2`。 |
 | `--external-id` | 覆盖 external ID，默认使用 Polygon 题目简称。 |
 | `--with-statement` | 包含 PDF 题面。 |
@@ -76,7 +79,7 @@ rejected = { required = ["RTE", "TLE", "WA"] }
 - 默认导出需要 DOMjudge 支持 [2025-09 题解元数据](https://github.com/DOMjudge/domjudge/pull/3833)，要求 Polygon 题目包含 URL。
 - 自定义校验器放入 `output_validator/`。题解规则使用标准目录或 `submissions/submissions.yaml`，保留源码原文；已有的 `@EXPECTED_RESULTS@` 和 `@EXPECTED_SCORE@` 注释仍会影响判题。
 - 交互器必须自行验证选手输出；DOMjudge 不会额外运行 checker 检查 `tout`。
-- multi-pass 转换为实验功能，支持两轮。C++ 交互器使用 `-DDOMJUDGE` 编译；需要下一轮时，在反馈目录写入 `nextpass.in`，并以 42 退出：
+- Polygon interactor 的 multi-pass 转换为实验功能，支持两轮。转换器为此类 C++ 交互器生成带 `-DDOMJUDGE` 的构建脚本。需要下一轮时，在反馈目录写入 `nextpass.in`，并以 42 退出：
 
   ```cpp
   #include <filesystem>
